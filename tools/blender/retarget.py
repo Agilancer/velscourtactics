@@ -126,9 +126,10 @@ class Target:
         act.use_fake_user = True
         return act
 
-    def retarget(self, src, step=2):
+    def retarget(self, src, step=2, name=None):
+        """A library clip sent through whole: as M_<src> (a source to compose from), or under a name of its own."""
         a = bpy.data.actions[src]; f0, f1 = a.frame_range; k = max(1, round((f1 - f0) / step))
-        return self.write('M_' + src, [(round(i * (f1 - f0) / k, 2), self.convert(arm_pose(LIB, src, f0 + i * (f1 - f0) / k))) for i in range(k + 1)])
+        return self.write(name or 'M_' + src, [(round(i * (f1 - f0) / k, 2), self.convert(arm_pose(LIB, src, f0 + i * (f1 - f0) / k))) for i in range(k + 1)])
 
     # ---- composing ----
     def grab(self, action, f):
@@ -212,6 +213,11 @@ class Target:
         def raised(name, arm, hold=16):
             a = mix(mix(B0, UPBOTH, 1.0, arm), UPBOTH, 0.3, HEAD); a2 = mix(a, g('M_Charged_Spell_Cast', 50), 1.0, arm)
             W(name, [(0, B0), (8, L(a)), (8 + hold // 2, L(a2)), (8 + hold, L(a)), (16 + hold, L(mix(B0, a, 0.5, arm))), (26 + hold, BI(26 + hold))])
+        # both arms up, then everything pulled down out of the sky
+        def meteor(name='Meteor'):
+            upb = mix(mix(B0, UPBOTH, 0.9, ARMS), UPBOTH, 0.3, HEAD)
+            down = mix(mix(B0, CROUCH, 0.7, LEGS + SPINE), ARMDOWN, 1.0, ARMS)
+            W(name, [(0, B0), (8, L(upb)), (20, L(mix(upb, UPBOTH, 1.0, ARMS))), (25, L(down)), (33, L(down)), (44, BI(44))])
 
         # ---- what each class has besides ----
         if cls == 'paladin':                      # mace and shield
@@ -235,9 +241,7 @@ class Target:
         elif cls == 'wizard':                     # staff
             bolt()                                                                # Fire Bolt and plain attack
             wave()                                                                # Frost Nova
-            upb = mix(mix(B0, UPBOTH, 0.9, ARMS), UPBOTH, 0.3, HEAD)
-            down = mix(mix(B0, CROUCH, 0.7, LEGS + SPINE), ARMDOWN, 1.0, ARMS)
-            W('Meteor', [(0, B0), (8, L(upb)), (20, L(mix(upb, UPBOTH, 1.0, ARMS))), (25, L(down)), (33, L(down)), (44, BI(44))])       # Meteor: pulled down out of the sky
+            meteor()                                                              # Meteor
             names += ['Bolt', 'Wave', 'Meteor']
         # something lifted out of the ground: down on a knee with a hand low, then up with it
         def raise_(name='Raise'):
@@ -291,6 +295,33 @@ class Target:
             W('Ballad', [(0, B0), (5, L(hold))] + [(8 + i * 3, L(sway(st if i % 2 == 0 else hold, 8 + i * 3))) for i in range(10)] + [(46, BI(46))])   # Ballad of Valor, Lullaby
             raised('Bless', RARM)                                                 # Hymn of Mending
             names += ['Strum', 'Ballad', 'Bless']
+        elif cls == 'lancer':                     # spear and tower shield
+            blow('Thrust', 'M_Thrust_Slash', 24, 58, 9)                          # Lance Thrust, plain attack
+            wall = mix(mix(mix(B0, CLASP, 1.0, LARM), CROUCH, 0.35, LEGS + SPINE), UPBOTH, 0.25, LARM)
+            W('Guard_Up', [(0, B0), (6, L(wall)), (24, L(wall)), (34, BI(34))])                                                       # Tower Shield: the shield brought up and set
+            raised('Rally', RARM)                                                 # Squire Knight: the banner arm up
+            leap('Charge')                                                        # Lance Charge
+            blow('Shield_Bash', 'M_Left_Slash', 14, 56, 9, legs=0.4)
+            names += ['Thrust', 'Guard_Up', 'Rally', 'Charge', 'Shield_Bash']
+        elif cls == 'arcane_sorcerer':            # wand: star-fire and gravity
+            bolt()                                                                # Star Missiles, plain attack
+            raised('Bless', RARM)                                                 # Moonbeam: a hand held up to the moon
+            meteor()                                                              # Falling Star
+            wave()                                                                # Black Hole
+            names += ['Bolt', 'Bless', 'Meteor', 'Wave']
+        elif cls == 'boomerang_knight':           # two crescent blades: thrown, and caught again
+            follow = mix(thrust, ARMDOWN, 0.5, RARM); catch = mix(B0, CROUCH, 0.8, RARM)
+            W('Throw', [(0, B0), (4, L(back)), (8, L(thrust)), (12, L(follow)), (22, L(catch)), (30, BI(30))])                          # Boomerang, plain attack
+            both = mix(B0, HR, 0.7, ARMS); r = mix(both, CROUCH, 1.0, RARM); lr = mix(r, CROUCH, 1.0, LARM)
+            W('Twin', [(0, B0), (4, L(both)), (8, L(r)), (13, L(lr)), (24, L(mix(B0, CROUCH, 0.8, ARMS))), (32, BI(32))])               # Twin Rang: one, then the other
+            spin()                                                                # Swirling Blades
+            wave('Typhoon')                                                       # Typhoon
+            names += ['Throw', 'Twin', 'Whirl', 'Typhoon']
+        elif cls == 'doorkeeper':                 # Lisandra: her own seventeen clips, which live in the library, carried over as they are
+            own = ['Idle', 'Walk_Bent', 'Run_Bent', 'Hop', 'Bolt', 'Cast', 'Snap', 'Lantern_Up', 'Wave', 'Hit', 'Dead_Fall',
+                   'Revive', 'Wounded', 'Stunned', 'Victory', 'Talk', 'Drink']
+            for s in own: self.retarget(s, name=s)                                # replaces the common clip of the same name
+            names += [s for s in own if s not in names]
         self.names = names
         return names
 
