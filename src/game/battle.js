@@ -53,9 +53,8 @@ export class Battle {
 
     for (const a of g.explore.actors) a.model.visible = false;
     for (const f of foes) this.addFoe(f);
-    // where the party may be placed: a few steps round the leader
-    this.spots = this.flood(L.x, L.z, 3).filter((t) => !this.unitAt(t.x, t.z));
-    partyHeroes(this.st).forEach((h, i) => { const s = this.spots[Math.min(i, this.spots.length - 1)]; this.addHero(h, s.x, s.z); });
+    // where the party may be placed: a few steps round the leader (this.spots, and for each of them see setOut)
+    this.setOut(partyHeroes(this.st).map((h) => this.addHero(h, L.x, L.z)), L);
     for (const u of this.units) if (u.side === 'party') this.faceTo(u, alerted.x, alerted.zz);
 
     this.buildHud();
@@ -754,6 +753,31 @@ export class Battle {
   }
 
   // ---- placing the party before it starts ----
+  // The spots round the leader, and the ones each hero may start on: those they could walk from to strike one of the
+  // dead. (The spots are found climbing two, and someone who jumps one shouldn't be set down in a hollow they can't
+  // get out of.) Fewest choices first, each to the nearest spot left that will do; the spots reach three steps out,
+  // or as far as six if that's what it takes to give everyone who could have one a spot that will do.
+  setOut(heroes, L) {
+    const at = (t) => K(t.x, t.z), steps = new Map();
+    for (const u of heroes) u.alive = false;            // (out of each other's way while it's worked out)
+    for (const u of heroes) steps.set(u, this.strikeSteps(u, this.usable(u), this.foesOf(u)));
+    const far = this.flood(L.x, L.z, 6).filter((t) => !this.unitAt(t.x, t.z)), some = heroes.filter((u) => far.some((t) => steps.get(u).has(at(t))));
+    let spots, fits, where;
+    for (let n = 3; n <= 6; n++) {
+      spots = this.flood(L.x, L.z, n).filter((t) => !this.unitAt(t.x, t.z));
+      fits = new Map(heroes.map((u) => { const ok = spots.filter((t) => steps.get(u).has(at(t))); return [u, new Set((ok.length ? ok : spots).map(at))]; }));
+      const taken = new Set();
+      where = new Map();
+      for (const u of [...heroes].sort((a, b) => fits.get(a).size - fits.get(b).size)) {
+        const s = spots.find((t) => !taken.has(at(t)) && fits.get(u).has(at(t))) || spots.find((t) => !taken.has(at(t))) || spots[spots.length - 1];
+        taken.add(at(s)); where.set(u, s);
+      }
+      if (some.every((u) => steps.get(u).has(at(where.get(u))))) break;
+    }
+    for (const u of heroes) { const s = where.get(u); u.alive = true; u.x = s.x; u.z = s.z; this.place(u); }
+    this.spots = spots; this.fits = fits;
+  }
+  fitsAt(u, x, z) { return !this.fits?.has(u) || this.fits.get(u).has(K(x, z)); }
   showPlacement() {
     this.sel = { mode: 'place', pick: this.units.find((u) => u.side === 'party') };
     setAnim(this.sel.pick.model, 'point');            // the leader sets the line
@@ -762,7 +786,7 @@ export class Battle {
   }
   drawPlacement() {
     const m = this.menuEl, s = this.sel;
-    this.r.clearHighlights(); this.r.highlight(this.spots, 'place');
+    this.r.clearHighlights(); this.r.highlight(this.spots.filter((t) => !s.pick || this.fitsAt(s.pick, t.x, t.z)), 'place');
     m.innerHTML = '';
     m.append(el('div', 'bt-hint', 'The dead have seen you. Set your line: choose one of yours, then a green tile.'));
     for (const u of this.units.filter((u) => u.side === 'party')) {
@@ -778,6 +802,8 @@ export class Battle {
     if (o && o.side === 'party' && o !== s.pick && !this.spots.some((t) => t.x === x && t.z === z && s.pick)) { s.pick = o; return this.drawPlacement(); }
     if (!this.spots.some((t) => t.x === x && t.z === z)) { if (o && o.side === 'party') { s.pick = o; this.drawPlacement(); } return; }
     if (!s.pick) return;
+    // not into a hollow they couldn't get out of (nor, swapping, the other one)
+    if (!this.fitsAt(s.pick, x, z) || (o && o.side === 'party' && o !== s.pick && !this.fitsAt(o, s.pick.x, s.pick.z))) return sfx.deny();
     if (o && o.side === 'party' && o !== s.pick) { o.x = s.pick.x; o.z = s.pick.z; this.place(o); }
     else if (o && o !== s.pick) return sfx.deny();
     s.pick.x = x; s.pick.z = z; this.place(s.pick);
@@ -785,14 +811,17 @@ export class Battle {
   }
 
   // ---- the AI: used by the dead, by summons, and by the party when Auto is on ----
+  // what u could use now (the party's skills cost mana or rage, some life too; the plain blow costs nothing)
+  usable(u) { return [u.basic, ...u.skills].filter((sk) => sk && (u.side === 'foe' || u.summon || sk.basic || (sk.cost <= u.mp && (!sk.hpCost || u.hp > lifeCost(u, sk))))); }
   // Every skill from every tile in reach, at every target it could take, scored; the best is done.
   plan(u) {
     const foes = this.foesOf(u), friends = this.friendsOf(u);
-    const R = u.moved ? [{ x: u.x, z: u.z, d: 0, prev: null }] : [...this.reach(u).values()].filter((t) => !t.pass || (t.x === u.x && t.z === u.z));
-    const usable = [];
-    if (u.basic) usable.push(u.basic);
-    for (const sk of u.skills) if (u.side === 'foe' || u.summon || (sk.cost <= u.mp && (!sk.hpCost || u.hp > lifeCost(u, sk)))) usable.push(sk);
-    const skills = u.acted ? [] : usable;
+    const usable = this.usable(u), skills = u.acted ? [] : usable;
+    // how far it is, walking, to somewhere it could strike from (see strikeSteps); and while there is a way, never a
+    // tile with none, whatever it would do there (a hollow it couldn't climb out of, to guard the friends in it)
+    const steps = this.strikeSteps(u, usable, foes), here = steps.get(K(u.x, u.z));
+    const R = (u.moved ? [{ x: u.x, z: u.z, d: 0, prev: null }] : [...this.reach(u).values()].filter((t) => !t.pass || (t.x === u.x && t.z === u.z)))
+      .filter((t) => here === undefined || steps.has(K(t.x, t.z)));
     const nearFoe = (x, z) => foes.reduce((m, f) => Math.min(m, manhattan(x, z, f.x, f.z)), 99);
     const inRange = (sk, t, x, z) => { const d = manhattan(t.x, t.z, x, z); return d >= sk.r[0] && d <= sk.r[1]; };
     const freeTile = (c) => this.open(c.x, c.z) && !this.unitAt(c.x, c.z) && !this.trapAt(c.x, c.z);
@@ -852,7 +881,6 @@ export class Battle {
     if (best.sk) return best;
     // Nothing worth doing from anywhere in reach: close in. Not as the crow flies (with a stand of trunks or a rise
     // between them, that leaves both sides standing still for good) but along the walk to where it could strike.
-    const steps = this.strikeSteps(u, usable, foes), here = steps.get(K(u.x, u.z));
     if (here !== undefined) {
       let to = null;
       for (const t of R) { const n = steps.get(K(t.x, t.z)); if (n !== undefined && n < here && (!to || n < to.n || (n === to.n && t.d < to.t.d))) to = { t, n }; }
