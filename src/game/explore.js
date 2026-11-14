@@ -1,6 +1,6 @@
 // Walking the world: the leader moves a tile at a time, the rest of the party follows in a chain,
 // each copying what the one ahead did a step ago, jumps included. Townsfolk stand about; the dead watch.
-import { TOWN, N } from '../world/map.js';
+import { TOWN, N, T } from '../world/map.js';
 import { DPAD } from '../core/input.js';
 import { makePerson, makeZombie, withOverride, shadowDisc, label, setAnim, animate } from '../gfx/models.js';
 import { FOLK, HEROES, ROAD_END, LISANDRA_CHAT } from '../data/cast.js';
@@ -10,6 +10,15 @@ import { pick } from '../core/util.js';
 
 const WALK = 0.15, HOP = 0.3;
 const key = (x, z) => z * N + x;
+
+/** What a tile is underfoot, for its footsteps: the roads, the square's flags and bare rock ring as
+ * stone; the rest is earth, needles and moss. */
+export function ground(w, x, z) {
+  const t = w.inMap(x, z) ? w.type[w.I(x, z)] : T.DIRT;
+  return t === T.ROAD || t === T.FLAGS || t === T.ROCK ? 'stone' : 'dirt';
+}
+/** Whether someone clinks as they walk (mail or plate on). */
+export const clinks = (h) => h?.equip?.armor?.kind === 'plate';
 
 export function heroModel(h) {
   const d = h.heroId && HEROES[h.heroId];
@@ -146,8 +155,9 @@ export class Explore {
       if (dx || dz) a.model.rotation.y = Math.atan2(dx, dz);
       if (a.hop) setAnim(a.model, 'jump'); else if (dx || dz) setAnim(a.model, 'walk');
     });
-    this.step = { t: 0, dur: jump ? HOP : WALK };
-    if (jump) sfx.jump(); else sfx.step();
+    this.step = { t: 0, dur: jump ? HOP : WALK, hop: jump };
+    const L = this.leader, under = ground(w, tx, tz), mail = clinks(L.hero);
+    if (jump) sfx.jump(ground(w, L.x, L.z), mail); else sfx.step(under, mail, !!this.g.st.auto);
     return true;
   }
   hopInPlace() { if (!this.step && !this.busy) this.startStep(this.leader.x, this.leader.z, true); }
@@ -170,6 +180,7 @@ export class Explore {
       if (s.t >= 1) {
         for (const a of this.actors) { a.x = a.to.x; a.z = a.to.z; }
         this.step = null;
+        if (s.hop) sfx.land(ground(g.world, L.x, L.z), clinks(L.hero));
         this.arrive();
       }
     }
@@ -279,7 +290,7 @@ export class Explore {
     const bang = label('!', { size: 90, color: '#ff3a2a', bg: null, scale: 2.2 });
     bang.position.y = 2.1;
     f.model.add(bang);
-    sfx.alert();
+    sfx.alert(g.world.inTown(L.x, L.z, 16));
     g.ui.banner('Seen!', `${f.z.name} · level ${f.level}`, true);
     setTimeout(() => {
       f.model.remove(bang);

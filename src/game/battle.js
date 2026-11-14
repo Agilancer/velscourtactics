@@ -7,10 +7,11 @@ import { CONSUMABLES, rollLoot, itemName, RARITY } from '../data/items.js';
 import { zombieStats } from '../data/enemies.js';
 import { HEROES } from '../data/cast.js';
 import { heroStats, heroSkills, basicAttack, gainXp, noteKill, partyHeroes } from './party.js';
-import { heroModel } from './explore.js';
+import { heroModel, ground, clinks } from './explore.js';
 import { makeSummon, shadowDisc, setAnim, setRest, animate } from '../gfx/models.js';
 import { DPAD } from '../core/input.js';
 import { sfx } from '../core/audio.js';
+import { music } from '../core/music.js';
 
 const K = (x, z) => x + ',' + z;
 const ITEM_SKILLS = {
@@ -70,6 +71,14 @@ export class Battle {
       skills: [], basic, ct: 40, st: [], model, alive: true, ai: true, undead: kind === 'skeleton' || kind === 'ghoul', color: caster.color, face: caster.face };
     this.place(u); this.units.push(u); this.addBar(u); return u;
   }
+  // for the sounds: what a unit strikes with (its weapon, or the dead's own claws, teeth and chains),
+  // and whether it clinks as it moves (mail or plate on, or chains)
+  weaponOf(u, sk) {
+    if (u.hero) return u.hero.equip.weapon?.kind || 'sword';
+    if (u.summon) return { wolf: 'bite', ghoul: 'bite', squire: 'sword', turret: 'pistol' }[u.kind] || 'claw';
+    return { chain_sweep: 'chain', slam: 'slam', bite: 'bite' }[sk.id] || 'claw';
+  }
+  clinks(u) { return u.hero ? clinks(u.hero) : u.zdef?.id === 'brute'; }
   place(u) { u.model.visible = true; u.model.position.set(u.x, this.w.y(u.x, u.z), u.z); }
   faceTo(u, x, z) { const dx = x - u.x, dz = z - u.z; if (!dx && !dz) return; u.face = Math.abs(dx) >= Math.abs(dz) ? [Math.sign(dx), 0] : [0, Math.sign(dz)]; u.model.rotation.y = Math.atan2(dx, dz); }
   unitAt(x, z) { return this.units.find((u) => u.alive && u.x === x && u.z === z); }
@@ -186,13 +195,14 @@ export class Battle {
     if (!u.alive) return;
     u.alive = false; u.hp = 0; u.st = [];
     setAnim(u.model, 'dead');
-    if (!quiet) { sfx.die(); this.say(`<b>${esc(u.name)}</b> ${u.side === 'foe' ? 'goes down and stays down.' : u.summon ? 'is gone.' : 'has fallen.'}`); }
+    if (!quiet) { sfx.die(u.side === 'foe' ? 'foe' : u.summon ? 'summon' : 'hero', u.model.position, this.clinks(u)); this.say(`<b>${esc(u.name)}</b> ${u.side === 'foe' ? 'goes down and stays down.' : u.summon ? 'is gone.' : 'has fallen.'}`); }
     if (u.summon) setTimeout(() => { this.r.units.remove(u.model); }, 700);
     if (u.side === 'foe' && by && by.hero && by.alive) setTimeout(() => { if (by.alive && !this.over) setAnim(by.model, 'taunt'); }, 520);
     if (u.side === 'foe') {
       this.xp += u.s.xp; this.slain.push(u); this.st.slain[u.id] = this.st.day; noteKill(this.st, u.zdef.id);
       if (u.zdef.burst) {
         this.say('The bonesack bursts.');
+        sfx.squelch(u.model.position);
         for (const o of this.units) if (o.alive && o.side !== 'foe' && manhattan(o.x, o.z, u.x, u.z) <= 1) { this.hurt(o, Math.max(1, Math.round(u.s.atk * 0.5)), null); this.addStatus(o, ['poison', 3, 1]); }
       }
     }
@@ -205,6 +215,7 @@ export class Battle {
     for (const t of path) {
       const fx = u.model.position.x, fy = u.model.position.y, fz = u.model.position.z, ty = this.w.y(t.x, t.z), hop = Math.abs(ty - fy) > 0.3 ? 0.5 : 0;
       u.model.rotation.y = Math.atan2(t.x - fx, t.z - fz); u.face = [Math.sign(Math.round(t.x - fx)), Math.sign(Math.round(t.z - fz))];
+      if (hop) sfx.jump(ground(this.w, t.x, t.z), this.clinks(u)); else sfx.tread(ground(this.w, t.x, t.z), this.clinks(u), u.model.position);
       await this.g.tween(hop ? 0.22 : 0.12, (k) => u.model.position.set(fx + (t.x - fx) * k, fy + (ty - fy) * k + Math.sin(Math.PI * k) * hop, fz + (t.z - fz) * k));
       u.x = t.x; u.z = t.z;
     }
@@ -229,38 +240,52 @@ export class Battle {
       }
       if (best && (best.x !== u.x || best.z !== u.z)) {
         const fx = u.x, fz = u.z, fy = u.model.position.y, ty = this.w.y(best.x, best.z);
-        sfx.jump();
+        sfx.jump(ground(this.w, u.x, u.z), this.clinks(u));
         await this.g.tween(0.36, (k) => u.model.position.set(fx + (best.x - fx) * k, fy + (ty - fy) * k + Math.sin(Math.PI * k) * 2.2, fz + (best.z - fz) * k));
         u.x = best.x; u.z = best.z; from.x = u.x; from.z = u.z; this.faceTo(u, tx, tz);
+        sfx.land(ground(this.w, u.x, u.z), this.clinks(u));
       }
     }
     const spell = sk.kind !== 'phys';
     setAnim(u.model, sk.item ? 'item' : sk.anim || (spell ? 'cast' : 'attack'), 0.5, spell ? 'cast' : 'attack');
-    (sk.kind === 'heal' || sk.kind === 'buff' || sk.kind === 'item' ? sfx.heal : spell ? sfx.cast : sfx.ui)();
+    const at = u.model.position, kind = this.weaponOf(u, sk);
+    if (sk.item) { if (sk.item !== 'tonic') sfx.drink(at); }
+    else if (sk.kind === 'heal') sfx.heal(at);
+    else if (sk.kind === 'buff') sfx.buff(at);
+    else if (sk.kind === 'debuff') sfx.debuff(at);
+    else if (sk.kind === 'summon') sfx.summon(at);
+    else if (spell) sfx.cast(sk, at, kind);
+    else sfx.swing(kind, at, sk.el);
     await this.wait(260);
     if (sk.kind === 'summon') { const s = this.addSummon(u, sk.summon, tx, tz); this.faceTo(s, tx + u.face[0], tz + u.face[1]); this.float(s, s.name, 'good'); }
     else if (sk.kind === 'item') {
       for (const t of this.affected(u, sk, tx, tz)) {
         if (sk.item === 'potion') this.mend(t, Math.round(t.maxhp * 0.45));
         else if (sk.item === 'ether') { t.mp = Math.min(t.maxmp, t.mp + Math.round(t.maxmp * 0.45)); this.float(t, 'Mana', 'good'); }
-        else { t.alive = true; t.hp = Math.round(t.maxhp / 3); t.hero.hp = t.hp; t.ct = 0; setAnim(t.model, 'revive'); this.float(t, 'Up!', 'heal'); }
+        else { t.alive = true; t.hp = Math.round(t.maxhp / 3); t.hero.hp = t.hp; t.ct = 0; setAnim(t.model, 'revive'); this.float(t, 'Up!', 'heal'); sfx.revive(t.model.position); }
       }
     } else {
       for (let h = 0; h < (sk.hits || 1); h++) {
         const targets = this.affected(u, sk, tx, tz);
         if (h && !targets.length) break;
-        if (sk.kind === 'phys' || sk.kind === 'magic') sfx.hit();
+        let crit = false, blocked = false;
         for (const t of targets) {
           if (sk.kind === 'heal') this.mend(t, this.healing(u, sk));
           else if (sk.kind === 'buff') { this.addStatus(t, sk.st); this.addStatus(t, sk.st2); }
           else if (sk.kind === 'debuff') this.addStatus(t, sk.st);
           else {
             const d = this.damage(u, t, sk, false, from);
+            crit ||= d.crit;
+            if (sk.kind === 'phys' && !d.crit && !d.side && this.clinks(t) && Math.random() < 0.6) blocked = true;   // (met head on, on mail)
             this.hurt(t, d.n, u, d.crit ? 'crit' : d.side);
             const take = (sk.drain || 0) + (u.s.leech || 0) / 100;
             if (take && u.alive) this.mend(u, Math.max(1, Math.round(d.n * take)));
             this.addStatus(t, sk.st);
           }
+        }
+        if (targets.length && (sk.kind === 'phys' || sk.kind === 'magic')) {
+          const where = targets[0].model.position;
+          if (sk.kind === 'magic') sfx.burst(sk, where, crit); else sfx.hit({ kind, el: sk.el, crit, blocked, at: where });
         }
         if (sk.allyHeal) for (const t of this.aoeTiles(sk, tx, tz)) { const o = this.unitAt(t.x, t.z); if (o && o.side === u.side && o.hp < o.maxhp) this.mend(o, Math.round(u.s.mag * sk.allyHeal)); }
         if (h < (sk.hits || 1) - 1) await this.wait(170);
@@ -521,7 +546,7 @@ export class Battle {
     for (const u of heroes) { u.hero.hp = u.alive ? u.hp : 0; if (!u.rage) u.hero.mp = u.mp; }
     let title, sub;
     if (how === 'win') {
-      sfx.win(); title = 'The dead lie still'; sub = `${this.slain.length} put down`;
+      sfx.win(); music.stinger('triumph'); title = 'The dead lie still'; sub = `${this.slain.length} put down`;
       for (const u of heroes) if (u.alive) { setRest(u.model, 'idle'); setAnim(u.model, 'cheer'); }
       let gold = 0; const got = [];
       for (const f of this.slain) {
@@ -540,10 +565,10 @@ export class Battle {
       const who = heroes.find((u) => u.alive && HEROES[u.hero.heroId]);
       if (who) { const w = HEROES[who.hero.heroId].win; lines.push(`<i>“${esc(w[Math.floor(Math.random() * w.length)])}”</i> — ${esc(who.name)}`); }
     } else if (how === 'lose') {
-      sfx.lose(); title = 'The pines keep what they take'; sub = 'You wake at The Last Toll';
+      sfx.lose(); music.stinger('fell'); title = 'The pines keep what they take'; sub = 'You wake at The Last Toll';
       const lost = Math.round(st.gold * 0.2); st.gold -= lost;
       lines.push(`Somebody carried you back to the Hollow. It cost you <b>${lost}</b> gold and most of your pride.`);
-    } else { title = 'You run'; sub = 'The dead do not hurry'; lines.push('You get clear. They are still standing where you left them.'); }
+    } else { sfx.sheath(); title = 'You run'; sub = 'The dead do not hurry'; lines.push('You get clear. They are still standing where you left them.'); }
     this.resultEl.innerHTML = `<h2>${title}</h2><p class="sub">${sub}</p>${lines.map((l) => `<p>${l}</p>`).join('')}`;
     const b = el('button', 'btn', 'Continue');
     const done = () => { if (this.closed) return; this.closed = true; this.close(how); };
