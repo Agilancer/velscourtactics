@@ -366,7 +366,7 @@ and have only been looked at posed in the square, not in a fight.
 
 ## 12. Making a model from nothing: the Meshy route
 
-`paladin_m`, `ranger_f` and `wizard_m` were made this way, start to finish, for 29 credits each.
+The class models were made this way, start to finish, for 29 credits each.
 
 **The prompts live in `tools/meshy/prompts.json`**: the look, the style blocks, the negative prompt and a
 subject line for every model in the game. `node tools/meshy/prompt.mjs <key>` prints one ready to paste
@@ -400,16 +400,30 @@ Change a prompt there, not here.
 Every model made this way has the common sixteen: `Idle`, `Walk`, `Run`, `Hop`, `Cast`, `Hit`, `Stunned`,
 `Wounded`, `Dead_Fall`, `Revive`, `Victory`, `Talk`, `Drink`, `Guard`, `Point`, `Flex`. On top of those:
 
-| Model | Its own clips |
+| Class (models made) | Its own clips |
 |---|---|
-| `paladin_m` | `Swing` (plain attack), `Smite`, `Bolt` (Holy Bolt), `Bless` (Blessed Light), `Wave` (Consecration), `Shield_Bash` (unused) |
-| `ranger_f` | `Shoot` (plain attack, Quick Shot, Multishot), `Volley` (Rain of Arrows), `Call` (Wolf Pack) |
-| `wizard_m` | `Bolt` (plain attack, Fire Bolt), `Wave` (Frost Nova), `Meteor`; Chain Lightning uses `Cast` |
+| Paladin (`paladin_m`, `paladin_f`) | `Swing` (plain attack), `Smite`, `Bolt` (Holy Bolt), `Bless` (Blessed Light), `Wave` (Consecration), `Shield_Bash` (unused) |
+| Ranger (`ranger_m`, `ranger_f`) | `Shoot` (plain attack, Quick Shot, Multishot), `Volley` (Rain of Arrows), `Call` (Wolf Pack) |
+| Wizard (`wizard_m`, `wizard_f`) | `Bolt` (plain attack, Fire Bolt), `Wave` (Frost Nova), `Meteor`; Chain Lightning uses `Cast` |
+| Barbarian (`barbarian_m`, `barbarian_f`) | `Swing` (plain attack), `Bash`, `Leap`, `Whirl` (Whirlwind), `Slam` (Earthquake) |
+| Necromancer (`necromancer_m`) | `Bolt` (plain attack, Bone Spike), `Raise` (Raise Skeleton), `Curse` (Weaken); Corpse Explosion uses `Cast` |
+| Dragoon (`dragoon_m`) | `Thrust` (plain attack, Lance Jab), `Leap` (Jump, Dragon Dive), `Breath` (Dragon Breath) |
+| Death Knight (`death_knight_m`) | `Swing` (plain attack, Frost Strike), `Bolt` (Death Coil), `Raise` (Raise Ghoul), `Smite` (Obliterate) |
+| Carrion Witch (`carrion_witch_f`) | `Bolt` (plain attack, Rot Bolt), `Wave` (Crow Swarm), `Hex` (Voodoo Doll); Toxic Rain uses `Cast` |
+| Bard (`bard_m`) | `Strum` (plain attack, Plucked Note), `Ballad` (Ballad of Valor, Lullaby), `Bless` (Hymn of Mending) |
 
-None of the three holds a weapon yet (section 4), and none has been through the critics. `paladin_f`,
-`ranger_m` and `wizard_f` are still stand-ins. Finished files for Homunculus, Lily Belle and Jamie are in
-the CHARACTERS folder beside Lisandra's and Stevie's sources, on the library's own rig, and are not in the
-game yet.
+Thirteen models have been made this way, in two batches. None holds a weapon yet (section 4), and none has
+been through the critics.
+
+**Still stand-ins:** the other sex of necromancer, dragoon, death knight, carrion witch and bard; both sexes
+of totem master, astronomer, slime lord, boomerang knight, lancer, dragon knight and gunner; the summons; the
+townsfolk. Finished files for Homunculus, Lily Belle and Jamie are in the CHARACTERS folder beside Lisandra's
+and Stevie's sources, on the library's own rig, and are not in the game yet.
+
+**Things learnt.** Look at every picture before the 3D step: the first death knight came back with a chest
+emblem made of V-shaped chevrons and was redrawn (its prompt now says "no emblem"). The two sexes of a class
+come out in the same uniform but not always the same colours (the two wizards' hats differ). A rigging call
+made before its 3D task has finished is refused without charge; wait and call again.
 
 ### Looking at a model in the running game
 
