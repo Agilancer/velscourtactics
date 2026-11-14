@@ -8,8 +8,11 @@ import { QUESTS } from '../data/enemies.js';
 import { PARTY_MAX, SLOTS, SLOT_NAMES, heroStats, heroSkills, canEquip, slotsFor, xpNeed, lead, partyHeroes, questProgress, questNeed, questReady, startQuest, save } from '../game/party.js';
 import { makePerson } from '../gfx/models.js';
 import { sound, sfx, setMuted } from '../core/audio.js';
+import { itemPic, slotPic, gemPic, consumablePic, goodsPic, skillPic, roleIcons, rolesOf, ROLE_NAMES, ic, goods, watchMissing } from './art.js';
 
 const itemHtml = (it, extra = '') => `<b style="color:${RARITY[it.rarity].color}">${esc(itemName(it))}</b><small>${TIERS[it.tier].name} ${RARITY[it.rarity].name}${extra}</small><span>${itemLines(it).join(' · ')}</span>`;
+// a sum of gold, with the coins in front of it
+const gp = (n) => `<i class="ic ic-gold"></i>${n}`;
 
 export class UI {
   constructor(g) {
@@ -18,9 +21,9 @@ export class UI {
     this.root.innerHTML = `
       <div id="hud" class="hide">
         <div id="party"></div>
-        <div id="topright"><div id="gold"></div><div id="tracker"></div></div>
+        <div id="topright"><div id="gold" title="Gold"></div><div id="tracker"></div></div>
         <div id="bar">
-          <button data-open="party">Party</button><button data-open="bag">Bag</button><button data-open="quests">Quests</button>
+          <button data-open="party"><i class="ic ic-party"></i>Party</button><button data-open="bag"><i class="ic ic-pack"></i>Bag</button><button data-open="quests"><i class="ic ic-journal"></i>Quests</button>
           <button id="b-auto" title="Auto-play (P)">Auto</button><button id="b-dpad" title="Which diagonal the d-pad's Left means"></button><button id="b-mute">Sound</button>
         </div>
         <div id="autostat" class="hide"></div>
@@ -33,8 +36,9 @@ export class UI {
       </div>
       <div id="banner"></div><div id="toasts"></div>
       <div id="dialog" class="hide"><div class="who"></div><div class="say"></div><div class="opts"></div></div>
-      <div id="modal" class="hide"><div class="panel"><header><h2></h2><button class="x">✕</button></header><div class="body"></div></div></div>
+      <div id="modal" class="hide"><div class="panel"><header><h2></h2><button class="x" title="Close (Esc)"><i class="ic ic-close"></i></button></header><div class="body"></div></div></div>
       <div id="screen" class="hide"></div>`;
+    watchMissing(this.root);
     g.input.bindPad(this.root);
     for (const b of this.root.querySelectorAll('[data-open]')) b.onclick = () => this.openPanel(b.dataset.open);
     $('#b-auto').onclick = () => g.toggleAuto();
@@ -57,7 +61,7 @@ export class UI {
       <div class="cr-m"><canvas id="c-prev" width="300" height="380"></canvas></div>
       <div class="cr-r"><div id="c-info"></div><button class="btn big" id="c-go">Walk down to the Hollow</button></div></div></div>`;
     const grid = $('#c-classes');
-    for (const id of CLASS_IDS) { const b = el('button', 'cls', esc(CLASSES[id].name)); b.style.borderColor = CLASSES[id].color; b.dataset.cls = id; b.onclick = () => { pickd.cls = id; draw(); }; grid.append(b); }
+    for (const id of CLASS_IDS) { const b = el('button', 'cls', `<span>${esc(CLASSES[id].name)}</span><span class="roles">${roleIcons(CLASSES[id])}</span>`); b.style.setProperty('--c', CLASSES[id].color); b.dataset.cls = id; b.onclick = () => { pickd.cls = id; draw(); }; grid.append(b); }
     for (const b of s.querySelectorAll('#c-g button')) b.onclick = () => { pickd.g = b.dataset.g; draw(); };
     // a little turntable for the stand-in model
     const gl = new THREE.WebGLRenderer({ canvas: $('#c-prev'), antialias: true, alpha: true });
@@ -73,9 +77,10 @@ export class UI {
       if (model) scene.remove(model);
       model = makePerson(pickd); model.rotation.y = 0.5; scene.add(model);
       const C = CLASSES[pickd.cls];
-      $('#c-info').innerHTML = `<h3 style="color:${C.color}">${esc(C.name)}</h3><p>${esc(C.desc)}</p><p class="role">${esc(C.role)}</p>
+      $('#c-info').innerHTML = `<h3 style="color:${C.color}">${esc(C.name)}</h3><p>${esc(C.desc)}</p>
+        <div class="rolebox">${roleIcons(C, true)}<p class="role"><b>${rolesOf(C).map((r) => ROLE_NAMES[r]).join(' · ')}</b><br>${esc(C.role)}</p></div>
         <div class="stats"><span>Life ${C.life[0]}</span><span>${C.resource === 'rage' ? 'Rage 100' : 'Mana ' + C.mana[0]}</span><span>Move ${C.move}</span><span>Jump ${C.jump}</span><span>${C.weapon.join(' / ')}</span><span>${C.armor}</span></div>
-        <ul class="skl">${C.skills.map((k) => `<li><b>${esc(k.name)}</b> <small>level ${k.lvl}</small><br>${esc(k.desc)}</li>`).join('')}</ul>`;
+        <ul class="skl">${C.skills.map((k) => `<li>${skillPic(k, k.lvl <= 1)}<div><b>${esc(k.name)}</b> <small>level ${k.lvl}</small><br>${esc(k.desc)}</div></li>`).join('')}</ul>`;
     };
     draw(); spin();
     $('#c-go').onclick = () => {
@@ -93,11 +98,11 @@ export class UI {
     $('#party').innerHTML = partyHeroes(st).map((h, i) => {
       const s = heroStats(h), C = CLASSES[h.cls];
       return `<div class="pm${i === 0 ? ' lead' : ''}${h.hp <= 0 ? ' down' : ''}"><b style="color:${C.color}">${esc(h.name.split(' ')[0])}</b><small>Lv ${h.lvl} ${esc(C.name)}</small>
-        <i class="hp"><u style="width:${100 * h.hp / s.hp}%"></u></i><i class="mp${C.resource === 'rage' ? ' rage' : ''}"><u style="width:${100 * h.mp / s.mp}%"></u></i></div>`;
+        <span class="bars"><i class="hp"><u style="width:${100 * Math.max(0, h.hp) / s.hp}%"></u></i><i class="mp${C.resource === 'rage' ? ' rage' : ''}"><u style="width:${100 * h.mp / s.mp}%"></u></i></span></div>`;
     }).join('');
-    $('#gold').innerHTML = `<b>${st.gold}</b> gold`;
+    $('#gold').innerHTML = `${gp('')}<b>${st.gold}</b>`;
     const act = QUESTS.filter((q) => st.quests[q.id]?.state === 'active');
-    $('#tracker').innerHTML = act.map((q) => `<div class="${questReady(st, q) ? 'ready' : ''}">${esc(q.name)} <b>${questProgress(st, q)}/${questNeed(q)}</b></div>`).join('');
+    $('#tracker').innerHTML = act.map((q) => { const r = questReady(st, q); return `<div class="${r ? 'ready' : ''}"><i class="ic ic-${r ? 'qready' : 'qbusy'}"></i>${esc(q.name)} <b>${questProgress(st, q)}/${questNeed(q)}</b></div>`; }).join('');
     $('#b-auto').classList.toggle('on', !!st.auto);
     $('#b-dpad').textContent = `D-pad ${st.dpad}`;
   }
@@ -149,6 +154,7 @@ export class UI {
     g.mode = 'menu';
     $('#modal').classList.remove('hide');
     $('#modal h2').textContent = title;
+    $('#modal .body').scrollTop = 0;   // a new panel starts at its top, not where the last one was left
     this.draw = () => { const b = $('#modal .body'), y = b.scrollTop; b.innerHTML = ''; draw(b); b.scrollTop = y; this.refresh(); };
     this.draw();
   }
@@ -156,8 +162,9 @@ export class UI {
   isOpen() { return !$('#modal').classList.contains('hide'); }
   openPanel(which) { sfx.ui(); ({ party: () => this.partyPanel(), bag: () => this.bagPanel(), quests: () => this.questPanel() })[which](); }
 
-  row(html, buttons = []) {
-    const r = el('div', 'row', `<div class="info">${html}</div>`), b = el('div', 'acts');
+  // One line of a panel: a picture in its slot (pic: markup from art.js), the words, and buttons [label, fn, off].
+  row(html, buttons = [], pic = '') {
+    const r = el('div', 'row', `${pic}<div class="info">${html}</div>`), b = el('div', 'acts');
     for (const [label, fn, off] of buttons) { const x = el('button', 'btn sm' + (off ? ' off' : ''), label); if (!off) x.onclick = () => { fn(); this.draw?.(); }; b.append(x); }
     r.append(b); return r;
   }
@@ -172,7 +179,7 @@ export class UI {
 
   partyPanel() {
     const st = this.g.st;
-    this.sel = this.sel && st.heroes[this.sel] ? this.sel : st.party[0];
+    this.sel = this.sel && st.heroes[this.sel] ? this.sel : st.party[0]; this.resY = 0;
     this.open('Party', (b) => {
       const left = el('div', 'pp-l'), right = el('div', 'pp-r');
       left.append(el('h4', '', `Marching order <small>${st.party.length}/${PARTY_MAX}</small>`));
@@ -186,29 +193,36 @@ export class UI {
         mk('rest', () => { st.party.splice(i, 1); st.reserve.push(id); }, i === 0);
         r.append(a); left.append(r);
       });
-      if (st.reserve.length) left.append(el('h4', '', 'Waiting at The Last Toll'));
-      st.reserve.forEach((id, i) => {
+      // the rest, highest level first, in a list of its own that scrolls (there can be fifty of them)
+      if (st.reserve.length) left.append(el('h4', '', `Waiting at The Last Toll <small>${st.reserve.length}</small>`));
+      const res = el('div', 'pp-res');
+      [...st.reserve].sort((a, b) => st.heroes[b].lvl - st.heroes[a].lvl || st.heroes[a].name.localeCompare(st.heroes[b].name)).forEach((id) => {
         const h = st.heroes[id], r = el('div', 'hrow' + (this.sel === id ? ' on' : ''), `<b style="color:${CLASSES[h.cls].color}">${esc(h.name)}</b><small>Lv ${h.lvl} ${esc(CLASSES[h.cls].name)}</small>`);
         r.onclick = () => { this.sel = id; this.draw(); };
         const a = el('span', 'mini'), x = el('button', st.party.length >= PARTY_MAX ? 'off' : '', 'join');
-        if (st.party.length < PARTY_MAX) x.onclick = (e) => { e.stopPropagation(); st.reserve.splice(i, 1); st.party.push(id); this.g.partyChanged(); this.draw(); };
-        a.append(x); r.append(a); left.append(r);
+        if (st.party.length < PARTY_MAX) x.onclick = (e) => { e.stopPropagation(); st.reserve.splice(st.reserve.indexOf(id), 1); st.party.push(id); this.g.partyChanged(); this.draw(); };
+        a.append(x); r.append(a); res.append(r);
       });
+      if (st.reserve.length) {
+        left.append(res);
+        res.onscroll = () => { this.resY = res.scrollTop; };
+        queueMicrotask(() => { res.scrollTop = this.resY || 0; });
+      }
       // the sheet
       const h = st.heroes[this.sel], C = CLASSES[h.cls], s = heroStats(h);
-      right.innerHTML = `<h3 style="color:${C.color}">${esc(h.name)}</h3><p class="role">Level ${h.lvl} ${esc(C.name)} · ${h.xp}/${xpNeed(h.lvl)} xp · ${esc(C.role)}</p>
+      right.innerHTML = `<div class="sheethead"><div><h3 style="color:${C.color}">${esc(h.name)}</h3><p class="role">Level ${h.lvl} ${esc(C.name)} · ${h.xp}/${xpNeed(h.lvl)} xp · ${esc(C.role)}</p></div><div class="roles">${roleIcons(C, true)}</div></div>
         <div class="stats"><span>Life ${Math.max(0, h.hp)}/${s.hp}</span><span>${C.resource === 'rage' ? 'Rage' : 'Mana'} ${h.mp}/${s.mp}</span><span>Attack ${s.atk}</span><span>Magic ${s.mag}</span><span>Armor ${s.def}</span><span>Ward ${s.res}</span><span>Speed ${s.spd}</span><span>Crit ${s.crit}%</span><span>Move ${s.move}</span><span>Jump ${s.jump}</span></div><h4>Wearing</h4>`;
       for (const slot of SLOTS) {
         const it = h.equip[slot];
         const r = this.row(`<em>${SLOT_NAMES[slot]}</em> ${it ? itemHtml(it) : '<small>nothing</small>'}`, [
           ['Change', () => { this.picking = this.picking === slot ? null : slot; }],
           ...(it ? [['Take off', () => { if (this.room()) { st.bag.push(it); h.equip[slot] = null; this.g.fixHp(h); if (slot === 'weapon') sfx.sheath(); else sfx.ui(); } }]] : []),
-        ]);
+        ], it ? itemPic(it, slot) : slotPic(slot));
         right.append(r);
         if (it && it.sockets) {
           const sk = el('div', 'socks');
           for (let i = 0; i < it.sockets; i++) {
-            const gm = it.gems[i], x = el('button', 'sock', gm ? esc(gemInfo(gm).full) : 'empty socket');
+            const gm = it.gems[i], x = el('button', 'sock' + (gm ? ' full' : ''), gm ? `${gemPic(gm, true)}${esc(gemInfo(gm).full)}` : '<span class="pic round"></span>empty socket');
             if (gm) x.style.color = gemInfo(gm).color;
             else x.onclick = () => { this.socketing = this.socketing?.it === it ? null : { it, i }; this.draw(); };
             sk.append(x);
@@ -217,19 +231,19 @@ export class UI {
           if (this.socketing?.it === it) {
             const have = Object.keys(st.gems).filter((k) => st.gems[k] > 0);
             if (!have.length) right.append(el('div', 'note', 'You have no gems. Zafir sells them; the dead sometimes carry them.'));
-            for (const k of have) right.append(this.row(`<b style="color:${gemInfo(k).color}">${esc(gemInfo(k).full)}</b><small>x${st.gems[k]}</small><span>+${gemInfo(k).val} ${STAT_NAMES[gemInfo(k).stat]}</span>`, [['Set', () => { it.gems[this.socketing.i] = k; st.gems[k]--; this.socketing = null; this.g.fixHp(h); sfx.forge(true); }]]));
+            for (const k of have) right.append(this.row(`<b style="color:${gemInfo(k).color}">${esc(gemInfo(k).full)}</b><small>x${st.gems[k]}</small><span>+${gemInfo(k).val} ${STAT_NAMES[gemInfo(k).stat]}</span>`, [['Set', () => { it.gems[this.socketing.i] = k; st.gems[k]--; this.socketing = null; this.g.fixHp(h); sfx.forge(true); }]], gemPic(k)));
           }
         }
         if (this.picking === slot) {
           const fits = st.bag.filter((x) => slotsFor(x).includes(slot) && canEquip(h, x));
           if (!fits.length) right.append(el('div', 'note', 'Nothing in the bag fits here.'));
-          for (const x of fits) right.append(this.row(itemHtml(x), [['Wear', () => { st.bag.splice(st.bag.indexOf(x), 1); if (it) st.bag.push(it); h.equip[slot] = x; this.picking = null; this.g.fixHp(h); sfx.equip(x); }]]));
+          for (const x of fits) right.append(this.row(itemHtml(x), [['Wear', () => { st.bag.splice(st.bag.indexOf(x), 1); if (it) st.bag.push(it); h.equip[slot] = x; this.picking = null; this.g.fixHp(h); sfx.equip(x); }]], itemPic(x, slot)));
         }
       }
       right.append(el('h4', '', 'Skills'));
       const ul = el('ul', 'skl');
-      for (const k of C.skills) ul.append(el('li', h.lvl >= k.lvl ? '' : 'locked', `<b>${esc(k.name)}</b> <small>${h.lvl >= k.lvl ? k.cost + (C.resource === 'rage' ? ' rage' : ' mp') : 'opens at level ' + k.lvl}</small><br>${esc(k.desc)}`));
-      for (const id of h.spells) ul.append(el('li', '', `<b>${esc(SPELLS[id].name)}</b> <small>scroll · ${SPELLS[id].cost} mp</small><br>${esc(SPELLS[id].desc)}`));
+      for (const k of C.skills) { const open = h.lvl >= k.lvl; ul.append(el('li', open ? '' : 'locked', `${skillPic(k, open)}<div><b>${esc(k.name)}</b> <small>${open ? k.cost + (C.resource === 'rage' ? ' rage' : ' mp') : '<i class="ic ic-locked"></i>opens at level ' + k.lvl}</small><br>${esc(k.desc)}</div>`)); }
+      for (const id of h.spells) ul.append(el('li', '', `${skillPic(SPELLS[id])}<div><b>${esc(SPELLS[id].name)}</b> <small>scroll · ${SPELLS[id].cost} mp</small><br>${esc(SPELLS[id].desc)}</div>`));
       right.append(ul);
       b.className = 'body pp'; b.append(left, right);
     });
@@ -243,30 +257,32 @@ export class UI {
       if (!st.bag.length) b.append(el('div', 'note', 'Empty. The dead carry things, now and then.'));
       for (const it of st.bag) {
         const who = partyHeroes(st).filter((h) => canEquip(h, it)).map((h) => h.name.split(' ')[0]).join(', ');
-        b.append(this.row(itemHtml(it, who ? ' · fits ' + esc(who) : ''), [['Drop', () => { st.bag.splice(st.bag.indexOf(it), 1); }]]));
+        b.append(this.row(itemHtml(it, who ? ' · fits ' + esc(who) : ''), [['Drop', () => { st.bag.splice(st.bag.indexOf(it), 1); }]], itemPic(it)));
       }
       b.append(el('h4', '', 'Draughts'));
-      for (const k in CONSUMABLES) b.append(this.row(`<b>${CONSUMABLES[k].name}</b><small>x${st.consum[k] || 0}</small><span>${CONSUMABLES[k].desc}</span>`, [['Use', () => this.g.useOutside(k), k === 'tonic' || !(st.consum[k] > 0)]]));
+      for (const k in CONSUMABLES) b.append(this.row(`<b>${CONSUMABLES[k].name}</b><small>x${st.consum[k] || 0}</small><span>${CONSUMABLES[k].desc}</span>`, [['Use', () => this.g.useOutside(k), k === 'tonic' || !(st.consum[k] > 0)]], consumablePic(k)));
       b.append(el('h4', '', 'Gems'));
       const have = Object.keys(st.gems).filter((k) => st.gems[k] > 0);
       if (!have.length) b.append(el('div', 'note', 'None. Set them into sockets from the Party screen.'));
-      for (const k of have) b.append(this.row(`<b style="color:${gemInfo(k).color}">${esc(gemInfo(k).full)}</b><small>x${st.gems[k]}</small><span>+${gemInfo(k).val} ${STAT_NAMES[gemInfo(k).stat]}</span>`));
+      for (const k of have) b.append(this.row(`<b style="color:${gemInfo(k).color}">${esc(gemInfo(k).full)}</b><small>x${st.gems[k]}</small><span>+${gemInfo(k).val} ${STAT_NAMES[gemInfo(k).stat]}</span>`, [], gemPic(k)));
     });
   }
 
   questPanel(board = false) {
     const st = this.g.st;
     this.open(board ? 'The Bounty Board' : 'Quests', (b) => {
-      b.className = 'body';
+      b.className = 'body' + (board ? ' board' : '');
       const list = QUESTS.filter((q) => (board ? q.from === 'board' : st.quests[q.id]));
       if (!list.length) b.append(el('div', 'note', 'Nothing yet.'));
       for (const q of list) {
         const s = st.quests[q.id], ready = questReady(st, q);
         const state = !s ? 'Posted' : s.state === 'done' ? 'Done' : ready ? 'Ready to claim' : `${questProgress(st, q)}/${questNeed(q)}`;
+        const mark = !s ? 'quest_offer' : s.state === 'done' ? 'quest' : ready ? 'quest_ready' : 'quest_busy';
         const btns = [];
         if (board && !s) btns.push(['Take it', () => { startQuest(st, q.id); sfx.ui(); }]);
         if (ready && (board || q.from !== 'board')) btns.push(['Claim', () => this.g.claimQuest(q)]);
-        b.append(this.row(`<b>${esc(q.name)}</b><small>${state} · ${q.gold} gold · ${q.xp} xp${q.reward === 'rare' ? ' · a rare weapon' : ''}</small><span>${esc(s?.state === 'done' ? q.done : q.text)}</span>`, btns));
+        b.append(this.row(`<b>${esc(q.name)}</b><small>${state} · ${gp(q.gold)} · ${q.xp} xp${q.reward === 'rare' ? ' · a rare weapon' : ''}</small><span>${esc(s?.state === 'done' ? q.done : q.text)}</span>`, btns, goodsPic(ic(mark), 'mark')));
+        if (s?.state === 'done') b.lastChild.classList.add('done');
         if (ready && q.from === 'board' && !board) b.lastChild.append(el('div', 'note', 'Claim it at the bounty board in the square.'));
       }
     });
@@ -290,13 +306,13 @@ export class UI {
       b.append(el('h4', '', 'For sale'));
       for (const it of this.stock(shopId)) {
         const who = partyHeroes(st).filter((h) => canEquip(h, it)).map((h) => h.name.split(' ')[0]).join(', ');
-        b.append(this.row(itemHtml(it, who ? ' · fits ' + esc(who) : ''), [[`Buy ${itemValue(it)}`, () => { if (this.room() && this.pay(itemValue(it))) { const L = this.stock(shopId); L.splice(L.indexOf(it), 1); st.bag.push(it); } }]]));
+        b.append(this.row(itemHtml(it, who ? ' · fits ' + esc(who) : ''), [[`Buy ${gp(itemValue(it))}`, () => { if (this.room() && this.pay(itemValue(it))) { const L = this.stock(shopId); L.splice(L.indexOf(it), 1); st.bag.push(it); } }]], itemPic(it)));
       }
       b.append(el('h4', '', 'Your bag'));
       if (!st.bag.length) b.append(el('div', 'note', 'Nothing to sell.'));
-      for (const it of st.bag) b.append(this.row(itemHtml(it), [[`Sell ${sellValue(it)}`, () => { st.bag.splice(st.bag.indexOf(it), 1); st.gold += sellValue(it); sfx.coin(); }]]));
+      for (const it of st.bag) b.append(this.row(itemHtml(it), [[`Sell ${gp(sellValue(it))}`, () => { st.bag.splice(st.bag.indexOf(it), 1); st.gold += sellValue(it); sfx.coin(); }]], itemPic(it)));
     };
-    const gearList = (b, fn) => { const all = this.allItems(); if (!all.length) b.append(el('div', 'note', 'You have nothing to work on.')); for (const { it, where } of all) b.append(this.row(itemHtml(it, ' · ' + esc(where)), fn(it))); };
+    const gearList = (b, fn) => { const all = this.allItems(); if (!all.length) b.append(el('div', 'note', 'You have nothing to work on.')); for (const { it, where } of all) b.append(this.row(itemHtml(it, ' · ' + esc(where)), fn(it), itemPic(it))); };
     const draws = {
       weapons: (b) => buySell(b, 'weapons'), armor: (b) => buySell(b, 'armor'), rings: (b) => buySell(b, 'rings'),
       spells: (b) => {
@@ -309,27 +325,27 @@ export class UI {
         for (const sp of Object.values(SPELLS)) {
           const known = h.spells.includes(sp.id), low = h.lvl < sp.lvl, full = h.spells.length >= 3;
           b.append(this.row(`<b>${esc(sp.name)}</b><small>${sp.cost} mp · reach ${sp.r[1]}${sp.aoe ? ' · blast ' + sp.aoe : ''} · needs level ${sp.lvl}</small><span>${esc(sp.desc)}</span>`,
-            [[known ? 'Known' : low ? `Level ${sp.lvl}` : full ? 'Full' : `Learn ${sp.price}`, () => { if (this.pay(sp.price)) { h.spells.push(sp.id); sfx.chime(); } }, known || low || full]]));
+            [[known ? 'Known' : low ? `Level ${sp.lvl}` : full ? 'Full' : `Learn ${gp(sp.price)}`, () => { if (this.pay(sp.price)) { h.spells.push(sp.id); sfx.chime(); } }, known || low || full]], skillPic(sp, known || !low)));
         }
       },
-      gems: (b) => { for (const k in GEMS) for (let gr = 0; gr < 3; gr++) { if (gr > tierForLevel(lead(st).lvl)) continue; const id = k + gr, gi = gemInfo(id); b.append(this.row(`<b style="color:${gi.color}">${GEM_GRADES[gr]} ${gi.name}</b><small>you have ${st.gems[id] || 0}</small><span>+${gi.val} ${STAT_NAMES[gi.stat]}</span>`, [[`Buy ${GEM_PRICE[gr]}`, () => { if (this.pay(GEM_PRICE[gr])) st.gems[id] = (st.gems[id] || 0) + 1; }]])); } },
+      gems: (b) => { for (const k in GEMS) for (let gr = 0; gr < 3; gr++) { if (gr > tierForLevel(lead(st).lvl)) continue; const id = k + gr, gi = gemInfo(id); b.append(this.row(`<b style="color:${gi.color}">${GEM_GRADES[gr]} ${gi.name}</b><small>you have ${st.gems[id] || 0}</small><span>+${gi.val} ${STAT_NAMES[gi.stat]}</span>`, [[`Buy ${gp(GEM_PRICE[gr])}`, () => { if (this.pay(GEM_PRICE[gr])) st.gems[id] = (st.gems[id] || 0) + 1; }]], gemPic(id))); } },
       bags: (b) => {
         const n = (st.bagSize - 24) / 6, price = 150 * (n + 1), max = st.bagSize >= 60;
-        b.append(this.row(`<b>More room</b><small>your bag holds ${st.bagSize}</small><span>Tamsin lets out the seams: six more places.</span>`, [[max ? 'No more seams' : `Sew ${price}`, () => { if (this.pay(price)) st.bagSize += 6; }, max]]));
+        b.append(this.row(`<b>More room</b><small>your bag holds ${st.bagSize}</small><span>Tamsin lets out the seams: six more places.</span>`, [[max ? 'No more seams' : `Sew ${gp(price)}`, () => { if (this.pay(price)) st.bagSize += 6; }, max]], goodsPic(ic('pack'))));
       },
       inn: (b) => {
-        b.append(this.row('<b>A bed</b><small>four copper, paid before</small><span>Everyone wakes whole. So does everything in the pines.</span>', [['Rest 4', () => { if (this.pay(4)) { this.close(); g.rest(); } }]]));
-        for (const k in CONSUMABLES) b.append(this.row(`<b>${CONSUMABLES[k].name}</b><small>you have ${st.consum[k] || 0}</small><span>${CONSUMABLES[k].desc}</span>`, [[`Buy ${CONSUMABLES[k].price}`, () => { if (this.pay(CONSUMABLES[k].price)) st.consum[k] = (st.consum[k] || 0) + 1; }]]));
+        b.append(this.row('<b>A bed</b><small>four copper, paid before</small><span>Everyone wakes whole. So does everything in the pines.</span>', [[`Rest ${gp(4)}`, () => { if (this.pay(4)) { this.close(); g.rest(); } }]], goodsPic(goods('bed'))));
+        for (const k in CONSUMABLES) b.append(this.row(`<b>${CONSUMABLES[k].name}</b><small>you have ${st.consum[k] || 0}</small><span>${CONSUMABLES[k].desc}</span>`, [[`Buy ${gp(CONSUMABLES[k].price)}`, () => { if (this.pay(CONSUMABLES[k].price)) st.consum[k] = (st.consum[k] || 0) + 1; }]], consumablePic(k)));
       },
-      enhance: (b) => { b.append(el('div', 'note', 'Hammer and faith: each + adds a tenth to what the piece does. Ten at most.')); gearList(b, (it) => [[it.plus >= 10 ? 'Finished' : `+${it.plus + 1} for ${enhanceCost(it)}`, () => { if (this.pay(enhanceCost(it))) { it.plus++; g.fixAll(); sfx.forge(); } }, it.plus >= 10]]); },
+      enhance: (b) => { b.append(el('div', 'note', 'Hammer and faith: each + adds a tenth to what the piece does. Ten at most.')); gearList(b, (it) => [[it.plus >= 10 ? 'Finished' : `+${it.plus + 1} for ${gp(enhanceCost(it))}`, () => { if (this.pay(enhanceCost(it))) { it.plus++; g.fixAll(); sfx.forge(); } }, it.plus >= 10]]); },
       enchant: (b) => { b.append(el('div', 'note', 'Adds a new property, or renegotiates the ones already there.')); gearList(b, (it) => [
-        [it.affixes.length >= 4 ? 'Full' : `Add ${enchantCost(it)}`, () => { if (this.pay(enchantCost(it))) { addAffix(it); it.rarity = Math.max(it.rarity, Math.min(4, it.affixes.length)); g.fixAll(); sfx.enchant(); } }, it.affixes.length >= 4],
-        [`Reroll ${Math.round(enchantCost(it) * 0.6)}`, () => { if (this.pay(Math.round(enchantCost(it) * 0.6))) { const n = it.affixes.length; it.affixes = []; for (let i = 0; i < n; i++) addAffix(it); g.fixAll(); sfx.enchant(); } }, !it.affixes.length]]); },
+        [it.affixes.length >= 4 ? 'Full' : `Add ${gp(enchantCost(it))}`, () => { if (this.pay(enchantCost(it))) { addAffix(it); it.rarity = Math.max(it.rarity, Math.min(4, it.affixes.length)); g.fixAll(); sfx.enchant(); } }, it.affixes.length >= 4],
+        [`Reroll ${gp(Math.round(enchantCost(it) * 0.6))}`, () => { if (this.pay(Math.round(enchantCost(it) * 0.6))) { const n = it.affixes.length; it.affixes = []; for (let i = 0; i < n; i++) addAffix(it); g.fixAll(); sfx.enchant(); } }, !it.affixes.length]]); },
       socket: (b) => { b.append(el('div', 'note', 'A socket is a promise. Better gear takes more of them.')); gearList(b, (it) => [
-        [it.sockets >= maxSockets(it) ? 'No room' : `Drill ${socketCost(it)}`, () => { if (this.pay(socketCost(it))) { it.sockets++; sfx.forge(true); } }, it.sockets >= maxSockets(it)],
-        ['Pry out 30', () => { if (this.pay(30)) { for (const gm of it.gems) if (gm) st.gems[gm] = (st.gems[gm] || 0) + 1; it.gems = []; g.fixAll(); sfx.forge(true); } }, !it.gems.some(Boolean)]]); },
+        [it.sockets >= maxSockets(it) ? 'No room' : `Drill ${gp(socketCost(it))}`, () => { if (this.pay(socketCost(it))) { it.sockets++; sfx.forge(true); } }, it.sockets >= maxSockets(it)],
+        [`Pry out ${gp(30)}`, () => { if (this.pay(30)) { for (const gm of it.gems) if (gm) st.gems[gm] = (st.gems[gm] || 0) + 1; it.gems = []; g.fixAll(); sfx.forge(true); } }, !it.gems.some(Boolean)]]); },
     };
-    this.open(`${npc.name} · ${npc.title}`, (b) => { b.className = 'body'; draws[kind](b); });
+    this.open(`${npc.name} · ${npc.title}`, (b) => { b.className = 'body shop-' + kind; draws[kind](b); });
     if (this.isOpen()) { this.inShop = true; sfx.door(true); }
   }
 }

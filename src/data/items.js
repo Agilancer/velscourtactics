@@ -1,5 +1,6 @@
 // Gear, gems and the small things in your pockets. Tier and rarity names and colours are VELSCOUR's.
 import { uid, pick, rint } from '../core/util.js';
+import { rollLook, rollSkin, skinOf } from './gear.js';
 
 export const TIERS = [
   { name: 'Rusted', lvl: 1, mult: 1 },
@@ -24,6 +25,7 @@ export const WEAPONS = {
   spear: { stat: 'atk', r: [1, 2], pow: 5, names: ['Spear', 'Boar Spear', 'Partisan', 'Wyrm Pike', 'Dragon Lance'] },
   bow: { stat: 'atk', r: [2, 5], pow: 5, names: ['Short Bow', 'Hunting Bow', 'Longbow', 'Horn Bow', 'Matriarchal Bow'] },
   pistol: { stat: 'atk', r: [2, 4], pow: 6, names: ['Flintlock', 'Dragoon Pistol', 'Wheel-lock', 'Brass Repeater', 'Dragon Pistol'] },
+  dagger: { stat: 'atk', r: [1, 1], pow: 6, names: ['Skinning Knife', 'Hooked Knife', 'Kris', 'Viper Fang', 'Red Fang'] },
   boomerang: { stat: 'atk', r: [1, 3], pow: 5, names: ['Throwing Stick', 'Hooked Rang', 'Steel Rang', 'Chakram', 'Moon Glaive'] },
   staff: { stat: 'mag', r: [1, 3], pow: 6, names: ['Quarterstaff', 'Ash Staff', 'Grave Iron Staff', 'Bone-Shod Staff', 'Elder Staff'] },
   wand: { stat: 'mag', r: [1, 4], pow: 5, names: ['Twig Wand', 'Yew Wand', 'Bone Wand', 'Candle Wand', 'Unearthed Wand'] },
@@ -72,11 +74,14 @@ export const CONSUMABLES = {
 export function makeItem(kind, tier = 0, rarity = 0, r = Math.random) {
   const T = TIERS[tier], it = { uid: uid('i'), kind, tier, rarity, plus: 0, affixes: [], gems: [], sockets: 0, base: {} };
   const m = T.mult;
-  if (WEAPONS[kind]) { it.slot = 'weapon'; it.base[WEAPONS[kind].stat] = Math.round(WEAPONS[kind].pow * m); it.baseName = WEAPONS[kind].names[tier]; }
+  // a weapon's look (data/gear.js) is rolled apart from `r`, so seeded loot stays what it was
+  if (WEAPONS[kind]) { it.slot = 'weapon'; it.base[WEAPONS[kind].stat] = Math.round(WEAPONS[kind].pow * m); it.baseName = WEAPONS[kind].names[tier]; it.look = rollLook(kind, tier); }
   else if (ARMORS[kind]) {
     const a = ARMORS[kind]; it.slot = 'armor'; it.baseName = a.names[tier];
     it.base.def = Math.round(a.def * m); it.base.res = Math.round(a.res * m); if (a.hp) it.base.hp = Math.round(a.hp * m);
   } else if (kind === 'helm') { it.slot = 'helm'; it.baseName = HELMS.names[tier]; it.base.def = Math.round(1.6 * m); it.base.hp = Math.round(5 * m); }
+  // what it looks like worn (data/gear.js, gfx/dye.js), rolled apart from `r` like a weapon's
+  if (it.slot === 'armor' || it.slot === 'helm') it.skin = rollSkin(rarity);
   else if (kind === 'ring') {
     it.slot = 'ring'; it.baseName = RING_NAMES[tier];
     const s = pick(['atk', 'mag', 'def', 'res', 'spd', 'crit'], r);
@@ -121,8 +126,9 @@ export const socketCost = (it) => 120 * (it.sockets + 1) * (it.sockets + 1);
 export const maxSockets = (it) => (it.slot === 'ring' || it.slot === 'amulet' ? 1 : RARITY[it.rarity].sockets);
 
 export function itemLines(it) {
-  const s = itemStats(it), out = [];
+  const s = itemStats(it), out = [], sk = skinOf(it);
   for (const k in s) out.push(`+${s[k]} ${STAT_NAMES[k]}`);
+  if (sk) out.push(`${sk.name} cut`);
   if (it.sockets) out.push('Sockets: ' + Array.from({ length: it.sockets }, (_, i) => (it.gems[i] ? gemInfo(it.gems[i]).full : 'empty')).join(', '));
   return out;
 }

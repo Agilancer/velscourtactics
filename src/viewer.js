@@ -4,6 +4,9 @@
 // step it by hand: viewer.step(seconds), then viewer.shot('name') posts a PNG to tools/serve.py.
 import * as THREE from 'three';
 import { loadManifest, withOverride, setAnim, animate, shadowDisc } from './gfx/models.js';
+import { setGear } from './gfx/gear.js';
+import { lookFor, shieldFor, foeGear } from './data/gear.js';
+import { CLASSES } from './data/classes.js';
 
 const $ = (s) => document.querySelector(s);
 const ORDER = ['idle', 'walk', 'run', 'jump', 'attack', 'cast', 'hit', 'dead', 'revive', 'wounded', 'stunned', 'guard', 'cheer', 'taunt', 'point', 'talk', 'item'];
@@ -120,6 +123,14 @@ function show(keys) {
   shown = keys.filter((k) => manifest[k]).map((key) => {
     const stand = new THREE.Group(); stand.userData.height = manifest[key].height || 1.7;
     const model = withOverride(key, stand);
+    // a class body carries its class's weapon and shield at its armour tier (<class>_<g>_t<n>; the class's own model, tier 1)
+    const cm = /^(.+)_[mf](?:_t(\d))?$/.exec(key), C = cm && CLASSES[cm[1]];
+    if (C && !C.hidden) {
+      const tier = cm[2] ? +cm[2] - 1 : 0;
+      setGear(model, { main: lookFor({ kind: C.weapon[0], tier }, cm[1]), off: shieldFor(cm[1], tier) });
+    }
+    const fm = /^zombie_(.+?)(?:_(\d))?$/.exec(key);   // a foe from bm carries what its kind does (data/gear.js, FOE_GEAR)
+    if (fm) setGear(model, foeGear(fm[1], fm[2] ? +fm[2] - 1 : 0));
     const root = new THREE.Group(); root.add(model, shadowDisc(0.4));
     return { key, model, root };
   });
@@ -249,6 +260,7 @@ window.viewer = {
   THREE,
   show, play,
   view,
+  internals: () => ({ gl, scene, camera: place() }),   // for tools that render the same view another way (marks, picking)
   step(sec = 1 / 30) { const n = Math.max(1, Math.round(sec * 30)); for (let i = 0; i < n; i++) update(1 / 30); render(); info(); },
   async shot(name) { render(); await fetch('/shot?name=' + encodeURIComponent(name), { method: 'POST', body: gl.domElement.toDataURL('image/png') }); },
 };

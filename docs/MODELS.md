@@ -42,7 +42,7 @@ weapons are separate models (section 4) that the game puts in the hand.
 **Negative prompt:** `weapon in hand, text, letters, logo, skull shoulder pads, spikes, glowing eyes,
 realistic photo, long legs, tall thin proportions, base, pedestal, multiple characters`
 
-## 2. The sixteen classes (male and female each)
+## 2. The seventeen classes (male and female each)
 
 Key is `<class>_m` or `<class>_f`. Write the prompt as *subject line + style block*. For the other
 gender, swap "man" and "woman" and keep the uniform; give the female cut a shorter coat or tabard and the
@@ -66,6 +66,7 @@ male cut broader shoulders, as the DS game does.
 | `lancer_m/f` | An unbreakable knight-captain, heavy pale-steel full plate, bucket helm with a flat crest, broad pauldrons, tower-shield bracket on the left arm, banner pole socket on the back |
 | `dragon_knight_m/f` | A wyrm-blooded knight, crimson scale armour with black trim, horned open helm, scaled gauntlets ending in claws, ember-orange lining to the cloak |
 | `gunner_m/f` | A powder-stained engineer, brass goggles on a leather cap, long oilskin coat, bandolier of charges, heavy tool belt, scorched gloves |
+| `ninja_m/f` | A quiet killer from the far roads, charcoal wrapped jacket with a wine-red sash, deep hood and a cloth mask, lacquered leather plates on forearms and shins, a pouch of iron stars, a short hooked knife in each hand (not made: the men wear bm's three ninja bodies, the women three of bm's archer bodies dyed `night`) |
 
 ### The five who matter (remember to send me these)
 
@@ -164,17 +165,17 @@ grip at the origin; the shield's face is toward +Z (Blender's -Y).
 
 Monsters get the style block too, minus "5-heads-tall" and "neutral expression".
 
-## 6. Townsfolk and scenery (later)
+## 6. Townsfolk and scenery
 
 `garrick`, `orrin`, `zafir`, `fortunato`, `tamsin`, `aggie`, the apprentices, `kit`, `jory`, `hob`, `agnes`
 (see `src/data/cast.js` for who each is), and the eight recruits, who can use the class models.
-Scenery worth having as real models: oak (1, 4 and 9 tile), pine (1, 4, 9), the well, the bounty board,
-a chest, a signpost, a market stall, fence and wall pieces, six house shapes.
+The scenery is in (the sixth batch, section 12): pine, oak, the well, the bounty board, a signpost, a market
+stall, fence and stone wall pieces, a cottage and a townhouse. Still wanted: more house shapes, and the townsfolk.
 
 ## 7. The first batch: what to make first
 
 1. The five named: `lisandra`, `homunculus`, `lily`, `jamie`, `stevie`.
-2. `zombie_shambler`, `zombie_gnawer`, `zombie_lurker`, `zombie_bonesack`, `zombie_brute`. **Done (section 12).**
+2. `zombie_shambler`, `zombie_gnawer`, `zombie_lurker`, `zombie_bonesack`, `zombie_brute`. **Done (section 12), and redone in the ornate look (the sixth batch).**
    **Still to make (stand-ins in the game now):** the eight that walk the lands past the pines, `zombie_rimewalker`,
    `zombie_driftling` (the White Waste), `zombie_husk`, `zombie_slinger` (the Red Badlands), `zombie_drowner`,
    `zombie_leechmother` (the Drowned Fen), `zombie_cinder`, `zombie_slagback` (the Cinder Reach), and the four lords,
@@ -304,6 +305,8 @@ Wolf: `idle`, `run`, `bite`, `hit`, `dead`. Slime: `idle`, `hop`, `lunge`, `dead
 | `glow` | a lit thing she carries: a glow and a small light at a bone, which moves to another bone in the states listed in `held` |
 | `trim` | `{state: [from, to]}`: the seconds of the clip to keep for that state; library clips come with long wind-ups, and a blow has to land 0.26 s after it starts |
 | `matte` | `false` keeps the file's metalness (there is no environment to reflect, so the default reads metal as paint) |
+| `bank` | the clip bank the model plays instead of clips of its own (`heroes` or `folk`: `assets/models/clips/`, `src/gfx/clipbank.js`); `anims` then names the bank's clips |
+| `dye` | a palette from `src/gfx/dye.js` (`PALETTES`) the body wears until armour paints over it; only bm's bodies can be dyed (below) |
 | `props` | held models, each `{file, bone, at, rot, scale}`: a weapon's own file hung on the bone whose name ends with `bone`, placed at `at` and turned by the quaternion `rot` in that bone's frame. Don't work these out by hand: `Target.props()` in `retarget.py` prints them after `build`, and the clips are made to suit them (the lancers' entries are the example) |
 
 A model with no entry keeps its stand-in, so they can arrive one at a time.
@@ -319,6 +322,28 @@ played after putting one of the dead down), `point` (nothing; the leader, when p
 `src/data/classes.js` (Lisandra's are `cast_bolt`, `snap`, `lantern`, `wave`; the Lancer's are `thrust`, `guard_up`, `rally`,
 `charge`); a model without it plays
 `cast` or `attack`.
+
+### bm's bodies: recruits and what they wear
+
+`python tools/bm/heroes.py` brings all 44 of bm's hero bodies over to `assets/models/heroes/`. Each comes in under two
+kinds of key:
+
+| Key | What it is |
+|---|---|
+| `hero_<body>` | the body a recruit walks in, named by the recruit's `model` in `src/data/cast.js` (`hero_archer_f6` is Marigold) |
+| `<class>_<g>_t<tier>` | the same body as an armour tier: worn by anyone of that class once their armour is that tier or better (`explore.js`, `bodyKey`) |
+
+Every one shares bm's rig and plays its clip bank. Each is cut, vertex by vertex, into the pieces of bm's harness
+(helm, chest, shoulders, arms, legs, boots, mail, in the file's `pieces` extra and its `_PIECE` attribute), and beside
+it is `<body>.dye.png`, which texels are dyed cloth or enamel (red), bare steel, ivory or undyed cloth (green), and
+gilt (blue). bm's own recolour rule decides each one.
+
+`src/gfx/dye.js` paints each piece by what covers it there. The helm paints the head. The armour paints the chest,
+shoulders, arms, legs and feet, each in its own part of the item's skin: one of bm's 152 player skins
+(`src/data/skins.js`), rolled with the item from those of its rarity. That gives the part's cloth, its trim and a weave
+of bm's, laid on the cloth with the shading kept. The metal is toned by the item's tier, from rust-brown to the blue of
+Mithril. A part nothing covers wears the recruit's own `palette`. The fourteen bodies that came with crosses have them
+painted off as they are copied (`tools/bm/marks/README.md`).
 
 ## 10. Lisandra, as done
 
@@ -366,6 +391,9 @@ She has no spear or shield in her hands: weapons are separate models (section 4)
 the thrust is an empty-handed lunge for now. She has not been through the critics.
 
 ## 12. The five dead, as done
+
+*These first five were replaced under the same keys by the ornate ones of the sixth batch (further down); this is
+how the first ones were made.*
 
 All five zombies are in: `zombie_shambler`, `zombie_gnawer`, `zombie_lurker`, `zombie_bonesack`, `zombie_brute`
 (about 1.1 MB each: 12k triangles, one 1024 JPEG). Made entirely through the Meshy API, 241 credits for the five:
@@ -489,6 +517,68 @@ the monster one). Summons now go through the manifest like everyone else: `battl
 
 The slime lords hold their arms 22 degrees out (round as a cask), the dragon knights and totem masters 15. The slime
 is drawn see-through but the game draws bodies solid, so they read as glossy cobalt.
+
+### The sixth batch: the dead again, five creatures, and the scenery
+
+Twenty models for 505 credits: the five dead redrawn in the ornate look, the five summons that are not people,
+and ten pieces of scenery. Pictures `nano-banana-pro` (9 credits; creatures stand square instead of in an A-pose,
+`creature_image` in `prompts.json`), 3D `meshy-t2.5` with `meshy-n1` (15), and a rig (5) for the dead only. The
+pictures are kept in `art/concepts/v2/`, and the Blender working file with all fifty-eight models of the
+ornate look is `v2 ornate (fifty-eight) - tactics.blend` in the meshy folder.
+
+**The dead** are rigged by Meshy and built by `retarget.py` like the classes (`T.build("zombie_brute")`), on a
+branch of their own: one slumped idle under every clip (back and neck bent, arms hung forward from the shoulders,
+knees given), a squat measured with both feet flat so a crouch stays on its soles, and per kind the lean, the reach
+and the walk's sway. The library's `Run`, `Victory`, `Talk`, `Drink`, `Point` and `Flex` are left out.
+
+| Key | `height` | Its own clips, on top of `Idle`, `Walk`, `Hop`, `Roar` (cast, cheer, taunt), `Hit`, `Dead_Fall`, `Revive`, `Wounded`, `Stunned`, `Guard` |
+|---|---|---|
+| `zombie_shambler` | 1.7 | `Rake` (attack): both arms up, raked down |
+| `zombie_gnawer` | 1.65 | `Bite` (attack): a lunge of the head, the bite, a tearing twist |
+| `zombie_lurker` | 1.8 | `Rake` (attack), `Pounce` (coiled low, off the ground with the legs tucked, down on all fours) |
+| `zombie_bonesack` | 1.6 | `Rake` (attack), `Retch` (cast: heaved up from the belly, the neck thrown forward) |
+| `zombie_brute` | 2.3 | `Slam` (attack, and its Slam), `Sweep` (Chain Sweep: one whole turn, arms out) |
+
+Meshy can lay the hips bone over (the brute's is tilted 45 degrees), so `retarget.py` now takes up as the
+armature's Z (`self.Z`) wherever it locks the hips, sets the feet on the floor or turns the body, not as the hips'
+own axis; before that the brute's slam left its feet 15 cm in the air.
+
+**The creatures** (`wolf`, `slime`, `whelp`, `turret`, `totem`) have no Meshy rig (it is for two legs). Each is
+rigged by hand in Blender: `tools/blender/creature.py` builds an armature bone by bone and skins the mesh by
+distance to the bones (Meshy's meshes are shells within shells, and Blender's bone heat fails on them; the turret is
+skinned rigid, head and base); `tools/blender/summons.py` holds each one's bones and hand-keyed clips. With the 3D
+model imported as `<key>_s2`:
+
+```python
+exec(open(r"<repo>/tools/blender/creature.py").read()); exec(open(r"<repo>/tools/blender/summons.py").read())
+prep("wolf", 0.95)                           # turned to face -Y, its height in metres, feet on the floor
+arm, names = BUILD["wolf"]()                 # the armature and its clip names
+export("wolf", arm, names, r"<repo>/assets/models/wolf.glb")
+```
+
+| Key | `height` | Clips (the game state they play) |
+|---|---|---|
+| `wolf` | 0.95 | `Idle`, `Run` (walk, run), `Bite` (attack), `Howl` (cast, cheer), `Hit`, `Dead` |
+| `whelp` | 0.9 | `Hover` (idle; it never lands), `Fly` (walk, jump), `Spit` (attack, cast), `Roar` (cheer), `Hit`, `Dead` |
+| `slime` | 0.7 | `Idle` (a slow wobble), `Hop` (walk, jump), `Lunge` (attack, cast), `Hit`, `Dead` (it runs flat) |
+| `turret` | 0.9 | `Idle` (the head scanning), `Fire` (attack: recoil), `Hit`, `Break` (dead) |
+| `totem` | 1.4 | `Idle`, `Pulse` (attack, cast, heal: the top face swells), `Hit`, `Break` (dead: it topples) |
+
+**The scenery** is static, in `assets/props/`, made by `tools/blender/props.py` (`place` turns a piece to face
+the game's south and sizes it in tiles, a tile being a metre; `split` gives a tree a trunk and a crown material;
+`decimate`; `export`). `src/world/render.js` draws them with `loadProp(key)`, and keeps the old code-built shapes
+for anything whose file is missing.
+
+| Key | Size (wide x deep x tall, tiles) | In the world |
+|---|---|---|
+| `pine`, `oak` | made 1 tall; 1,563 and 2,717 triangles | every pine and oak of the map (about 3,100), scaled to the old trees' heights, each crown one of four greens; a fight takes the crowns and leaves the trunks |
+| `cottage`, `townhouse` | 4.8 x 4.6 x 4.2; 4.8 x 4.6 x 5.5 | each building's `look` in `map.js`; the inn is two townhouses with their doors toward the middle; every other house is mirrored, and each is slid so its door is near the front tile |
+| `well`, `bounty_board` | 1.3 x 1.1 x 1.8; 1.7 x 0.7 x 2.0 | the square |
+| `market_stall`, `signpost` | 2.2 x 1.4 x 2.2; 1.7 x 1.0 x 2.3 | three stalls round the square, a signpost on each road out (`decor` in `map.js`) |
+| `fence`, `stone_wall` | 2 tiles long each | the town's edge, leaving the roads open: stone near the four roads, fence beyond (`decor`) |
+
+Every board, sign and sheet of parchment is blank, as the V and T rule asks. None of the twenty has been through
+the critics.
 
 ### Looking at a model in the running game
 
