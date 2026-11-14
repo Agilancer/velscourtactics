@@ -7,6 +7,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { CLASSES } from '../data/classes.js';
+import { fitGear } from './gear.js';
+import { bankClips, dress } from './clipbank.js';
 
 const mats = new Map();
 export function mat(color, opts = {}) {
@@ -119,8 +121,9 @@ export function makePerson(look) {
   const armL = grp(-w / 2 - 0.08, 0.92, 0, part(box(0.12, 0.42, 0.12), sleeve, 0, -0.2, 0), part(box(0.1, 0.1, 0.1), skin, 0, -0.44, 0));
   const armR = grp(w / 2 + 0.08, 0.92, 0, part(box(0.12, 0.42, 0.12), sleeve, 0, -0.2, 0), part(box(0.1, 0.1, 0.1), skin, 0, -0.44, 0));
   if (!kit.plain) {
-    const h = held(kit.held); h.position.set(0, -0.44, 0.04); h.rotation.x = Math.PI / 2 - 0.5; armR.add(h);
-    if (kit.shield != null) armL.add(part(kit.tower ? box(0.06, 0.8, 0.5) : box(0.06, 0.5, 0.4), kit.shield, -0.1, -0.3, 0.06), part(box(0.07, 0.12, 0.12), GOLD, -0.11, -0.3, 0.06));
+    // named, so real gear (gfx/gear.js) can put them away when it takes their place
+    const h = held(kit.held); h.name = 'held'; h.position.set(0, -0.44, 0.04); h.rotation.x = Math.PI / 2 - 0.5; armR.add(h);
+    if (kit.shield != null) armL.add(...[part(kit.tower ? box(0.06, 0.8, 0.5) : box(0.06, 0.5, 0.4), kit.shield, -0.1, -0.3, 0.06), part(box(0.07, 0.12, 0.12), GOLD, -0.11, -0.3, 0.06)].map((m) => Object.assign(m, { name: 'shield' })));
   }
   body.add(legL, legR, torso, head, armL, armR);
   const s = look.small ? 0.68 : f ? 0.96 : 1;
@@ -254,6 +257,8 @@ const loaded = new Map();
 export async function loadManifest() {
   try { const r = await fetch('assets/models/manifest.json'); manifest = r.ok ? await r.json() : {}; } catch { manifest = {}; }
 }
+// Whether the manifest has a model under this key.
+export const hasModel = (key) => !!(manifest && manifest[key]);
 function playClip(model, state) {
   const u = model.userData, clip = u.clips[state] || u.clips.idle;
   if (!clip) return;
@@ -290,7 +295,9 @@ function inPlace(clip, home) {
 //   normal: strength                 how hard the baked normal map bites
 //   glow: { bone, at: [x,y,z], color, size, light, held: {state: bone} }   a lit thing she carries
 //   props: [{ file, bone, at: [x,y,z], rot: [x,y,z,w], scale }]   held models (a lance, a shield) hung on a bone, placed in
-//          its frame; tools/blender/retarget.py works the numbers out (Target.props) and turns the hands in every clip }
+//          its frame; tools/blender/retarget.py works the numbers out (Target.props) and turns the hands in every clip
+//   bank: 'heroes' | 'folk'          the clips come from one of bm's clip banks (gfx/clipbank.js), named in anims by its names
+//   skin: { map, normal }            pictures for a file that comes without (bm's townsfolk), under assets/models/ }
 const glb = (file) => {
   if (!loaded.has(file)) loaded.set(file, new Promise((res, rej) => new GLTFLoader().load('assets/models/' + file, res, undefined, rej)));
   return loaded.get(file);
@@ -312,7 +319,7 @@ export function withOverride(key, standIn) {
     // lift: how much of the model's own colour glows back, so dark costumes still read at this distance
     if (def.lift) { o.material.emissive = new THREE.Color(0xffffff); o.material.emissiveMap = o.material.map; o.material.emissiveIntensity = def.lift; }
   });
-  const use = (gltf) => {
+  const use = (gltf, anims = gltf.animations) => {
     const obj = cloneSkinned(gltf.scene);
     obj.updateMatrixWorld(true);
     const bb = new THREE.Box3().setFromObject(obj), h = bb.max.y - bb.min.y || 1;
@@ -387,14 +394,15 @@ export function withOverride(key, standIn) {
     const prep = (c) => { if (def.inPlace) { const k = c.clone(); home = inPlace(k, home); return k; } return c; };
     const order = Object.entries(def.anims || {}).sort((a, b) => (a[0] === 'idle' ? -1 : b[0] === 'idle' ? 1 : 0));
     for (const [state, name] of order) {
-      let c = gltf.animations.find((c) => c.name === name);
+      let c = anims.find((c) => c.name === name);
       if (!c) { console.warn('model', key, 'has no clip named', name); continue; }
       const cut = def.trim && def.trim[state];             // [from, to] in seconds: library clips come with long wind-ups
       if (cut) c = THREE.AnimationUtils.subclip(c, name + ':' + state, Math.round(cut[0] * 30), Math.round(cut[1] * 30), 30);
       clips[state] = prep(c);
     }
-    if (!clips.idle && gltf.animations[0]) clips.idle = gltf.animations[0];
+    if (!clips.idle && anims[0]) clips.idle = anims[0];
     holder.userData.clips = clips;
+    fitGear(holder, obj, def, clips.idle);               // weapons and shields onto the hands, placed in the idle's first frame
     holder.userData.mixer.addEventListener('finished', () => {
       const a = holder.userData.anim;
       if (a && a.state !== 'dead' && !LOOPS.has(a.state)) { a.state = ''; setAnim(holder, 'idle'); }
@@ -405,7 +413,11 @@ export function withOverride(key, standIn) {
     setAnim(holder, st);
     holder.userData.mixer.update(0);                     // posed now, not in the file's A-pose until something animates it
   };
-  glb(def.file).then(use).catch((e) => console.warn('model', key, 'failed to load; keeping the stand-in', e));
+  glb(def.file).then(async (g) => {
+    const anims = def.bank ? await bankClips(def.bank, g, Object.values(def.anims || {})) : g.animations;
+    if (def.skin) dress(g, def.skin);                    // a bare file gets its pictures just before it's cloned
+    use(g, anims);
+  }).catch((e) => console.warn('model', key, 'failed to load; keeping the stand-in', e));
   return holder;
 }
 

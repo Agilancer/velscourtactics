@@ -7,7 +7,7 @@ import { Explore } from './game/explore.js';
 import { Battle } from './game/battle.js';
 import { Auto } from './game/auto.js';
 import { loadManifest } from './gfx/models.js';
-import { HEROES, OPENING, WELL_LINES, CHEST_LINE } from './data/cast.js';
+import { HEROES, OPENING, WELL_LINES, CHEST_LINE, CRYPT } from './data/cast.js';
 import { QUESTS } from './data/enemies.js';
 import { CLASSES } from './data/classes.js';
 import { WEAPONS, makeItem, itemStats, itemName, tierForLevel, RARITY } from './data/items.js';
@@ -53,7 +53,8 @@ class Game {
     this.tweens = this.tweens.filter((tw) => tw.t < 1);
     if (this.mode === 'title') { const t = performance.now() / 9000; this.r.follow(this.world.well.x + Math.cos(t) * 9, 0, this.world.well.z + Math.sin(t) * 7, dt); }
     else if (this.battle) this.battle.update(dt);
-    else if (this.explore) { this.auto.update(dt); this.explore.update(dt); }
+    else if (this.explore) { this.auto.update(dt); this.explore.update(dt); if (this.mode === 'explore') this.cryptWatch(); }
+    this.r.tick(dt);
     this.r.render();
     if ((this.hudT -= dt) <= 0 && this.st) { this.hudT = 0.25; this.ui.refresh(); }
   }
@@ -65,10 +66,12 @@ class Game {
     this.st = st;
     this.explore = new Explore(this);
     this.mode = 'explore';
+    this.r.setChests(st.opened);
     this.ui.showHud(true); this.ui.refresh();
     const L = this.explore.leader;
     this.r.follow(L.x, 0, L.z, 0, true);
     this.explore.inTown = this.world.inTown(L.x, L.z);
+    this.inCrypt = this.nearCrypt(L.x, L.z);
     this.explore.updatePrompt();
     if (!st.flags.opened) this.opening();
     else this.ui.banner(this.explore.inTown ? 'Herrington Hollow' : 'The Pines', `Day ${st.day}`);
@@ -190,6 +193,21 @@ class Game {
     }
   }
 
+  // ---- the old crypt: its name as you come into the clearing, and its own say the first time ----
+  nearCrypt(x, z) { const c = this.world.crypt; return !!c && Math.max(Math.abs(x - c.x), Math.abs(z - c.z)) <= c.r + 3; }
+  cryptWatch() {
+    const L = this.explore.leader, near = this.nearCrypt(L.x, L.z);
+    if (near === this.inCrypt) return;
+    this.inCrypt = near;
+    if (!near) return;
+    const kept = this.explore.foes.some((f) => f.z.boss);
+    this.ui.banner(CRYPT.name, kept ? CRYPT.sub : CRYPT.quiet);
+    if (this.st.flags.crypt) return;
+    this.st.flags.crypt = true;
+    this.ui.toast(CRYPT.first);
+    if (this.st.party.includes('lisandra')) setTimeout(() => this.ui.toast(CRYPT.lisandra, 'Lisandra'), 2200);
+  }
+
   // ---- talking to the world ----
   async interact(t) {
     const st = this.st;
@@ -197,13 +215,18 @@ class Game {
     if (t.kind === 'board') return this.ui.questPanel(true);
     if (t.kind === 'well') return this.ui.dialog([['', pick(WELL_LINES)]]);
     if (t.kind === 'chest') {
-      st.opened[t.chest.id] = true;
-      const gold = 40 + Math.floor(Math.random() * 60), it = makeItem(pick(Object.keys(WEAPONS)), tierForLevel(lead(st).lvl), 1 + (Math.random() < 0.4 ? 1 : 0));
+      const c = t.chest;
+      if (st.opened[c.id]) return;
+      st.opened[c.id] = true;
+      // the crypt's chest was somebody's grave goods: more gold, and better than the knolls give
+      const gold = c.crypt ? 180 + Math.floor(Math.random() * 120) : 40 + Math.floor(Math.random() * 60);
+      const it = makeItem(pick(Object.keys(WEAPONS)), tierForLevel(lead(st).lvl), c.crypt ? 2 + (Math.random() < 0.35 ? 1 : 0) : 1 + (Math.random() < 0.4 ? 1 : 0));
       st.gold += gold; if (st.bag.length < st.bagSize) st.bag.push(it);
-      this.r.chests[t.chest.id].children[1].rotation.x = -0.9;
+      this.r.openChest(c.id);
       sfx.coin();
-      await this.ui.dialog([['', `${CHEST_LINE} Inside: ${gold} gold and a ${itemName(it)}.`]]);
-      this.explore.updatePrompt(); save(st);
+      save(st);
+      await this.ui.dialog([['', `${c.crypt ? CRYPT.chest : CHEST_LINE} Inside: ${gold} gold and a ${itemName(it)}.`]]);
+      this.explore.updatePrompt();
       return;
     }
     const n = t.npc;
@@ -223,13 +246,56 @@ class Game {
     this.ui.close();
     this.ui.setPrompt(null); this.ui.battleMode(true);
     this.mode = 'battle';
+    this.bringRound(foes);
     this.battle = new Battle(this, foes, alerted);
+  }
+  // The dead see through trees and walls, but a fight is held on a square round the leader, and one with no way
+  // across it never ends. Whoever can't walk to the leader inside that square comes round first, to the nearest open
+  // ground that can (the field is the leader's 8 tiles either way, stretched to take in the foes, as Battle makes it).
+  bringRound(foes) {
+    const w = this.world, ex = this.explore, L = ex.leader, N = w.N, K = (x, z) => z * N + x;
+    for (let pass = 0; pass < 3; pass++) {
+      let x0 = L.x - 8, x1 = L.x + 8, z0 = L.z - 8, z1 = L.z + 8;
+      for (const f of foes) { x0 = Math.min(x0, f.x - 2); x1 = Math.max(x1, f.x + 2); z0 = Math.min(z0, f.zz - 2); z1 = Math.max(z1, f.zz + 2); }
+      x0 = Math.max(0, x0); x1 = Math.min(N - 1, x1); z0 = Math.max(0, z0); z1 = Math.min(N - 1, z1);
+      const open = (x, z) => x >= x0 && x <= x1 && z >= z0 && z <= z1 && w.walkable(x, z) && !ex.npcAt.has(K(x, z));
+      const seen = new Set([K(L.x, L.z)]), q = [[L.x, L.z]];
+      for (let i = 0; i < q.length; i++) {
+        const [x, z] = q[i];
+        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const X = x + dx, Z = z + dz;
+          if (seen.has(K(X, Z)) || !open(X, Z) || Math.abs(w.height(X, Z) - w.height(x, z)) > 2) continue;
+          seen.add(K(X, Z)); q.push([X, Z]);
+        }
+      }
+      const stuck = foes.filter((f) => !seen.has(K(f.x, f.zz)));
+      if (!stuck.length) return;
+      const taken = new Set(foes.map((f) => K(f.x, f.zz)));
+      for (const f of stuck) {
+        let best = null, bd = 1e9;
+        // not on the few tiles round the leader where the party will be set out, unless there is nowhere else
+        for (const room of [4, 2]) {
+          for (const [x, z] of q) {
+            if (Math.abs(x - L.x) > 8 || Math.abs(z - L.z) > 8 || taken.has(K(x, z)) || Math.abs(x - L.x) + Math.abs(z - L.z) < room) continue;
+            const d = Math.abs(x - f.x) + Math.abs(z - f.zz);
+            if (d < bd) { bd = d; best = [x, z]; }
+          }
+          if (best) break;
+        }
+        if (!best) continue;
+        taken.delete(K(f.x, f.zz)); ex.foeAt.delete(K(f.x, f.zz));
+        [f.x, f.zz] = best; f.tw = null;
+        taken.add(K(f.x, f.zz)); ex.foeAt.set(K(f.x, f.zz), f);
+        f.model.position.set(f.x, w.y(f.x, f.zz), f.zz);
+      }
+    }
   }
   endBattle(how, pos, slain) {
     const st = this.st;
     this.battle = null; this.mode = 'explore';
     this.ui.battleMode(false);
     if (how === 'lose') {
+      this.auto.noteLoss(pos.x, pos.z);
       restAll(st); st.day++;
       const inn = this.world.buildings.find((b) => b.id === 'inn');
       this.explore.spawnFoes();

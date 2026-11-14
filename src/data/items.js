@@ -1,5 +1,6 @@
 // Gear, gems and the small things in your pockets. Tier and rarity names and colours are VELSCOUR's.
 import { uid, pick, rint } from '../core/util.js';
+import { rollLook } from './gear.js';
 
 export const TIERS = [
   { name: 'Rusted', lvl: 1, mult: 1 },
@@ -72,7 +73,8 @@ export const CONSUMABLES = {
 export function makeItem(kind, tier = 0, rarity = 0, r = Math.random) {
   const T = TIERS[tier], it = { uid: uid('i'), kind, tier, rarity, plus: 0, affixes: [], gems: [], sockets: 0, base: {} };
   const m = T.mult;
-  if (WEAPONS[kind]) { it.slot = 'weapon'; it.base[WEAPONS[kind].stat] = Math.round(WEAPONS[kind].pow * m); it.baseName = WEAPONS[kind].names[tier]; }
+  // a weapon's look (data/gear.js) is rolled apart from `r`, so seeded loot stays what it was
+  if (WEAPONS[kind]) { it.slot = 'weapon'; it.base[WEAPONS[kind].stat] = Math.round(WEAPONS[kind].pow * m); it.baseName = WEAPONS[kind].names[tier]; it.look = rollLook(kind, tier); }
   else if (ARMORS[kind]) {
     const a = ARMORS[kind]; it.slot = 'armor'; it.baseName = a.names[tier];
     it.base.def = Math.round(a.def * m); it.base.res = Math.round(a.res * m); if (a.hp) it.base.hp = Math.round(a.hp * m);

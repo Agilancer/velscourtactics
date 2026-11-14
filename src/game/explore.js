@@ -2,7 +2,10 @@
 // each copying what the one ahead did a step ago, jumps included. Townsfolk stand about; the dead watch.
 import { TOWN, N } from '../world/map.js';
 import { DPAD } from '../core/input.js';
-import { makePerson, makeZombie, withOverride, shadowDisc, label, setAnim, animate } from '../gfx/models.js';
+import { makePerson, makeZombie, withOverride, hasModel, shadowDisc, label, setAnim, animate } from '../gfx/models.js';
+import { setGear } from '../gfx/gear.js';
+import { lookFor, shieldFor, foeGear } from '../data/gear.js';
+import { CLASSES } from '../data/classes.js';
 import { FOLK, HEROES, ROAD_END, LISANDRA_CHAT } from '../data/cast.js';
 import { ZOMBIES } from '../data/enemies.js';
 import { sfx } from '../core/audio.js';
@@ -11,10 +14,39 @@ import { pick } from '../core/util.js';
 const WALK = 0.15, HOP = 0.3;
 const key = (x, z) => z * N + x;
 
-export function heroModel(h) {
+// Which body a foe wears: a kind may have more than one look, zombie_<id>, zombie_<id>_2, _3 (tools/bm/foes.py), handed
+// out by `n` so a pack doesn't come all alike.
+export function foeKey(z, n = 0) {
+  const k = 'zombie_' + z.id;
+  let c = 1;
+  while (hasModel(`${k}_${c + 1}`)) c++;
+  const i = Math.abs(n) % c;
+  return i ? `${k}_${i + 1}` : k;
+}
+
+// Which body a hero wears: <class>_<g>_t<tier> for the armour on (1 Rusted .. 5 Mithril), the highest tier there is a
+// model for at or under it; else the class's own model; else the lowest tier there is (tools/bm/heroes.py).
+export function bodyKey(h) {
   const d = h.heroId && HEROES[h.heroId];
-  const m = makePerson({ cls: h.cls, g: h.g });
-  return withOverride(d?.model || `${h.cls}_${h.g}`, m);
+  if (d?.model) return d.model;
+  const base = `${h.cls}_${h.g}`, worn = (h.equip?.armor?.tier ?? 0) + 1;
+  for (let t = worn; t >= 1; t--) if (hasModel(`${base}_t${t}`)) return `${base}_t${t}`;
+  if (hasModel(base)) return base;
+  for (let t = worn + 1; t <= 5; t++) if (hasModel(`${base}_t${t}`)) return `${base}_t${t}`;
+  return base;
+}
+// What a hero carries: the weapon's own look, and the shield their class bears at their armour's tier.
+export function outfit(h) {
+  if (CLASSES[h.cls]?.hidden) return null;                // Lisandra carries her lantern, nothing else
+  const seed = [...(h.name || h.cls)].reduce((a, c) => a + c.charCodeAt(0), 0);
+  return { main: lookFor(h.equip?.weapon, h.cls), off: shieldFor(h.cls, h.equip?.armor?.tier || 0, seed) };
+}
+const outfitSig = (h) => `${bodyKey(h)}|${h.equip?.weapon?.uid}|${h.equip?.armor?.tier}`;
+export function heroModel(h) {
+  const m = withOverride(bodyKey(h), makePerson({ cls: h.cls, g: h.g }));
+  setGear(m, outfit(h));
+  m.userData.outfit = outfitSig(h);
+  return m;
 }
 
 export class Explore {
@@ -44,7 +76,10 @@ export class Explore {
       let x, z;
       if (typeof f.at === 'string') { const b = world.buildings.find((b) => b.id === f.at); x = b.front.x; z = b.front.z; } else [x, z] = f.at;
       [x, z] = this.nearestFree(x, z);
-      const model = gone || !f.hero ? makePerson({ ...look, small: f.small }) : withOverride(hero.model || `${hero.cls}_${hero.g}`, makePerson(look));
+      // townsfolk wear bm's bodies where the manifest has one for them (folk_<id>, tools/bm/folk.py)
+      const model = gone || !f.hero ? withOverride(who.model || 'folk_' + (gone ? f.id + '_sub' : f.id), makePerson({ ...look, small: f.small })) : withOverride(hero.model || `${hero.cls}_${hero.g}`, makePerson(look));
+      // a recruit waiting to be asked has the plainest of their class's weapons on them
+      if (f.hero && !gone) setGear(model, outfit({ cls: hero.cls, name, equip: { weapon: { kind: CLASSES[hero.cls].weapon[0], tier: 0 } } }));
       model.position.set(x, world.y(x, z), z);
       model.rotation.y = typeof f.at === 'string' ? 0 : Math.PI / 4;
       model.add(shadowDisc());
@@ -74,7 +109,8 @@ export class Explore {
       const id = `p${pi}m${mi}`;
       if (st.slain[id] != null && st.day <= st.slain[id]) return;
       const z = ZOMBIES[m.kind];
-      const model = withOverride('zombie_' + z.id, makeZombie(z));
+      const model = withOverride(foeKey(z, pi * 3 + mi), makeZombie(z));
+      setGear(model, foeGear(z.id, pi + mi));
       model.position.set(m.x, world.y(m.x, m.z), m.z);
       model.rotation.y = Math.random() * 6.28;
       model.add(shadowDisc(0.34 * z.scale));
@@ -100,6 +136,13 @@ export class Explore {
       this.actors.push({ hero, model, x: p.x, z: p.z });
     });
     st.pos = { x: p.x, z: p.z };
+  }
+  // A hero who has changed weapon or armour is dressed again: a new body for a new armour tier, new gear in the hands.
+  redress(a) {
+    const r = this.g.r, old = a.model, m = heroModel(a.hero);
+    m.add(shadowDisc());
+    m.position.copy(old.position); m.rotation.copy(old.rotation); m.visible = old.visible;
+    r.units.remove(old); r.units.add(m); a.model = m;
   }
   get leader() { return this.actors[0]; }
   // Whoever in the party is speaking gestures while they do.
@@ -154,6 +197,7 @@ export class Explore {
 
   update(dt) {
     const g = this.g, st = g.st;
+    for (const a of this.actors) if (a.model.userData.outfit !== outfitSig(a.hero)) this.redress(a);
     for (const a of this.actors) animate(a.model, dt);
     const L = this.leader;
     for (const n of this.npcs) if (Math.abs(n.x - L.x) < 22 && Math.abs(n.z - L.z) < 22) animate(n.model, dt);

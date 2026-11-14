@@ -142,10 +142,10 @@ grip at the origin; the shield's face is toward +Z (Blender's -Y).
 | `zombie_bonesack` | A bloated corpse, belly swollen and split with yellow sacs, stubby legs, head tipped back |
 | `zombie_brute` | A huge corpse too big for one grave, broken chains at wrists and neck, iron collar, stitched shoulders |
 | `wolf` | A lean grey wolf, scarred muzzle |
-| `skeleton` | A plain skeleton with a rusted cap and a splinter of a blade |
-| `ghoul` | A violet-grey ghoul, hunched, long nails |
+| `skeleton` | A risen cathedral guard in the corroded remains of ceremonial armour, a rusted crested cap |
+| `ghoul` | A violet-grey ghoul, hunched, long nails, the rags of a fine burial shroud |
 | `slime` | A knee-high cobalt slime with two dark eyes |
-| `squire` | A small knight in plain plate with a short lance |
+| `squire` | A young knight-squire in plain polished half-plate, a striped pennant on the back (no device) |
 | `whelp` | A cat-sized red dragon whelp with stubby wings |
 | `turret` | A brass clockwork gun on a tripod |
 | `totem` | A carved wooden spirit pole of three stacked faces, bear, bird and serpent |
@@ -453,6 +453,25 @@ camera, and frame stepping: `viewer.html?m=lily,jamie` opens those two.
 emblem made of V-shaped chevrons and was redrawn (its prompt now says "no emblem"). The two sexes of a class
 come out in the same uniform but not always the same colours (the two wizards' hats differ). A rigging call
 made before its 3D task has finished is refused without charge; wait and call again.
+
+### The fifth batch: the last class bodies, and three summons
+
+`totem_master_m` and `_f`, `slime_lord_m` and `_f`, `dragon_knight_m` and `_f`, `gunner_f`, and the summons
+`skeleton`, `ghoul` and `squire` (20,000 triangles; the squire's prompt takes the character style, the other two
+the monster one). Summons now go through the manifest like everyone else: `battle.js` wraps `makeSummon` in
+`withOverride`, so a summon with an entry is the real model and one without keeps its stand-in. New branches in
+`build()`:
+
+| Branch | Its own clips |
+|---|---|
+| `totem_master` | `Bolt` (plain attack, Spirit Strike), `Slam` (Earth Shock), `Plant` (Healing and Searing Totem: a post lifted, raised overhead and driven into the ground) |
+| `slime_lord` | `Swing` (plain attack), `Bolt` (Slime Ball), `Slam` (Body Slam, the leap), `Split` (Slimeling: shaken all over, a lump let go), `Wave` (Acid Splash) |
+| `dragon_knight` | `Swing` (plain attack, Flame Slash), `Breath` (Fire Breath, the dragoon's), `Scales` (Dragon Scales: arms crossed, then thrown wide), `Call` (Summon Whelp) |
+| `gunner` | `Shoot` (plain attack, Pistol Shot), `Fan` (Bullet Hell: four shots swept across), `Lob` (Grenade, underarm), `Deploy` (Gun Turret: down on the knees) |
+| `skeleton`, `ghoul`, `squire` | `Swing`, `Rake` (both hands up, then raking down), `Thrust` |
+
+The slime lords hold their arms 22 degrees out (round as a cask), the dragon knights and totem masters 15. The slime
+is drawn see-through but the game draws bodies solid, so they read as glossy cobalt.
 
 ### Looking at a model in the running game
 

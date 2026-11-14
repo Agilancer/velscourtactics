@@ -131,3 +131,13 @@ export const LISANDRA_CHAT = [
 export const WELL_LINES = ['Forty roofs, one well. The water is cold and tastes of iron and old bells.', 'Somebody has scratched a tally into the rim. It stops at forty-three.'];
 export const ROAD_END = 'The road goes on. You don’t, yet. There is nothing out there but pines and whoever is standing in them.';
 export const CHEST_LINE = 'Somebody buried this up here where the dead don’t climb.';
+
+// The old crypt in the deep pines.
+export const CRYPT = {
+  name: 'The Old Crypt',
+  sub: 'Open to the sky. The candles are lit.',
+  quiet: 'Open to the sky, and quiet now. The candles are still lit.',
+  first: 'Somebody stacked the dead in here, once, neatly, with love. Somebody else has been unstacking them.',
+  lisandra: 'Mind the candles. Nobody living lit them, and I’d rather not meet whoever keeps them in wicks.',
+  chest: 'Somebody was buried with this and wanted it kept. They’ve stopped minding.',
+};

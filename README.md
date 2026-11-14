@@ -41,7 +41,12 @@ either order. Click or tap a tile, or steer the cursor with the d-pad and press 
   Veiled, Jamie the Curator, Stevie the Stronger, and eight more standing about the Hollow.
 - **Ten shops**: weapons, armour, spell scrolls, gems, rings and charms, bag room, enhancing (+1 to +10),
   enchanting, sockets and gem removal, and the inn (beds and draughts).
-- **Five kinds of the dead** in 21 packs, harder the farther from town, and a bounty for each kind.
+- **Fourteen kinds of foe** in 25 packs: five kinds of the dead, then the things that keep their company
+  (the possessed, grave spiders, barrow goblins, plague knights, carrion harpies, Grave Callers, werewolves,
+  plague giants), harder the farther from town, with a bounty for most kinds.
+- **The crypt** in the deep pines: a roofless ruin of bm's catacomb stone, its keeper the Bone Golem, and a chest.
+- **Gear you can see**: every weapon is drawn in the hand that holds it, and the armour worn changes the body
+  (steel and up, for the classes bm has bodies for).
 - **Auto-play**: rests, reads the board, fills the party, hunts, fights, wears what is better.
 
 ## Where things are
@@ -57,6 +62,28 @@ either order. Click or tap a tile, or steer the cursor with the d-pad and press 
 | `src/game/party.js` | heroes, stats, quests, the save |
 | `src/ui/ui.js` | title, character creation, HUD, talk, panels and shops |
 | `src/data/` | classes, items, the dead and their bounties, the cast and every line they say |
+| `src/data/gear.js`, `src/gfx/gear.js` | what each weapon and shield looks like, and putting it in a hand or on an arm |
+| `src/gfx/clipbank.js` | bm's two clip banks, fitted to the bodies that play them |
+| `src/ui/art.js` | the interface's painted pictures, by name |
 | `assets/tex`, `assets/trees`, `assets/desert` | textures copied from bm (`assets/game/tex`, `art/trees`, `assets/desert`) |
 
 `node tools/check.mjs` checks the world and the data without a browser.
+
+## From bm
+
+A good deal of this came over from bm (its `origin/main`, read with `git -C ../bm show`, never changed). Each piece is
+written out by a tool here that says what it took and what it left behind. Anything carrying either side's mark stayed in
+bm: a cross is Tessariel's, so the cross-shaped shields, the paladin and lancer bodies, and two dragoon bodies stayed there.
+
+| | | |
+|---|---|---|
+| `assets/gear/` | 129 weapons, shields and lutes, baked small, with their icons | `tools/gear/bake.py`, `tools/gear/sources.txt` |
+| `assets/models/heroes/` | 22 hero bodies, worn as armour tiers 3 to 5 (`<class>_<g>_t<n>`) | `tools/bm/heroes.py` |
+| `assets/models/folk/` | ten townsfolk bodies and their paint | `tools/bm/folk.py` |
+| `assets/models/clips/` | bm's hero and townsfolk clip banks (`"bank"` in the manifest) | the two above |
+| `assets/models/foes/` | the new kinds of foe, a look or three each, their own clips in the file | `tools/bm/foes.py` |
+| `assets/props/`, `assets/tex/crypt/` | the chest with its lid, the crypt's iron doors, the catacomb stone | `src/world/render.js` |
+| `assets/ui/` | bars, buttons, tabs, slots, menu icons, goods, gems, spell pictures | `src/ui/art.js` |
+
+The plague knight's crosses are painted off as `tools/bm/foes.py` copies it (`PAINT`). `node tools/check.mjs` doesn't
+look at models; `viewer.html` shows any manifest key with what it carries.

@@ -8,7 +8,7 @@ import { zombieStats } from '../data/enemies.js';
 import { HEROES } from '../data/cast.js';
 import { heroStats, heroSkills, basicAttack, gainXp, noteKill, partyHeroes } from './party.js';
 import { heroModel } from './explore.js';
-import { makeSummon, shadowDisc, setAnim, setRest, animate } from '../gfx/models.js';
+import { makeSummon, withOverride, shadowDisc, setAnim, setRest, animate } from '../gfx/models.js';
 import { DPAD } from '../core/input.js';
 import { sfx } from '../core/audio.js';
 
@@ -56,7 +56,7 @@ export class Battle {
   addFoe(f) {
     const s = zombieStats(f.kind, f.level);
     const u = { id: f.id, side: 'foe', foe: f, zdef: f.z, name: f.z.name, lvl: f.level, x: f.x, z: f.zz, s, hp: s.hp, mp: 0, maxhp: s.hp, maxmp: 0,
-      skills: f.z.skills, basic: null, ct: f.z.ambush ? 100 : Math.random() * 25, st: [], model: f.model, alive: true, ai: true, undead: true, color: '#9aa88a', face: [0, 1] };
+      skills: f.z.skills, basic: null, ct: f.z.ambush ? 100 : Math.random() * 25, st: [], model: f.model, alive: true, ai: true, undead: !f.z.living, color: '#9aa88a', face: [0, 1] };
     this.place(u); this.units.push(u); return u;
   }
   addSummon(caster, kind, x, z) {
@@ -64,7 +64,7 @@ export class Battle {
     for (const o of this.units) if (o.alive && o.owner === caster.id && o.kind === kind) this.kill(o, null, true);   // one of each at a time
     const pow = Math.max(caster.s.atk, caster.s.mag);
     const s = { hp: Math.round(caster.maxhp * d.hp), mp: 0, atk: Math.round(pow * d.atk), mag: Math.round(pow * d.atk), def: Math.round(caster.s.def * 0.7), res: Math.round(caster.s.res * 0.7), spd: caster.s.spd, move: d.move, jump: d.jump, crit: 3, leech: 0 };
-    const model = makeSummon(d.model); model.add(shadowDisc(0.3)); this.r.units.add(model);
+    const model = withOverride(d.model, makeSummon(d.model)); model.add(shadowDisc(0.3)); this.r.units.add(model);   // a real model where the manifest has one
     const basic = { id: 'attack', name: d.kind === 'heal' ? 'Mend' : 'Attack', cost: 0, r: d.r, aoe: 0, at: d.kind === 'heal' ? 'ally' : 'enemy', kind: d.kind, pow: 1, basic: true };
     const u = { id: caster.id + '_' + kind, side: caster.side, owner: caster.id, kind, summon: true, name: d.name, lvl: caster.lvl, x, z, s, hp: s.hp, mp: 0, maxhp: s.hp, maxmp: 0,
       skills: [], basic, ct: 40, st: [], model, alive: true, ai: true, undead: kind === 'skeleton' || kind === 'ghoul', color: caster.color, face: caster.face };

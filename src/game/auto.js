@@ -1,13 +1,15 @@
 // Auto-play for the walking half of the game (the fighting half is Battle.plan).
 // It rests when hurt, reads the bounty board, gathers a full party, then goes looking for the dead.
 // Teach it anything new you add to the world: a new kind of errand is one more entry in goals().
-import { N } from '../world/map.js';
+import { N, TOWN } from '../world/map.js';
 import { QUESTS } from '../data/enemies.js';
 import { PARTY_MAX, heroStats, partyHeroes, questReady, lead } from './party.js';
 
 export class Auto {
-  constructor(g) { this.g = g; this.path = []; this.goal = null; this.holdT = 0; this.failT = 0; }
+  constructor(g) { this.g = g; this.path = []; this.goal = null; this.holdT = 0; this.failT = 0; this.lost = []; }
   reset() { this.path = []; this.goal = null; }
+  // A lost fight: where it started, and the leader's level then.
+  noteLoss(x, z) { this.lost.push({ x, z, lvl: lead(this.g.st).lvl }); if (this.lost.length > 8) this.lost.shift(); }
   hold(secs = 1.2) { this.holdT = secs; this.reset(); }
 
   // What to do next, most pressing first. Each: { why, targets: [{x,z}], act }.
@@ -23,10 +25,20 @@ export class Auto {
       const free = ex.npcs.filter((n) => n.hero);
       if (free.length) out.push({ why: 'Looking for someone to walk with', targets: free, act: (t) => g.recruitNpc(t, true) });
     }
-    // the dead: the kinds a bounty wants first, and nothing far above the party's level
+    // A fight takes in everything standing near the one that sees you, so the danger at a spot is the highest level
+    // within a pack's reach of it (the crypt's keeper stands among goblins). Where a fight was lost, keep away until
+    // the leader has a level more than they had then.
     const lvl = lead(st).lvl;
+    const danger = (x, z, r = 7.5) => ex.foes.reduce((m, f) => (Math.hypot(f.x - x, f.zz - z) <= r ? Math.max(m, f.level) : m), 0);
+    const shy = (x, z) => this.lost.some((l) => lvl <= l.lvl && Math.hypot(l.x - x, l.z - z) < 12);
+    // chests: the knolls' and the crypt's, once whatever stands guard over them is a fair fight and the woods
+    // round them are of the party's level
+    const zone = (x, z) => 1 + 2 * Math.max(0, Math.min(4, Math.floor((Math.hypot(x - TOWN.cx, z - TOWN.cz) - 22) / 9)));
+    const shut = w.chests.filter((c) => !st.opened[c.id] && zone(c.x, c.z) <= lvl + 1 && danger(c.x, c.z, 10) <= lvl + 1 && !shy(c.x, c.z));
+    if (shut.length) out.push({ why: 'Going for a chest', targets: shut, act: (c) => { if (!st.opened[c.id]) g.interact({ kind: 'chest', chest: c }); } });
+    // the dead: the kinds a bounty wants first, and nothing far above the party's level
     const wanted = new Set(QUESTS.filter((q) => st.quests[q.id]?.state === 'active' && q.kill && !questReady(st, q)).map((q) => q.kill));
-    const fair = ex.foes.filter((f) => f.level <= lvl + 2);
+    const fair = ex.foes.filter((f) => danger(f.x, f.zz) <= lvl + 2 && !shy(f.x, f.zz));
     const pool = fair.filter((f) => wanted.has('any') || wanted.has(f.z.id));
     const foes = (pool.length ? pool : fair.length ? fair : ex.foes).map((f) => ({ x: f.x, z: f.zz }));
     if (foes.length) out.push({ why: 'Hunting the dead in the pines', targets: foes, act: null, near: 3 });

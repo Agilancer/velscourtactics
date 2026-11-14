@@ -2,6 +2,7 @@
 // Screen: -z is up-right, +x is down-right, +z is down-left, -x is up-left.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { N, T, STEP } from './map.js';
 import { rng32, vnoise, clamp } from '../core/util.js';
 import { label, mat } from '../gfx/models.js';
@@ -9,11 +10,34 @@ import { label, mat } from '../gfx/models.js';
 const CAM = new THREE.Vector3(20, 16.5, 20);  // the camera's offset from what it looks at
 const RISE = CAM.y / CAM.x;                    // how fast a ray toward the camera climbs per tile of x and z
 
+const CRYPT_SIDE = 100;                         // (not a tile: the face of the crypt's dais where it steps down)
 const GROUND_TEX = {
   [T.GRASS1]: 'tex/grass_1_c.webp', [T.GRASS2]: 'tex/grass_2_c.webp', [T.GRASS3]: 'tex/grass_3_c.webp',
   [T.PINE]: 'tex/pinefloor_1_c.webp', [T.DIRT]: 'tex/dirt_1_c.webp', [T.ROAD]: 'tex/road_1_c.webp',
   [T.FLAGS]: 'tex/flags_c.webp', [T.MOSS]: 'tex/moss_1_c.webp', [T.ROCK]: 'tex/granite_1_c.webp',
+  [T.CRYPT]: 'tex/crypt/cata_floor_c.webp', [T.DAIS]: 'tex/crypt/cata_floor4_c.webp', [T.GRAVE]: 'tex/crypt/cata_earth_c.webp',
+  [CRYPT_SIDE]: 'tex/crypt/cata_block_c.webp',
 };
+// bm's catacomb textures are square and about three tiles across; the rest are 7:4
+const SQUARE = new Set([T.CRYPT, T.DAIS, T.GRAVE, CRYPT_SIDE]);
+
+// The crypt's stone and bone (bm's catacomb textures, assets/tex/crypt), and how many tiles one repeat covers.
+const CRYPT_MAT = {
+  wall: ['cata_wall', 2.4], wall3: ['cata_wall3', 2.4], niches: ['niches', 2.4], skulls: ['skulls', 1.3], skulls2: ['skulls2', 1.2],
+  femurs: ['femurs', 1.1], block: ['cata_block', 2.2], slab: ['cata_roof', 1.8], rubble: ['cata_rubble', 1.6], bones: ['cata_bones', 1.4],
+};
+
+// bm's props (assets/props) come as metal-and-roughness surfaces; here they are lit like everything else, a plain
+// Lambert surface over their colour map, since metal needs reflections this scene hasn't got.
+const matted = new Map();
+function matte(obj) {
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    const src = o.material;
+    if (!matted.has(src)) matted.set(src, new THREE.MeshLambertMaterial({ map: src.map, normalMap: src.normalMap, side: src.side }));
+    o.material = matted.get(src);
+  });
+}
 
 export class Renderer {
   constructor(canvas, world) {
@@ -45,6 +69,8 @@ export class Renderer {
     this.buildGround();
     this.buildTrees();
     this.buildTown();
+    this.buildCrypt();
+    this.buildChests();
     this.buildHighlights();
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -77,17 +103,19 @@ export class Renderer {
       const b = (buckets[t] ||= { p: [], u: [], c: [], n: [] });
       for (const v of verts) { b.p.push(v[0], v[1], v[2]); b.u.push(v[3], v[4]); b.c.push(shade, shade, shade); b.n.push(v[5], v[6], v[7]); }
     };
-    const U = 1 / 7, V = 1 / 4; // the textures are 7:4, so this keeps them square on the ground
     for (let z = 0; z < N; z++) for (let x = 0; x < N; x++) {
       const i = w.I(x, z), t = w.type[i], y = w.h[i] * STEP;
+      // the 7:4 textures are kept square on the ground; the crypt's square ones span three tiles
+      const U = SQUARE.has(t) ? 1 / 3 : 1 / 7, V = SQUARE.has(t) ? 1 / 3 : 1 / 4;
       const s = 0.86 + 0.14 * vnoise(x * 0.9, z * 0.9, 77) - (((x + z) & 1) ? 0.035 : 0);
       const x0 = x - 0.5, x1 = x + 0.5, z0 = z - 0.5, z1 = z + 0.5;
       const q = (a, b, c, d) => [a, b, c, a, c, d];
       push(t, q([x0, y, z0, x0 * U, z0 * V, 0, 1, 0], [x0, y, z1, x0 * U, z1 * V, 0, 1, 0], [x1, y, z1, x1 * U, z1 * V, 0, 1, 0], [x1, y, z0, x1 * U, z0 * V, 0, 1, 0]), s);
-      const side = t === T.ROCK || t === T.MOSS ? T.ROCK : T.DIRT;
+      const side = t === T.ROCK || t === T.MOSS ? T.ROCK : t === T.DAIS ? CRYPT_SIDE : T.DIRT;
+      const sq = SQUARE.has(side), su = sq ? 0.5 : 1 / 4, sx = sq ? 0.5 : 1 / 7, sy = sq ? 0.5 : 1;
       const hx = x + 1 < N ? w.h[w.I(x + 1, z)] * STEP : y, hz = z + 1 < N ? w.h[w.I(x, z + 1)] * STEP : y;
-      if (hx < y) push(side, q([x1, y, z1, z1 * V, y, 1, 0, 0], [x1, hx, z1, z1 * V, hx, 1, 0, 0], [x1, hx, z0, z0 * V, hx, 1, 0, 0], [x1, y, z0, z0 * V, y, 1, 0, 0]), s * 0.62);
-      if (hz < y) push(side, q([x0, y, z1, x0 * U, y, 0, 0, 1], [x0, hz, z1, x0 * U, hz, 0, 0, 1], [x1, hz, z1, x1 * U, hz, 0, 0, 1], [x1, y, z1, x1 * U, y, 0, 0, 1]), s * 0.8);
+      if (hx < y) push(side, q([x1, y, z1, z1 * su, y * sy, 1, 0, 0], [x1, hx, z1, z1 * su, hx * sy, 1, 0, 0], [x1, hx, z0, z0 * su, hx * sy, 1, 0, 0], [x1, y, z0, z0 * su, y * sy, 1, 0, 0]), s * 0.62);
+      if (hz < y) push(side, q([x0, y, z1, x0 * sx, y * sy, 0, 0, 1], [x0, hz, z1, x0 * sx, hz * sy, 0, 0, 1], [x1, hz, z1, x1 * sx, hz * sy, 0, 0, 1], [x1, y, z1, x1 * sx, y * sy, 0, 0, 1]), s * 0.8);
     }
     for (const t in buckets) {
       const b = buckets[t], g = new THREE.BufferGeometry();
@@ -213,14 +241,221 @@ export class Renderer {
     board.position.set(w.board.x, 0, w.board.z);
     const bl = label('Bounties', { size: 36, color: '#ffe2a0' }); bl.position.set(w.board.x, 2.1, w.board.z);
     this.scene.add(board, bl);
-    // chests
+  }
+
+  // ---- the old crypt: catacomb stone and bone from bm, built in simple shapes ----
+  // Walls are short toward the camera (south, east) and tall at the back, where they can't stand in front of anyone.
+  buildCrypt() {
+    const c = this.world.crypt;
+    if (!c) return;
+    const r = rng32(c.x * 131 + c.z);
+    const buckets = {};
+    const v = new THREE.Vector3(), n = new THREE.Vector3(), nm = new THREE.Matrix3();
+    // Pours a shape into the buckets, a material per face chosen by `pick(normal)`, textured by where it stands.
+    const add = (geo, m, pick, base = 0, into = buckets) => {
+      const g = geo.index ? geo.toNonIndexed() : geo, P = g.attributes.position, Nn = g.attributes.normal;
+      nm.getNormalMatrix(m);
+      for (let i = 0; i < P.count; i += 3) {
+        n.fromBufferAttribute(Nn, i).applyMatrix3(nm).normalize();
+        if (n.y < -0.7) continue;                                   // nobody sees the bottoms
+        const key = typeof pick === 'string' ? pick : pick(n);
+        const b = (into[key] ||= { p: [], n: [], u: [], c: [] }), S = CRYPT_MAT[key] ? CRYPT_MAT[key][1] : 1;
+        const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
+        for (let k = 0; k < 3; k++) {
+          v.fromBufferAttribute(P, i + k).applyMatrix4(m);
+          const nk = new THREE.Vector3().fromBufferAttribute(Nn, i + k).applyMatrix3(nm).normalize();
+          b.p.push(v.x, v.y, v.z); b.n.push(nk.x, nk.y, nk.z);
+          if (ay >= ax && ay >= az) b.u.push(v.x / S, v.z / S); else if (ax >= az) b.u.push(v.z / S, v.y / S); else b.u.push(v.x / S, v.y / S);
+          const sh = 0.6 + 0.4 * clamp((v.y - base) / 1.1, 0, 1);  // darker where it meets the ground
+          b.c.push(sh, sh, sh);
+        }
+      }
+    };
+    const M = (x, y, z, ry = 0, sx = 1, sy = 1, sz = 1) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ry, 0)), new THREE.Vector3(sx, sy, sz));
+    const BOX = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);   // a unit box standing on its base
+    const MOUND = new THREE.IcosahedronGeometry(0.5, 1).translate(0, 0.08, 0);
+
+    // the wall ring: tall at the back (north and west), down to knee height at the front
+    for (const p of c.walls) {
+      const { x, z, dx, dz } = p, R = c.r;
+      const front = dz === R || dx === R, nz = vnoise(x * 0.9, z * 0.9, 31);
+      let h;
+      if (front) h = nz < 0.18 ? 0.18 : 0.3 + 0.5 * nz;
+      else { const t = clamp((R - Math.max(dx, dz)) / 6, 0, 1); h = (0.75 + 1.25 * t) * (0.85 + 0.3 * nz); if (nz > 0.82) h *= 0.55; }
+      const ew = Math.abs(dx) === R && Math.abs(dz) !== R;           // a stretch of the east or west wall
+      const sx = Math.abs(dx) === R && Math.abs(dz) === R ? 0.86 : ew ? 0.8 : 1, sz = Math.abs(dx) === R && Math.abs(dz) === R ? 0.86 : ew ? 1 : 0.8;
+      // the inner face of the back walls is the ossuary: niches along the north, skulls and femurs down the west
+      const inner = dz === -R && !ew ? (Math.abs(dx) <= 3 ? 'niches' : 'skulls') : dx === -R ? (Math.abs(dz) % 3 === 0 ? 'femurs' : 'skulls2') : 'wall3';
+      add(BOX, M(x, 0, z, 0, sx, h, sz), (nn) => {
+        if (nn.y > 0.5) return h < 0.6 ? 'rubble' : 'block';
+        const toward = nn.x * -Math.sign(dx || 0.0001) * (Math.abs(dx) === R ? 1 : 0) + nn.z * -Math.sign(dz || 0.0001) * (Math.abs(dz) === R ? 1 : 0);
+        return toward > 0.5 ? inner : front ? 'wall3' : 'wall';
+      });
+      // a broken top: a block or two left lying where it fell
+      if (front && nz < 0.35) add(BOX, M(x + (r() - 0.5) * 0.3, h, z + (r() - 0.5) * 0.3, r() * 3, 0.42, 0.22, 0.5), 'block', 0);
+    }
+    // fallen stone and turned earth round the outside, where the wall came down
+    for (const p of c.rubble) {
+      const bone = vnoise(p.x * 0.7, p.z * 0.7, 41) > 0.68;
+      add(MOUND, M(p.x + (r() - 0.5) * 0.2, 0, p.z + (r() - 0.5) * 0.2, r() * 6, 1.5, 0.45 + r() * 0.5, 1.5), bone ? 'bones' : 'rubble');
+      if (r() < 0.45) add(BOX, M(p.x + (r() - 0.5) * 0.5, 0, p.z + (r() - 0.5) * 0.5, r() * 3, 0.5, 0.3, 0.7), 'block');
+    }
+    // sarcophagi down the side walls; the one nearest the gate on the east has lost its lid
+    const candles = [];
+    for (const s of c.sarcophagi) {
+      const cz = s.z + (s.len - 1) / 2, ajar = s.x > c.x && s.z > c.z;
+      add(BOX, M(s.x, 0, cz, 0, 0.82, 0.62, s.len - 0.12), (nn) => (nn.y > 0.5 ? 'void' : 'block'));
+      if (ajar) add(BOX, M(s.x + 0.14, 0.62, cz + 0.22, 0.34, 0.94, 0.13, s.len - 0.02), 'slab', 0.5);   // pushed aside from within
+      else add(BOX, M(s.x, 0.62, cz, 0, 0.94, 0.13, s.len - 0.02), 'slab', 0.5);
+      candles.push([s.x, 0.75, s.z - 0.1 + (s.z < c.z ? 0 : s.len - 0.8)]);
+    }
+    // bones stacked the old way against the back wall: femur ends out, skulls on top
+    for (const s of c.bones) {
+      add(BOX, M(s.x, 0, s.z - 0.04, 0, 0.9, 0.62, 0.86), (nn) => (nn.y > 0.5 ? 'skulls2' : 'femurs'));
+      add(MOUND, M(s.x, 0.6, s.z - 0.04, r() * 6, 0.82, 0.32, 0.8), 'skulls', 0.6);
+      candles.push([s.x + (s.x < c.x ? 0.25 : -0.25), 0.82, s.z + 0.22]);
+    }
+    // the gateposts, tall and kept apart, so they can go see-through when someone stands behind them
+    const postB = {};
+    for (const p of c.posts) {
+      add(BOX, M(p.x, 0, p.z, 0, 0.9, 2.5, 0.9), 'block', 0, postB);
+      add(BOX, M(p.x, 2.5, p.z, 0, 1.06, 0.16, 1.06), 'slab', 2.0, postB);
+      candles.push([p.x, 2.66, p.z]);
+    }
+
+    const crypt = new THREE.Group();
+    const mats = {};
+    const matFor = (key) => (mats[key] ||= key === 'void' ? new THREE.MeshLambertMaterial({ color: 0x0b0907 })
+      : key === 'wax' ? new THREE.MeshLambertMaterial({ color: 0xe8dcc0, emissive: 0x4a3218 })
+      : new THREE.MeshLambertMaterial({ map: this.tex(`tex/crypt/${CRYPT_MAT[key][0]}_c.webp`), vertexColors: true }));
+    const meshes = (bk, into) => {
+      const out = [];
+      for (const key in bk) {
+        const b = bk[key], g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(b.p, 3));
+        g.setAttribute('normal', new THREE.Float32BufferAttribute(b.n, 3));
+        g.setAttribute('uv', new THREE.Float32BufferAttribute(b.u, 2));
+        g.setAttribute('color', new THREE.Float32BufferAttribute(b.c, 3));
+        const m = new THREE.Mesh(g, matFor(key));
+        m.matrixAutoUpdate = false; into.add(m); out.push(m);
+      }
+      return out;
+    };
+    meshes(buckets, crypt);
+    const gateG = new THREE.Group();
+    const gateMeshes = meshes(postB, gateG);
+    crypt.add(gateG);
+
+    // candles: wax, a flame, and a soft glow round each cluster, and two warm lights that breathe
+    const wax = [], flames = [];
+    const flameM = new THREE.MeshBasicMaterial({ color: 0xffc463 });
+    const glowT = (() => {
+      const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+      const x = cv.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, 'rgba(255,200,120,0.9)'); gr.addColorStop(0.35, 'rgba(255,150,60,0.35)'); gr.addColorStop(1, 'rgba(255,120,40,0)');
+      x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+      const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+    })();
+    this.glows = [];
+    for (const [x, y, z] of candles) {
+      for (let k = 0; k < 3; k++) {
+        const a = k * 2.1 + r(), d = k ? 0.09 + r() * 0.05 : 0, hgt = 0.1 + r() * 0.16, rad = 0.03 + r() * 0.018;
+        const px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d;
+        wax.push(new THREE.CylinderGeometry(rad, rad * 1.1, hgt, 7).translate(px, y + hgt / 2, pz));
+        flames.push(new THREE.SphereGeometry(0.03, 6, 5).scale(0.8, 1.7, 0.8).translate(px, y + hgt + 0.05, pz));
+      }
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowT, color: 0xffb060, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+      s.position.set(x, y + 0.24, z); s.scale.setScalar(0.85);
+      crypt.add(s); this.glows.push({ s, ph: r() * 6.28 });
+    }
+    const flat = (g) => (g.index ? g.toNonIndexed() : g);
+    crypt.add(new THREE.Mesh(mergeGeometries(wax.map(flat)), matFor('wax')), new THREE.Mesh(mergeGeometries(flames.map(flat)), flameM));
+    this.cryptLights = [[c.x, 1.7, c.z - 4.6, 5.5], [c.x, 2.6, c.z + 0.5, 6.5]].map(([x, y, z, i]) => {
+      const l = new THREE.PointLight(0xff9a4a, i, 8.5, 1.6); l.position.set(x, y, z); crypt.add(l); return { l, i, ph: r() * 6.28 };
+    });
+    this.flick = 0;
+    this.scene.add(crypt);
+
+    // the gate: two of bm's iron-bound doors, standing open against the outside of the wall
+    const ghost = (m) => { const g2 = m.clone(); g2.transparent = true; g2.opacity = 0.25; g2.depthWrite = false; return g2; };
+    const fade = { meshes: [...gateMeshes], solid: gateMeshes.map((m) => m.material) };
+    fade.ghost = fade.solid.map(ghost);
+    this.faders.push({ x: c.gate.x, z: c.gate.z, r: 2.6, h: 2.7, on: 0,
+      show: () => fade.meshes.forEach((m, k) => { m.material = fade.solid[k]; }), hide: () => fade.meshes.forEach((m, k) => { m.material = fade.ghost[k]; }) });
+    new GLTFLoader().load('assets/props/doors.glb', (gltf) => {
+      const s = 1.5 / 1.54, a = 0.32;
+      for (const [name, hx, ry] of [['door_iron2', c.gate.x - 1.5, Math.PI + a], ['door_iron2_r', c.gate.x + 1.5, Math.PI - a]]) {
+        const src = gltf.scene.getObjectByName(name);
+        if (!src) continue;
+        const leaf = src.clone(); matte(leaf);
+        leaf.position.set(hx, 0, c.gate.z + 0.5); leaf.rotation.y = ry; leaf.scale.setScalar(s);
+        gateG.add(leaf);
+        fade.meshes.push(leaf); fade.solid.push(leaf.material); fade.ghost.push(ghost(leaf.material));
+      }
+    });
+  }
+
+  // ---- chests: bm's chest, its lid swinging up on its hinge when opened ----
+  buildChests() {
+    const w = this.world;
     this.chests = {};
     for (const c of w.chests) {
       const g = new THREE.Group();
-      g.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.36, 0.42), mat(0x5a3c24)).translateY(0.18));
-      g.add(new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.12, 0.46), mat(0xc9a24a)).translateY(0.42));
       g.position.set(c.x, w.y(c.x, c.z), c.z);
-      this.scene.add(g); this.chests[c.id] = g;
+      g.rotation.y = c.crypt ? 0 : Math.PI / 4;                   // facing the camera, or the crypt's gate
+      this.scene.add(g);
+      this.chests[c.id] = { g, open: false, mixer: null, act: null };
+    }
+    new GLTFLoader().load('assets/props/chest.glb', (gltf) => {
+      matte(gltf.scene);
+      const clip = gltf.animations.find((a) => /lid/i.test(a.name)) || gltf.animations[0];
+      for (const id in this.chests) {
+        const ch = this.chests[id], obj = gltf.scene.clone(true);
+        obj.scale.setScalar(0.82);
+        ch.g.add(obj);
+        ch.mixer = new THREE.AnimationMixer(obj);
+        ch.act = ch.mixer.clipAction(clip);
+        ch.act.setLoop(THREE.LoopOnce, 1); ch.act.clampWhenFinished = true; ch.act.timeScale = 1.25;
+        if (ch.open) this.openChest(id, true);
+      }
+    }, undefined, () => {
+      // no model: the old box, its lid a separate piece that tips back
+      for (const id in this.chests) {
+        const ch = this.chests[id];
+        ch.g.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.36, 0.42), mat(0x5a3c24)).translateY(0.18));
+        ch.lid = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.12, 0.46), mat(0xc9a24a)).translateY(0.42);
+        ch.g.add(ch.lid);
+        if (ch.open) ch.lid.rotation.x = -0.9;
+      }
+    });
+  }
+  // Opens a chest's lid; `instant` leaves it standing open (a chest opened before the save was loaded).
+  openChest(id, instant = false) {
+    const ch = this.chests[id];
+    if (!ch) return;
+    ch.open = true;
+    if (ch.lid) ch.lid.rotation.x = -0.9;
+    if (!ch.act) return;
+    ch.act.reset().play();
+    if (instant) ch.mixer.update(10);
+  }
+  // Every chest as the save has it: open if it was opened, shut if not.
+  setChests(opened = {}) {
+    for (const id in this.chests) {
+      const ch = this.chests[id];
+      if (opened[id]) { if (!ch.open) this.openChest(id, true); continue; }
+      ch.open = false;
+      if (ch.lid) ch.lid.rotation.x = 0;
+      if (ch.act) { ch.act.stop(); ch.mixer.update(0); }
+    }
+  }
+  // Each frame: lids that are swinging, and the crypt's candles.
+  tick(dt) {
+    for (const id in this.chests) { const ch = this.chests[id]; if (ch.mixer && ch.act.isRunning()) ch.mixer.update(dt); }
+    if (this.glows) {
+      const t = (this.flick += dt);
+      for (const g of this.glows) g.s.scale.setScalar(0.8 + 0.08 * Math.sin(t * 9 + g.ph) + 0.05 * Math.sin(t * 23 + g.ph * 2));
+      for (const L of this.cryptLights) L.l.intensity = L.i * (0.88 + 0.08 * Math.sin(t * 7 + L.ph) + 0.05 * Math.sin(t * 17.3 + L.ph));
     }
   }
 

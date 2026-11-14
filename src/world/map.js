@@ -3,9 +3,11 @@
 //
 // Compass: -z is north (up-right on screen), +x east (down-right), +z south (down-left), -x west.
 import { rng32, vnoise } from '../core/util.js';
+import { ZOMBIES, KIND, WOODS, CRYPT_PACK } from '../data/enemies.js';
 
 export const N = 128;
-export const T = { GRASS1: 0, GRASS2: 1, GRASS3: 2, PINE: 3, DIRT: 4, ROAD: 5, FLAGS: 6, MOSS: 7, ROCK: 8 };
+// CRYPT is the old crypt's flagstones, DAIS the raised floor in its middle, GRAVE the turned earth round it.
+export const T = { GRASS1: 0, GRASS2: 1, GRASS3: 2, PINE: 3, DIRT: 4, ROAD: 5, FLAGS: 6, MOSS: 7, ROCK: 8, CRYPT: 9, DAIS: 10, GRAVE: 11 };
 export const TOWN = { x0: 40, x1: 88, z0: 52, z1: 77, cx: 64, cz: 64 };
 
 // Height is in half-steps: world y = h * 0.5. Walking takes one half-step up or down; a jump takes two up.
@@ -156,20 +158,132 @@ export function buildWorld(seed = 4013) {
     for (let dz = 0; dz < 2; dz++) for (let dx = 0; dx < 2; dx++) block[I(x + dx, z + dz)] = 2;
   }
 
-  // --- what you can reach on foot from the start ---
-  const reach = new Uint8Array(N * N);
-  const q = [I(start.x, start.z)];
-  reach[q[0]] = 1;
-  while (q.length) {
-    const i = q.pop(), x = i % N, z = (i / N) | 0;
-    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const X = x + dx, Z = z + dz;
-      if (!inMap(X, Z)) continue;
-      const j = I(X, Z);
-      if (reach[j] || block[j] || h[j] - h[i] > 2) continue;
-      reach[j] = 1; q.push(j);
+  // --- the old crypt, out where the pines are oldest ---
+  // A roofless walled yard, 13 tiles across inside, its gate in the south wall where the camera looks in. The wall
+  // ring is at 7 tiles from the middle; a ring at 8 is pines (north, west) or fallen stone (south, east), so the only
+  // way in is the gate. The pack stands on a raised dais (2 either way of the middle) and cannot wander off it, so
+  // nothing in there sees through a wall: the nearest open ground outside is 7 tiles from the dais, past any sight.
+  const CW = 7;
+  function buildCrypt() {
+    // where: the spot far from the Hollow with the most pine floor round it, flat, off the roads
+    let best = null, most = -1;
+    for (let cz = 12; cz <= N - 13; cz++) for (let cx = 12; cx <= N - 13; cx++) {
+      if (Math.hypot(cx - TOWN.cx, cz - TOWN.cz) < 48 || Math.hypot(cx - start.x, cz - start.z) < 30) continue;
+      let pine = 0, ok = true;
+      for (let dz = -11; dz <= 11 && ok; dz++) for (let dx = -11; dx <= 11; dx++) {
+        const i = I(cx + dx, cz + dz);
+        if (h[i] || road[i] || block[i] === 1) { ok = false; break; }
+        if (type[i] === T.PINE) pine++;
+      }
+      if (ok && pine > most) { most = pine; best = { x: cx, z: cz }; }
     }
+    const { x: cx, z: cz } = best, cr = rng32(seed + 77);
+    // the clearing: every tree that touches it is felled
+    for (const t of trees) if (t.x + t.size - 1 >= cx - 10 && t.x <= cx + 10 && t.z + t.size - 1 >= cz - 10 && t.z <= cz + 10) {
+      t.felled = true;
+      for (let dz = 0; dz < t.size; dz++) for (let dx = 0; dx < t.size; dx++) block[I(t.x + dx, t.z + dz)] = 0;
+    }
+    const c = { x: cx, z: cz, r: CW, walls: [], posts: [], rubble: [], sarcophagi: [], bones: [], spots: [] };
+    const gate = (dx, dz) => (dz === CW || dz === CW + 1) && Math.abs(dx) <= 1;
+    const pine = (x, z) => {
+      trees.push({ id: trees.length, x, z, size: 1, kind: 'pine', v: Math.floor(cr() * 4), rot: cr() * 6.28, tall: 0.9 + cr() * 0.4 });
+      block[I(x, z)] = 2;
+    };
+    for (let dz = -10; dz <= 10; dz++) for (let dx = -10; dx <= 10; dx++) {
+      const x = cx + dx, z = cz + dz, i = I(x, z), ring = Math.max(Math.abs(dx), Math.abs(dz));
+      block[i] = 0;
+      if (ring <= CW) type[i] = ring <= 2 ? T.DAIS : T.CRYPT;
+      else type[i] = ring === CW + 1 || vnoise(x * 0.4, z * 0.4, seed + 13) > 0.62 ? T.GRAVE : T.PINE;
+      if (ring <= 2) h[i] = 1;
+      if (gate(dx, dz)) continue;
+      if (ring === CW) { block[i] = 1; (dz === CW && Math.abs(dx) === 2 ? c.posts : c.walls).push({ x, z, dx, dz }); }
+      else if (ring === CW + 1) {
+        if (dx < -CW || dz < -CW) pine(x, z);
+        else { block[i] = 1; c.rubble.push({ x, z }); }
+      } else if (ring > CW + 1 && (dx < -CW || dz < -CW) && cr() < 0.5) pine(x, z);
+    }
+    // the needles and turned earth run out raggedly into the woods round the clearing, not in a square
+    for (let dz = -14; dz <= 14; dz++) for (let dx = -14; dx <= 14; dx++) {
+      const x = cx + dx, z = cz + dz, ring = Math.max(Math.abs(dx), Math.abs(dz));
+      if (ring <= 10 || !inMap(x, z) || h[I(x, z)] || road[I(x, z)]) continue;
+      if (ring + (vnoise(x * 0.35, z * 0.35, seed + 17) - 0.5) * 6 < 12.5) type[I(x, z)] = vnoise(x * 0.4, z * 0.4, seed + 13) > 0.62 ? T.GRAVE : T.PINE;
+    }
+    // inside: four sarcophagi along the side walls, bones stacked against the back, the chest between them
+    for (const [dx, dz] of [[-5, -4], [-5, 2], [5, -4], [5, 2]]) {
+      c.sarcophagi.push({ x: cx + dx, z: cz + dz, len: 2 });
+      block[I(cx + dx, cz + dz)] = block[I(cx + dx, cz + dz + 1)] = 1;
+    }
+    for (const dx of [-6, -3, 3, 6]) { c.bones.push({ x: cx + dx, z: cz - 6 }); block[I(cx + dx, cz - 6)] = 1; }
+    c.chest = { id: 'crypt', x: cx, z: cz - 6, crypt: true };
+    block[I(cx, cz - 6)] = 1;
+    for (const [dx, dz] of [[0, -1], [-2, -2], [2, -2], [-1, 1], [1, 1], [0, 2]]) c.spots.push({ x: cx + dx, z: cz + dz });
+    c.gate = { x: cx, z: cz + CW };
+    return c;
   }
+  // If the clearing can't be walked to, an old path is cut to it: the cheapest way from the gate to ground the start
+  // can reach, open ground costing a step and a tree six (it is felled, and the path is dirt).
+  function cryptPath(reach) {
+    const from = I(crypt.x, crypt.z + CW + 2);
+    if (reach[from]) return false;
+    const treeAt = new Map();
+    for (const t of trees) if (!t.felled) for (let dz = 0; dz < t.size; dz++) for (let dx = 0; dx < t.size; dx++) treeAt.set(I(t.x + dx, t.z + dz), t);
+    const cost = new Float64Array(N * N).fill(Infinity), prev = new Int32Array(N * N).fill(-1), heap = [];
+    const push = (e) => { heap.push(e); for (let k = heap.length - 1; k > 0;) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
+    const pop = () => {
+      const top = heap[0], last = heap.pop();
+      if (heap.length) {
+        heap[0] = last;
+        for (let k = 0; ;) { const a = 2 * k + 1, b = a + 1; let m = k; if (a < heap.length && heap[a][0] < heap[m][0]) m = a; if (b < heap.length && heap[b][0] < heap[m][0]) m = b; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; }
+      }
+      return top;
+    };
+    cost[from] = 0; push([0, from]);
+    let end = -1;
+    while (heap.length) {
+      const [d, i] = pop();
+      if (d > cost[i]) continue;
+      if (reach[i]) { end = i; break; }
+      const x = i % N, z = (i / N) | 0;
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const X = x + dx, Z = z + dz, j = I(X, Z);
+        if (!inMap(X, Z) || X < 1 || Z < 1 || X > N - 2 || Z > N - 2) continue;
+        if (Math.max(Math.abs(X - crypt.x), Math.abs(Z - crypt.z)) <= CW + 1 || block[j] === 1 || Math.abs(h[j] - h[i]) > 1) continue;
+        const nd = d + (block[j] === 2 ? 6 : 1);
+        if (nd < cost[j]) { cost[j] = nd; prev[j] = i; push([nd, j]); }
+      }
+    }
+    if (end < 0) return false;
+    for (let i = prev[end]; i >= 0; i = prev[i]) {
+      const t = treeAt.get(i);
+      if (t && !t.felled) { t.felled = true; for (let dz = 0; dz < t.size; dz++) for (let dx = 0; dx < t.size; dx++) block[I(t.x + dx, t.z + dz)] = 0; }
+      if (!road[i]) type[i] = T.DIRT;
+    }
+    return true;
+  }
+  const crypt = buildCrypt();
+
+  // --- what you can reach on foot from the start ---
+  const flood = () => {
+    const reach = new Uint8Array(N * N);
+    const q = [I(start.x, start.z)];
+    reach[q[0]] = 1;
+    while (q.length) {
+      const i = q.pop(), x = i % N, z = (i / N) | 0;
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const X = x + dx, Z = z + dz;
+        if (!inMap(X, Z)) continue;
+        const j = I(X, Z);
+        if (reach[j] || block[j] || h[j] - h[i] > 2) continue;
+        reach[j] = 1; q.push(j);
+      }
+    }
+    return reach;
+  };
+  let reach = flood();
+  if (cryptPath(reach)) reach = flood();
+  // the trees felled for the crypt and its path go; the rest keep their places
+  for (let k = trees.length - 1; k >= 0; k--) if (trees[k].felled) trees.splice(k, 1);
+  trees.forEach((t, k) => { t.id = k; });
 
   // --- chests on the knoll tops ---
   const chests = [];
@@ -178,31 +292,71 @@ export function buildWorld(seed = 4013) {
     chests.push({ id: 'chest' + chests.length, x: k.x, z: k.z });
     block[I(k.x, k.z)] = 1;
   }
+  // and one in the crypt, against its back wall
+  chests.push(crypt.chest);
 
-  // --- the dead in the woods: packs of two to four, harder the farther out ---
+  // --- the dead in the woods: packs of two to four (goblins more), harder the farther out ---
+  // Each tier has its list of kinds (WOODS in data/enemies.js). A pack takes the next kind on its tier's list for its
+  // own, so every kind comes up, and now and then one of its neighbours from the same list.
+  const tierKinds = WOODS.map((ids) => ids.map((id) => KIND[id]));
+  const turn = tierKinds.map((l) => Math.floor(r() * l.length));
   const packs = [];
-  for (let tries = 0; tries < 6000 && packs.length < 20; tries++) {
+  for (let tries = 0; tries < 6000 && packs.length < 22; tries++) {
     const x = 4 + Math.floor(r() * (N - 8)), z = 4 + Math.floor(r() * (N - 8));
     const i = I(x, z);
     if (!reach[i] || block[i] || h[i] !== 0 || inTown(x, z, 9) || road[i]) continue;
     if (Math.hypot(x - start.x, z - start.z) < 9) continue;
     if (packs.some((p) => Math.hypot(p.x - x, p.z - z) < 13)) continue;
+    if (Math.max(Math.abs(x - crypt.x), Math.abs(z - crypt.z)) < 19) continue;   // the crypt keeps its own
     const dist = Math.hypot(x - TOWN.cx, z - TOWN.cz);
     const tier = Math.max(0, Math.min(4, Math.floor((dist - 22) / 9)));
-    const count = 2 + Math.floor(r() * 3);
+    const list = tierKinds[tier], main = list[turn[tier]++ % list.length];
+    const count = 2 + Math.floor(r() * 3) + (ZOMBIES[main].swarm ? 2 : 0);
     const members = [];
     for (let k = 0, t2 = 0; k < count && t2 < 60; t2++) {
       const X = x + Math.floor(r() * 5) - 2, Z = z + Math.floor(r() * 5) - 2;
       if (!inMap(X, Z)) continue;
       const j = I(X, Z);
       if (!reach[j] || block[j] || members.some((m) => m.x === X && m.z === Z)) continue;
-      // the pack's kind is mostly its tier's, with a neighbour mixed in
-      const kind = Math.max(0, Math.min(4, tier + (r() < 0.3 ? (r() < 0.5 ? -1 : 1) : 0)));
+      const kind = r() < 0.3 ? list[Math.floor(r() * list.length)] : main;
       members.push({ x: X, z: Z, kind, level: 1 + tier * 2 + Math.floor(r() * 2) });
       k++;
     }
     if (members.length) packs.push({ x, z, tier, members });
   }
+  // goblins camped in the woods outside the crypt, waiting for whatever is on the dais to wander off
+  {
+    const gr = rng32(seed + 91), spots = [];
+    for (let dz = -17; dz <= 17; dz++) for (let dx = -17; dx <= 17; dx++) {
+      const x = crypt.x + dx, z = crypt.z + dz, ring = Math.max(Math.abs(dx), Math.abs(dz));
+      if (ring < 12 || !inMap(x, z) || x < 3 || z < 3 || x > N - 4 || z > N - 4) continue;
+      const i = I(x, z);
+      if (reach[i] && !block[i] && !h[i] && !road[i] && !packs.some((p) => Math.hypot(p.x - x, p.z - z) < 11)) spots.push({ x, z, k: gr() });
+    }
+    spots.sort((a, b) => a.k - b.k);
+    const at = spots[0];
+    if (at) {
+      const tier = Math.max(0, Math.min(4, Math.floor((Math.hypot(at.x - TOWN.cx, at.z - TOWN.cz) - 22) / 9))), members = [];
+      for (let t2 = 0; members.length < 4 + Math.floor(gr() * 2) && t2 < 60; t2++) {
+        const X = at.x + Math.floor(gr() * 5) - 2, Z = at.z + Math.floor(gr() * 5) - 2, j = I(X, Z);
+        if (inMap(X, Z) && reach[j] && !block[j] && !members.some((m) => m.x === X && m.z === Z)) members.push({ x: X, z: Z, kind: KIND.goblin, level: 1 + tier * 2 + Math.floor(gr() * 2) });
+      }
+      if (members.length) packs.push({ x: at.x, z: at.z, tier, members });
+    }
+  }
+  // A kind the draw left out takes one place in a pack whose tier lists it, from a kind there is more than one of.
+  const count = new Map();
+  for (const p of packs) for (const m of p.members) count.set(m.kind, (count.get(m.kind) || 0) + 1);
+  ZOMBIES.forEach((zd, k) => {
+    if (zd.boss || count.get(k)) return;
+    for (const p of [...packs].sort((a, b) => b.members.length - a.members.length)) {
+      if (!tierKinds[p.tier].includes(k)) continue;
+      const m = p.members.find((o) => count.get(o.kind) > 1);
+      if (!m) continue;
+      count.set(m.kind, count.get(m.kind) - 1); m.kind = k; count.set(k, 1);
+      return;
+    }
+  });
   // one easy pack close to the road, so the first fight is a short walk
   {
     let best = null;
@@ -223,9 +377,11 @@ export function buildWorld(seed = 4013) {
       packs.push({ x: best.x, z: best.z, tier: 0, members });
     }
   }
+  // the crypt's keeper and its company, on the dais (last, so the woods' packs keep their numbers)
+  packs.push({ x: crypt.x, z: crypt.z, tier: 4, crypt: true, members: CRYPT_PACK.map(([id, level], k) => ({ ...crypt.spots[k], kind: KIND[id], level })) });
 
   return {
-    N, seed, type, h, block, road, reach, trees, buildings, well, board, knolls, chests, packs, start, lisandraSpot,
+    N, seed, type, h, block, road, reach, trees, buildings, well, board, knolls, chests, packs, start, lisandraSpot, crypt,
     I, inMap, inTown,
     walkable(x, z) { return inMap(x, z) && !block[I(x, z)]; },
     height(x, z) { return inMap(x, z) ? h[I(x, z)] : 0; },
