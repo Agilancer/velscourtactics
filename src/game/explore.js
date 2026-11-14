@@ -208,8 +208,10 @@ export class Explore {
     const g = this.g, L = this.leader, w = g.world;
     g.st.pos = { x: L.x, z: L.z };
     const town = w.inTown(L.x, L.z);
-    if (this.inTown !== null && town !== this.inTown) g.ui.banner(town ? 'Herrington Hollow' : 'The Pines', town ? 'Forty roofs, one well' : 'The dead are in there');
-    this.inTown = town;
+    const land = w.regionAt(L.x, L.z);
+    if (this.inTown !== null && town !== this.inTown) g.ui.banner(town ? 'Herrington Hollow' : land.name, town ? 'Forty roofs, one well' : land.sub);
+    else if (this.land && land !== this.land && !town) g.ui.banner(land.name, land.sub);
+    this.inTown = town; this.land = land;
     if ((L.x <= 1 || L.z <= 1 || L.x >= N - 2 || L.z >= N - 2) && !this.endSaid) { this.endSaid = true; g.ui.toast(ROAD_END); setTimeout(() => { this.endSaid = false; }, 9000); }
     this.updatePrompt();
     this.look();

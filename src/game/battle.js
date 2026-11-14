@@ -201,9 +201,10 @@ export class Battle {
     if (u.side === 'foe') {
       this.xp += u.s.xp; this.slain.push(u); this.st.slain[u.id] = this.st.day; noteKill(this.st, u.zdef.id);
       if (u.zdef.burst) {
-        this.say('The bonesack bursts.');
+        const what = u.zdef.burst === true ? 'poison' : u.zdef.burst;
+        this.say(`${esc(u.name)} bursts.`);
         sfx.squelch(u.model.position);
-        for (const o of this.units) if (o.alive && o.side !== 'foe' && manhattan(o.x, o.z, u.x, u.z) <= 1) { this.hurt(o, Math.max(1, Math.round(u.s.atk * 0.5)), null); this.addStatus(o, ['poison', 3, 1]); }
+        for (const o of this.units) if (o.alive && o.side !== 'foe' && manhattan(o.x, o.z, u.x, u.z) <= 1) { this.hurt(o, Math.max(1, Math.round(u.s.atk * 0.5)), null); this.addStatus(o, [what, 3, 1]); }
       }
     }
     if (u.hero) u.hero.hp = 0;

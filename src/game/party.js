@@ -7,7 +7,7 @@ import { QUESTS } from '../data/enemies.js';
 export const PARTY_MAX = 6;
 export const SLOTS = ['weapon', 'armor', 'helm', 'ring1', 'ring2', 'amulet'];
 export const SLOT_NAMES = { weapon: 'Weapon', armor: 'Armor', helm: 'Helm', ring1: 'Ring', ring2: 'Ring', amulet: 'Charm' };
-const SAVE_KEY = 'velscour-tactics-save-1';
+const SAVE_KEY = 'velscour-tactics-save-2';
 
 export const xpNeed = (lvl) => 40 + 25 * lvl * lvl;
 

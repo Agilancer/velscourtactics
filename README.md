@@ -1,7 +1,7 @@
 # VELSCOUR TACTICS
 
-An isometric open-world tactics game in the VELSCOUR universe. You walk Herrington Hollow and the pines
-round it with a party of up to six in a chain behind you; when one of the dead sees you, the walk stops
+An isometric open-world tactics game in the VELSCOUR universe. You walk Herrington Hollow, the pines
+round it and the four lands past the pines with a party of up to six in a chain behind you; when one of the dead sees you, the walk stops
 and it becomes a turn-based fight on the spot, Final Fantasy Tactics style.
 
 This is the first playable build. Lisandra has her real model; every other figure is a stand-in made of boxes until the Meshy models arrive
@@ -73,15 +73,21 @@ either order. Click or tap a tile, or steer the cursor with the d-pad and press 
 
 ## What is in it
 
-- **Herrington Hollow**: eleven buildings, a well, a bounty board, ringed with trees, three roads out
-  (north, east, south) that run to the map's edge and stop.
+- **Herrington Hollow**: eleven buildings, a well, a bounty board, ringed with trees, four roads out.
+- **Four lands past the pines**, one down each road (the map is 256 tiles square): the **White Waste** north
+  (snow, ice, snow pines, the Frozen Border Fort), the **Red Badlands** east (sand, cracked clay, hoodoos, the
+  Dry Court, and the palms at Last Water), the **Drowned Fen** south (black pools, bare trees, the Swamp Abbey)
+  and the **Cinder Reach** west (ash, basalt, a dead rail line, Cinder Halt). The names are VELSCOUR's
+  (the Great Hunt's lands, the Siege's forts, the Iron Express); the ground is bm's snow, fen, ash and desert textures.
 - **Sixteen classes** from VELSCOUR, male and female, four skills each opening at levels 1, 3, 6, 10
   (`src/data/classes.js`), plus Lisandra's own.
 - **Thirteen people to walk with**: Lisandra (from the start), Homunculus the Proud, Lily Belle the
   Veiled, Jamie the Curator, Stevie the Stronger, and eight more standing about the Hollow.
 - **Ten shops**: weapons, armour, spell scrolls, gems, rings and charms, bag room, enhancing (+1 to +10),
   enchanting, sockets and gem removal, and the inn (beds and draughts).
-- **Five kinds of the dead** in 21 packs, harder the farther from town, and a bounty for each kind.
+- **Seventeen kinds of the dead** in about 80 packs: five in the pines, two in each land beyond (levels 10 to 17),
+  and a lord at home in each land's ruin with a chest behind it. A bounty for each kind, a writ for each lord.
+  The twelve new ones are stand-ins until their Meshy models are made (`docs/MODELS.md` sections 5 and 7).
 - **Auto-play**: rests, reads the board, fills the party, hunts, fights, wears what is better.
 
 ## Where things are

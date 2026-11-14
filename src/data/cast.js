@@ -95,17 +95,17 @@ export const FOLK = [
     sub: { name: 'Brother Anselm', title: 'Minds the bench', look: { cls: 'totem_master', g: 'm', tint: 0x5a5a6a }, lines: ['He took the good drill. I have the other drill.', 'A socket is a promise. I was told to say that.'] },
     lines: ['A socket is a promise. I can drill your gear, or pry those gems back out.', 'The Hollow’s named for my people. Nobody asked us. We’d have said something shorter.'] },
   // the eight
-  { id: 'wren', hero: 'wren', at: [66, 76] }, { id: 'ismene', hero: 'ismene', at: [74, 62] }, { id: 'mortimer', hero: 'mortimer', at: [86, 74] },
-  { id: 'brakka', hero: 'brakka', at: [61, 67] }, { id: 'kestrel', hero: 'kestrel', at: [62, 54] }, { id: 'maudlin', hero: 'maudlin', at: [47, 75] },
-  { id: 'jasper', hero: 'jasper', at: [57, 74] }, { id: 'flint', hero: 'flint', at: [86, 62] },
+  { id: 'wren', hero: 'wren', at: [130, 140] }, { id: 'ismene', hero: 'ismene', at: [138, 126] }, { id: 'mortimer', hero: 'mortimer', at: [150, 138] },
+  { id: 'brakka', hero: 'brakka', at: [125, 131] }, { id: 'kestrel', hero: 'kestrel', at: [126, 118] }, { id: 'maudlin', hero: 'maudlin', at: [111, 139] },
+  { id: 'jasper', hero: 'jasper', at: [121, 138] }, { id: 'flint', hero: 'flint', at: [150, 126] },
   // townsfolk with something to say
-  { id: 'kit', name: 'Kit', title: 'aged seven', at: [66, 66], small: true, look: { cls: 'bard', g: 'm', tint: 0xa08a6a },
+  { id: 'kit', name: 'Kit', title: 'aged seven', at: [130, 130], small: true, look: { cls: 'bard', g: 'm', tint: 0xa08a6a },
     lines: ['Are you a hero? I’m seven.', 'I found a skeleton finger! ...It’s holding ME.', 'You have to walk funny past the well. It’s the rules.'] },
-  { id: 'jory', name: 'Jory Pell', title: 'Night Watchman', at: [62, 76], look: { cls: 'lancer', g: 'm', tint: 0x5a6a7a },
+  { id: 'jory', name: 'Jory Pell', title: 'Night Watchman', at: [126, 140], look: { cls: 'lancer', g: 'm', tint: 0x5a6a7a },
     lines: ['We hold the town. You hold the pines.', 'They come to the tree line and stop. Every night. Like they’re waiting for a bell.', 'Skulls don’t lie. Lanterns do, now and then.'] },
-  { id: 'hob', name: 'Hob Fenwick', title: 'Farmer', at: [69, 69], look: { cls: 'totem_master', g: 'm', tint: 0x7a7a4a },
+  { id: 'hob', name: 'Hob Fenwick', title: 'Farmer', at: [133, 133], look: { cls: 'totem_master', g: 'm', tint: 0x7a7a4a },
     lines: ['Fine weather for dying. I mean, drying.', 'One of the fast ones took a goat off my line. In daylight. She was a good goat.', 'Everything bad’s out the east road. Or the north. Or the south. It’s a small town.'] },
-  { id: 'agnes', name: 'Dowager Agnes', title: 'buried two kings', at: [59, 61], look: { cls: 'carrion_witch', g: 'f', tint: 0x6a4a6a },
+  { id: 'agnes', name: 'Dowager Agnes', title: 'buried two kings', at: [123, 125], look: { cls: 'carrion_witch', g: 'f', tint: 0x6a4a6a },
     lines: ['I buried two kings and a dragon, child. You’ll keep.', 'Come home whole. That is my only command.', 'The sky’s the colour of a bruise. It has been for forty years.'] },
 ];
 
@@ -125,9 +125,9 @@ export const LISANDRA_CHAT = [
   'And if you hear a bell at midnight, stay indoors. Nobody living rings it.',
   'Don’t look at me like that. It’s the dust. I am not crying.',
   'Every one of them asks after you. Not one asks after me. I’d be hurt, if I weren’t delighted.',
-  'Three roads out of the Hollow and all of them go nowhere. Yet. Give it time. Roads are patient.',
+  'Four roads out of the Hollow. Snow, sand, bog and ash. I’ve walked all four. I recommend none of them.',
 ];
 
 export const WELL_LINES = ['Forty roofs, one well. The water is cold and tastes of iron and old bells.', 'Somebody has scratched a tally into the rim. It stops at forty-three.'];
-export const ROAD_END = 'The road goes on. You don’t, yet. There is nothing out there but pines and whoever is standing in them.';
+export const ROAD_END = 'The road goes on. You don’t, yet. Whatever is past here has not been given a name, and you are not the one to give it.';
 export const CHEST_LINE = 'Somebody buried this up here where the dead don’t climb.';
