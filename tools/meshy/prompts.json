@@ -21,7 +21,7 @@
   "negative": "generic fantasy, plain armor, simple clothes, peasant, chibi, cartoon, big head, cute, stylized low-poly, weapon in hand, text, letters, runes, logo, heraldic emblem, skull shoulder pads, glowing eyes, base, pedestal, multiple characters",
 
   "settings": {
-    "pose": "a-pose for the picture and the 3D step; bodies always have empty hands, weapons are separate models",
+    "pose": "a-pose for the picture and the 3D step; bodies always have empty hands, weapons are separate models (the a-pose 3D step drops anything held in the picture anyway)",
     "triangles": "about 30k for heroes and classes, 15-20k for monsters and townsfolk",
     "textures": "2k from Meshy; the game copy is cut to 1024",
     "route": "text to image first (so the design can be seen and checked for letters and emblems), then image to 3D, then rig",
@@ -52,7 +52,7 @@
     "bard": "A roguish court minstrel, a handsome man; a wine-red and black doublet of quilted brocade with one sleeve slashed to gold silk, a wide feathered hat cocked to one side, a long asymmetric half-cape lined in indigo, ornate knife sheaths on a baldric of silver links, thigh boots with turned cuffs, fingerless gloves, ribbons and small bells at the cuffs",
     "slime_lord": "A king made of translucent cobalt slime in the shape of a stout man; an ornate tarnished gold crown sinking into his head, a royal mantle of ermine and wine velvet half dissolved inside the body, gold chains of office and jeweled rings floating in the slime, an engraved gold cuirass worn like a corset over the ooze",
     "boomerang_knight": "A dashing knight of the returning moon, a lean man; a teal and silver surcoat over fine engraved mail, a rounded crested helm with a tall white plume, a single crescent-shaped pauldron, two great curved blade holsters crossed on the back, a short cape pinned at one shoulder, tall riding boots with silver spurs, long gauntlets",
-    "lancer": "An unbreakable knight-captain, a massive man; towering pale-steel full plate with fluted engraved borders, a bucket helm crowned with a flat crest and a ring of small banners, enormous layered pauldrons, a tower-shield bracket on the left arm, a long white and grey tabard, a banner pole socket on the back, heavy sabatons",
+    "lancer": "An unbreakable knight-captain, a massive broad man; the heaviest and biggest armour of any class, towering ornate full plate of pale grave steel and tarnished gold, every plate thick, fluted and edged with engraved scrollwork: huge layered pauldrons as big as the helm, a deep rounded breastplate with a tall gorget, broad articulated tassets, enormous gauntlets and thick armoured sabatons; a plain flat-topped bucket helm with one horizontal eye slit and rows of small breathing holes, no cross and no strip down the faceplate; a long white and grey tabard; a tower-shield bracket on the left forearm",
     "dragon_knight": "A knight with a wyrm's blood, a fierce woman; crimson scale armor with black lacquer and tarnished gold trim, an open horned helm, scaled gauntlets ending in claws, a cloak lined in ember orange cut like a pair of folded wings, a single dragon-jaw pauldron, armored tassets of overlapping scales, a tail-like trailing sash",
     "gunner": "A powder-stained master engineer, a weathered man; a long oilskin greatcoat with brass buttons and a high collar over a tooled leather cuirass, ornate brass goggles on a tall leather cap, bandoliers of engraved brass charges crossed on the chest, a heavy tool belt, one mechanical brass gauntlet of gears and pistons, scorched gloves, tall buckled boots"
   },
@@ -88,7 +88,8 @@
     "w_wand": "bone wand bound in silver wire with a candle-stub tip",
     "w_lute": "battered ornate lute inlaid with mother-of-pearl, a mourning ribbon tied at the neck",
     "w_shield_kite": "kite shield with an engraved border of scrollwork, plain painted field, no device",
-    "w_shield_tower": "tall tower shield with fluted steel edging, plain painted field, no device"
+    "w_shield_tower": "tall tower shield of fluted steel edged in tarnished gold, curved like a half-cylinder, as tall as a man's chest to his ankle, plain unmarked field, no device",
+    "w_lance": "three-metre jousting lance: a long fluted shaft tapering to a leaf-shaped steel point, painted in spiral bands of black and tarnished gold, a great bell-shaped steel vamplate guarding the grip, a short leather grip and a steel butt below it"
   },
 
   "armour": {

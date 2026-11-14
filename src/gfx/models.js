@@ -288,13 +288,30 @@ function inPlace(clip, home) {
 //   bones: {boneNameEnding: scale}   proportions, nearer the compact tactics look (legs shorter, head bigger)
 //   outline: thickness               a dark hull round the figure so it reads against the ground
 //   normal: strength                 how hard the baked normal map bites
-//   glow: { bone, at: [x,y,z], color, size, light, held: {state: bone} }   a lit thing she carries }
+//   glow: { bone, at: [x,y,z], color, size, light, held: {state: bone} }   a lit thing she carries
+//   props: [{ file, bone, at: [x,y,z], rot: [x,y,z,w], scale }]   held models (a lance, a shield) hung on a bone, placed in
+//          its frame; tools/blender/retarget.py works the numbers out (Target.props) and turns the hands in every clip }
+const glb = (file) => {
+  if (!loaded.has(file)) loaded.set(file, new Promise((res, rej) => new GLTFLoader().load('assets/models/' + file, res, undefined, rej)));
+  return loaded.get(file);
+};
 export function withOverride(key, standIn) {
   const def = manifest && manifest[key];
   if (!def) return standIn;
   const holder = new THREE.Group();
   holder.add(standIn);
   holder.userData = { ...standIn.userData };
+  const paint = (obj) => obj.traverse((o) => {
+    if (!o.isMesh) return;
+    o.frustumCulled = false;                             // a skinned mesh's bounds are its rest pose's
+    o.material = o.material.clone();
+    // exports often arrive marked as blended; a body is solid unless the manifest says otherwise
+    if (!def.blend) { o.material.transparent = false; o.material.depthWrite = true; o.material.opacity = 1; o.material.alphaTest = 0; }
+    // There is no environment to reflect, so metal would go black: Meshy's bakes are read as matte paint.
+    if (def.matte !== false) { o.material.metalness = 0; o.material.metalnessMap = null; o.material.roughness = 1; o.material.roughnessMap = null; }
+    // lift: how much of the model's own colour glows back, so dark costumes still read at this distance
+    if (def.lift) { o.material.emissive = new THREE.Color(0xffffff); o.material.emissiveMap = o.material.map; o.material.emissiveIntensity = def.lift; }
+  });
   const use = (gltf) => {
     const obj = cloneSkinned(gltf.scene);
     obj.updateMatrixWorld(true);
@@ -302,20 +319,19 @@ export function withOverride(key, standIn) {
     const want = def.height || standIn.userData.height || 1.6;
     obj.scale.setScalar(want / h); obj.position.y = -bb.min.y * (want / h);
     obj.rotation.y = def.turn || 0;
-    obj.traverse((o) => {
-      if (!o.isMesh) return;
-      o.frustumCulled = false;                           // a skinned mesh's bounds are its rest pose's
-      o.material = o.material.clone();
-      // exports often arrive marked as blended; a body is solid unless the manifest says otherwise
-      if (!def.blend) { o.material.transparent = false; o.material.depthWrite = true; o.material.opacity = 1; o.material.alphaTest = 0; }
-      // There is no environment to reflect, so metal would go black: Meshy's bakes are read as matte paint.
-      if (def.matte !== false) { o.material.metalness = 0; o.material.metalnessMap = null; o.material.roughness = 1; o.material.roughnessMap = null; }
-      // lift: how much of the model's own colour glows back, so dark costumes still read at this distance
-      if (def.lift) { o.material.emissive = new THREE.Color(0xffffff); o.material.emissiveMap = o.material.map; o.material.emissiveIntensity = def.lift; }
-    });
+    paint(obj);
     const bones = {};
     obj.traverse((o) => { if (o.isBone) bones[o.name] = o; });
     const find = (end) => Object.keys(bones).filter((n) => n.endsWith(end)).map((n) => bones[n]);
+    for (const pr of def.props || []) {                  // held models, each on its bone (added after the height is measured)
+      const b = find(pr.bone)[0];
+      if (!b) { console.warn('model', key, 'has no bone', pr.bone, 'for', pr.file); continue; }
+      glb(pr.file).then((g) => {
+        const m = g.scene.clone(true);
+        m.position.fromArray(pr.at); m.quaternion.fromArray(pr.rot); m.scale.setScalar(pr.scale || 1);
+        paint(m); b.add(m);
+      }).catch((e) => console.warn('model', key, 'could not load', pr.file, e));
+    }
     // proportions: scale some bones every frame (the clips don't key scale), and put the feet back on the ground
     const scaled = [];
     for (const [end, k] of Object.entries(def.bones || {})) for (const b of find(end)) scaled.push([b, k]);
@@ -383,12 +399,13 @@ export function withOverride(key, standIn) {
       const a = holder.userData.anim;
       if (a && a.state !== 'dead' && !LOOPS.has(a.state)) { a.state = ''; setAnim(holder, 'idle'); }
     });
-    const st = holder.userData.anim?.state || 'idle';
-    if (holder.userData.anim) holder.userData.anim.state = '';
+    // start whatever it was doing (idle if nothing has animated it yet: setAnim would take that for already playing)
+    const a = (holder.userData.anim ||= { state: 'idle', t: 0, hold: 0 }), st = a.state || 'idle';
+    a.state = '';
     setAnim(holder, st);
+    holder.userData.mixer.update(0);                     // posed now, not in the file's A-pose until something animates it
   };
-  if (!loaded.has(def.file)) loaded.set(def.file, new Promise((res, rej) => new GLTFLoader().load('assets/models/' + def.file, res, undefined, rej)));
-  loaded.get(def.file).then(use).catch((e) => console.warn('model', key, 'failed to load; keeping the stand-in', e));
+  glb(def.file).then(use).catch((e) => console.warn('model', key, 'failed to load; keeping the stand-in', e));
   return holder;
 }
 

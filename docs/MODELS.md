@@ -123,6 +123,14 @@ object, vertical, plain background, game-ready low-poly.
 | `w_wand` | bone wand with a candle-stub tip |
 | `w_lute` | battered travelling lute with a mourning ribbon |
 | `w_shield_kite`, `w_shield_tower` | kite shield / tall tower shield, plain painted field, no device |
+| `w_lance` | the lancer's three-metre jousting lance, as in bm: fluted shaft tapering to a leaf point, bell-shaped vamplate over a short grip |
+
+The lancer carries `w_lance` (3 m) in the right fist and `w_shield_tower` (1.24 m) in the left. Don't draw them into the
+body's picture: the A-pose 3D step leaves out anything held, so the lancer bodies come out empty-handed like the rest.
+In the game they hang on the hand bones by the manifest's `props` (section 9), and `retarget.py` turns the hands in every
+lancer clip so they point the right way: the lance upright, level at the foe in Thrust and Charge; the shield's face out to
+the left, or square to the front in Guard_Up and Shield_Bash. Each file is in metres, upright along +Y (Blender's +Z), its
+grip at the origin; the shield's face is toward +Z (Blender's -Y).
 
 ## 5. The dead, and what the classes summon
 
@@ -279,6 +287,7 @@ Wolf: `idle`, `run`, `bite`, `hit`, `dead`. Slime: `idle`, `hop`, `lunge`, `dead
 | `glow` | a lit thing she carries: a glow and a small light at a bone, which moves to another bone in the states listed in `held` |
 | `trim` | `{state: [from, to]}`: the seconds of the clip to keep for that state; library clips come with long wind-ups, and a blow has to land 0.26 s after it starts |
 | `matte` | `false` keeps the file's metalness (there is no environment to reflect, so the default reads metal as paint) |
+| `props` | held models, each `{file, bone, at, rot, scale}`: a weapon's own file hung on the bone whose name ends with `bone`, placed at `at` and turned by the quaternion `rot` in that bone's frame. Don't work these out by hand: `Target.props()` in `retarget.py` prints them after `build`, and the clips are made to suit them (the lancers' entries are the example) |
 
 A model with no entry keeps its stand-in, so they can arrive one at a time.
 

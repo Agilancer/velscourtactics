@@ -81,7 +81,7 @@ function place() {
 }
 
 const PARTY = ['stevie', 'homunculus', 'lily', 'jamie', 'lisandra'];
-const PLATE = ['paladin_m', 'paladin_f', 'death_knight_m', 'dragoon_m', 'barbarian_m', 'barbarian_f'];
+const PLATE = ['paladin_m', 'paladin_f', 'death_knight_m', 'death_knight_f', 'dragoon_m', 'dragoon_f', 'barbarian_m', 'barbarian_f', 'lancer_m', 'lancer_f'];
 function group(key) {
   if (/^zombie/.test(key)) return 'Zombies';
   if (PARTY.includes(key)) return 'Party';
