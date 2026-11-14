@@ -284,6 +284,7 @@ function inPlace(clip, home) {
 }
 // Wraps a stand-in: if the manifest names a .glb for this key, the stand-in is replaced once it loads.
 // Manifest entry: { file, height, turn, anims: {state: clipName}, speed: {state: n}, inPlace, matte, lift,
+//   trim: {state: [from, to]}        seconds of the clip to keep for that state
 //   bones: {boneNameEnding: scale}   proportions, nearer the compact tactics look (legs shorter, head bigger)
 //   outline: thickness               a dark hull round the figure so it reads against the ground
 //   normal: strength                 how hard the baked normal map bites
@@ -369,7 +370,13 @@ export function withOverride(key, standIn) {
     let home = null;
     const prep = (c) => { if (def.inPlace) { const k = c.clone(); home = inPlace(k, home); return k; } return c; };
     const order = Object.entries(def.anims || {}).sort((a, b) => (a[0] === 'idle' ? -1 : b[0] === 'idle' ? 1 : 0));
-    for (const [state, name] of order) { const c = gltf.animations.find((c) => c.name === name); if (c) clips[state] = prep(c); else console.warn('model', key, 'has no clip named', name); }
+    for (const [state, name] of order) {
+      let c = gltf.animations.find((c) => c.name === name);
+      if (!c) { console.warn('model', key, 'has no clip named', name); continue; }
+      const cut = def.trim && def.trim[state];             // [from, to] in seconds: library clips come with long wind-ups
+      if (cut) c = THREE.AnimationUtils.subclip(c, name + ':' + state, Math.round(cut[0] * 30), Math.round(cut[1] * 30), 30);
+      clips[state] = prep(c);
+    }
     if (!clips.idle && gltf.animations[0]) clips.idle = gltf.animations[0];
     holder.userData.clips = clips;
     holder.userData.mixer.addEventListener('finished', () => {

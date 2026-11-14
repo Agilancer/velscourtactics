@@ -18,3 +18,8 @@ Real models replace stand-ins by key through `assets/models/manifest.json`; `doc
 the manifest's fields and the animation states. Lisandra is the worked example. To see a model in the
 running game, serve with `python tools/serve.py 8417` (it saves screenshots the page posts) and tile
 them with `python tools/sheet.py <tag>`.
+
+The Meshy prompts (the look, the style blocks, a subject line per model) are data in `tools/meshy/prompts.json`;
+`node tools/meshy/prompt.mjs <key> [image]` prints one ready to paste. New models go picture, 3D, rig, then
+`tools/blender/retarget.py` for the animation set: `docs/MODELS.md` section 12 is the recipe. Meshy costs
+credits: state the cost and get a yes before generating.

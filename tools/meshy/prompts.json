@@ -1,0 +1,104 @@
+{
+  "_about": "The Meshy prompts for every model in VELSCOUR TACTICS. A full prompt is a subject line plus a style block. `node tools/meshy/prompt.mjs <key>` prints one ready to paste; `node tools/meshy/prompt.mjs` lists the keys. docs/MODELS.md explains the look and what each model is for.",
+
+  "look": [
+    "Tactics-RPG job-class figures in the manner of the three Final Fantasy Tactics games, turned grim.",
+    "From the PlayStation game: compact figures about five heads tall, small plain faces with almost no nose, big gloves and boots, layered cloth over armour, muted earth and wine colours, each job readable from its hat and outline alone.",
+    "From the Game Boy Advance game: chunky, slightly oversized hands, feet and headgear, so a figure still reads when it is two centimetres tall on screen.",
+    "From the DS game: more costume detail per job (belts, pouches, trims, asymmetric pieces) and a distinct male and female cut of the same uniform.",
+    "Made VELSCOUR: the Grim Nocturne palette (grave steel, reliquary gold, wine, night indigo, undead flesh), worn, patched and travel-stained, lit as if by one lantern. Rarity shows in the craft of the costume, never in brightness.",
+    "Never: skull pauldrons, spikes on everything, glowing red eyes, faceless hoods, bat wings, neon, chains on everything. By the V and T rule, no letters or monograms anywhere."
+  ],
+
+  "style": {
+    "character": "Stylized hand-painted tactics-RPG character, compact 5-heads-tall proportions, small plain face with a tiny nose, oversized gloves and boots, layered worn cloth over armor, muted grimdark palette of grave steel, wine red, night indigo and tarnished gold, matte painted textures, no glow, no text or symbols. Full body, A-pose, arms 45 degrees down, legs slightly apart, empty hands, neutral expression, single character, plain background, game-ready low-poly.",
+    "monster": "Stylized hand-painted tactics-RPG monster, chunky readable silhouette, oversized hands and feet, muted grimdark palette of undead flesh, grave steel, wine red and night indigo, matte painted textures, no glow, no text or symbols. Full body, A-pose, arms 45 degrees down, legs slightly apart, single figure, plain background, game-ready low-poly.",
+    "creature": "Stylized hand-painted tactics-RPG creature, chunky readable silhouette, muted grimdark palette, matte painted textures, no glow, no text or symbols. Whole body, neutral standing pose, single creature, plain background, game-ready low-poly.",
+    "weapon": "A single {subject}, stylized hand-painted tactics-RPG prop, chunky readable silhouette, worn grimdark materials, grave steel and dark wood with tarnished gold fittings, matte, no glow, no text. Isolated object, vertical, plain background, game-ready low-poly.",
+    "image": "Character design sheet, front view, full body head to toe, standing in a relaxed A-pose with arms 45 degrees down and empty open hands, legs slightly apart, flat even lighting, plain light grey background, no text, no letters, no logo, no weapon."
+  },
+
+  "negative": "weapon in hand, text, letters, logo, skull shoulder pads, spikes, glowing eyes, realistic photo, long legs, tall thin proportions, base, pedestal, multiple characters",
+
+  "settings": {
+    "pose": "a-pose for the picture, t-pose or a-pose on the 3D step; bodies always have empty hands, weapons are separate models",
+    "triangles": "about 15-25k for heroes, 8-15k for monsters and townsfolk",
+    "textures": "2k is plenty; the game copy is cut to 1024",
+    "route": "text to image first (so the design can be seen and checked for letters), then image to 3D, then rig"
+  },
+
+  "gender": "Each class needs a male and a female body. Keep the uniform; give the female cut a shorter coat or tabard and the male cut broader shoulders. The subject lines below describe one of the two; swap 'man' and 'woman' for the other.",
+
+  "named": {
+    "lisandra": "An old witch three hundred years old, bent and sharp-eyed, long patched brown gown, crooked hat with no tassel, a lantern at her belt, good cheekbones",
+    "homunculus": "An enormous, magnificent, beaming blacksmith in a leather apron over mismatched plate, huge forearms, a hammer loop, a great double-crescent axe strapped to his back",
+    "lily": "A veiled sorceress in deep green and violet, floating rune charms on threads, crystal at the throat, face hidden below the eyes",
+    "jamie": "A lean monk-jeweler with a hand drill on a cord and jeweler's lenses pushed up on his forehead, teal surcoat, many small pouches",
+    "stevie": "A broad armoured woman with a dented helmet and a tower shield, sleeves rolled, armourer's apron over plate"
+  },
+
+  "classes": {
+    "paladin": "A weary holy knight, dark-skinned bearded man, dented silver plate with a navy tabard and gold trim, flat-topped great helm, processional sash, kite shield strap on the back",
+    "ranger": "A wildwood archer woman, moss-green hooded cloak, patched leather jerkin, bracers, quiver on the hip, feathers and a hawk's jess at the belt, mud to the knee",
+    "wizard": "An elemental scholar, tall drooping pointed hat with a wide brim, rust-orange robe with gold hem singed black at the cuffs, ink-stained gloves, book chained at the belt",
+    "necromancer": "A courteous undertaker-mage, deep violet funeral coat with bone toggles, top-knot under a mourning hood, grave-dirt on the hem, a string of finger bones as a rosary",
+    "barbarian": "A muscular red-haired northern pit-fighter woman, horned fur cap, bare scarred arms, wolf pelt over one shoulder, wide studded belt, wrapped fists",
+    "dragoon": "A lancer who leaps, blue-grey scaled half-plate, tall swept-back wyrm-crest helm with a visor, long split tail-coat, heavy landing greaves",
+    "totem_master": "A spirit-pole shaman, carved wooden face-mask pushed up on the head, teal poncho with ochre bands, feather and bone talismans, bare feet wrapped in cord",
+    "death_knight": "A fallen champion, blackened plate rimed with frost, closed helm with a narrow slit, tattered wine cloak frozen stiff, pale blue geometric inlay on the breastplate",
+    "arcane_sorcerer": "A veiled star-gazer, night-indigo robe sewn with pale star studs, astrolabe on a chain, half-veil over the lower face, tall collar, brass lens on a headband",
+    "carrion_witch": "A swamp hag, crooked wide-brimmed black hat, moss-green ragged gown, crow feathers at the shoulders, a rag poppet doll tied to the belt, muddy hem",
+    "bard": "A roguish travelling minstrel, wine-red doublet with one sleeve slashed, feathered cap, half-cape, knife sheaths, fingerless gloves",
+    "slime_lord": "A king made of translucent cobalt slime in the shape of a stout man, small tarnished gold crown sinking into his head, a royal mantle floating inside the body",
+    "boomerang_knight": "A dashing light knight, teal surcoat over mail, rounded steel cap with a white plume, two curved-blade holsters crossed on the back, tall riding boots",
+    "lancer": "An unbreakable knight-captain, heavy pale-steel full plate, bucket helm with a flat crest, broad pauldrons, tower-shield bracket on the left arm, banner pole socket on the back",
+    "dragon_knight": "A wyrm-blooded knight, crimson scale armour with black trim, horned open helm, scaled gauntlets ending in claws, ember-orange lining to the cloak",
+    "gunner": "A powder-stained engineer, brass goggles on a leather cap, long oilskin coat, bandolier of charges, heavy tool belt, scorched gloves"
+  },
+
+  "zombies": {
+    "zombie_shambler": "A risen villager, grey-green skin, burial shroud and work clothes, one shoe, slack jaw, arms hanging",
+    "zombie_gnawer": "A thin fast ghoul on all fours, long arms, stretched jaw, torn nightshirt, hunched to run",
+    "zombie_lurker": "A dead woodsman half-covered in pine needles and moss, built to lie flat, one clawed hand forward",
+    "zombie_bonesack": "A bloated corpse, belly swollen and split with yellow sacs, stubby legs, head tipped back",
+    "zombie_brute": "A huge corpse too big for one grave, broken chains at wrists and neck, iron collar, stitched shoulders"
+  },
+
+  "summons": {
+    "skeleton": "A plain skeleton with a rusted cap and a splinter of a blade",
+    "ghoul": "A violet-grey ghoul, hunched, long nails",
+    "squire": "A small knight in plain plate with a short lance",
+    "wolf": "A lean grey wolf, scarred muzzle",
+    "slime": "A knee-high cobalt slime with two dark eyes",
+    "whelp": "A cat-sized red dragon whelp with stubby wings",
+    "turret": "A brass clockwork gun on a tripod",
+    "totem": "A carved wooden spirit pole of three stacked faces, bear, bird and serpent"
+  },
+
+  "weapons": {
+    "w_sword": "short arming sword with a wide blade and a simple crossguard",
+    "w_axe": "bearded one-handed war axe on a notched haft",
+    "w_mace": "flanged chapel mace shaped like a small bell",
+    "w_spear": "long boar spear with a leaf blade and a lugged socket",
+    "w_bow": "recurved hunting bow, leather-wrapped grip",
+    "w_pistol": "heavy brass-fitted flintlock pistol with a flared muzzle",
+    "w_boomerang": "hooked steel throwing blade, curved like a crescent",
+    "w_staff": "gnarled grave-iron staff shod with bone, caged ember at the head",
+    "w_wand": "bone wand with a candle-stub tip",
+    "w_lute": "battered travelling lute with a mourning ribbon",
+    "w_shield_kite": "kite shield, plain painted field, no device",
+    "w_shield_tower": "tall tower shield, plain painted field, no device"
+  },
+
+  "armour": {
+    "_about": "Append one of these to a class subject line. Meshy makes one fused mesh, so each armour look is the whole character generated again and rigged the same way. Start with tiers 1 and 3.",
+    "cloth": ["threadbare patched robe, rope belt", "shroud-silk robe, plain hem", "scholar's layered robe, embroidered cuffs", "vigil robe with metal-thread trim and mantle", "ancient vestment, heavy brocade, tarnished gold clasps"],
+    "leather": ["cracked hide scraps, mismatched straps", "studded leather jerkin", "hunter's long coat with reinforced shoulders", "brigandine with riveted plates", "dark wyrmhide with scaled pauldrons"],
+    "plate": ["rusted chain mail, dented pot helm", "plain iron breastplate over mail", "full steel plate, simple fluting", "templar plate with engraved borders, tabard", "ancient ornate plate, gold inlay, tall crest"],
+    "wears": {
+      "cloth": ["wizard", "necromancer", "arcane_sorcerer", "carrion_witch", "lisandra"],
+      "leather": ["ranger", "barbarian", "bard", "totem_master", "boomerang_knight", "gunner"],
+      "plate": ["paladin", "dragoon", "death_knight", "slime_lord", "lancer", "dragon_knight"]
+    }
+  }
+}

@@ -23,6 +23,7 @@ Tactics-RPG job-class figures in the manner of the three Final Fantasy Tactics g
 
 ### The style block
 
+These prompts are also kept as data in `tools/meshy/prompts.json` (section 12); that file is the one to edit.
 Paste this at the end of every character prompt. (Meshy's prompt box is short; if it cuts you off, drop
 the last sentence first.)
 
@@ -153,7 +154,7 @@ a chest, a signpost, a market stall, fence and wall pieces, six house shapes.
 ## 7. The first batch: what to make first
 
 1. The five named: `lisandra`, `homunculus`, `lily`, `jamie`, `stevie`.
-2. `zombie_shambler`, `zombie_gnawer`, `zombie_lurker`, `zombie_bonesack`, `zombie_brute`.
+2. `zombie_shambler`, `zombie_gnawer`, `zombie_lurker`, `zombie_bonesack`, `zombie_brute`. **Done (section 12).**
 3. Four classes, both genders (eight bodies): `paladin`, `ranger`, `wizard`, `barbarian`.
 4. The ten weapons and the two shields.
 5. `wolf`, `skeleton`, `totem`, `turret`.
@@ -276,6 +277,7 @@ Wolf: `idle`, `run`, `bite`, `hit`, `dead`. Slime: `idle`, `hop`, `lunge`, `dead
 | `outline` | thickness of the dark hull round the figure, in the model's own units |
 | `bones` | scales for bones whose names end with the key: bigger head and hat, shorter legs, the compact tactics look |
 | `glow` | a lit thing she carries: a glow and a small light at a bone, which moves to another bone in the states listed in `held` |
+| `trim` | `{state: [from, to]}`: the seconds of the clip to keep for that state; library clips come with long wind-ups, and a blow has to land 0.26 s after it starts |
 | `matte` | `false` keeps the file's metalness (there is no environment to reflect, so the default reads metal as paint) |
 
 A model with no entry keeps its stand-in, so they can arrive one at a time.
@@ -336,6 +338,78 @@ Her twenty-one clips, on an upright idle (she is not bent):
 
 She has no spear or shield in her hands: weapons are separate models (section 4) and none exist yet, so
 the thrust is an empty-handed lunge for now. She has not been through the critics.
+
+## 12. The five dead, as done
+
+All five zombies are in: `zombie_shambler`, `zombie_gnawer`, `zombie_lurker`, `zombie_bonesack`, `zombie_brute`
+(about 1.1 MB each: 12k triangles, one 1024 JPEG). Made entirely through the Meshy API, 241 credits for the five:
+
+1. a design picture from the section 5 subject line plus the style block (text to image, `nano-banana-pro`, T-pose);
+2. image to 3D with `meshy-t2.5` smart topology at 12,000 triangles and the `meshy-n1` texture;
+3. Meshy's auto-rig (bones are plain `Hips`, `Spine`, `Head`, `LeftUpLeg`..., no `mixamorig:` prefix, so Lisandra's
+   library does not retarget onto them without a rename);
+4. clips from Meshy's animation library, merged into the one file, then trimmed and sped up in the manifest.
+
+| State | Clip | Who |
+|---|---|---|
+| `idle` | `Idle` | all |
+| `walk` | `Mummy_Stagger_inplace` / `Lean_Forward_Sprint_inplace` / `Cautious_Crouch_Walk_Forward_inplace` / `Slow_Orc_Walk_inplace` | shambler / gnawer / lurker / bonesack and brute |
+| `attack` | `Punch_Forward_with_Both_Fists` (the rake and the bite); `Charged_Ground_Slam` | all; brute |
+| `cast`, `cheer` | `Zombie_Scream` (the bonesack's retch) | all |
+| `pounce` | `Jumping_Punch`, the landing half | lurker (Pounce names it with `anim`) |
+| `sweep` | `Axe_Spin_Attack` | brute (Chain Sweep names it with `anim`) |
+| `hit`, `dead` | `Hit_Reaction`, `Dead` | all |
+
+Not made: `alert`, `rise`, the gnawer's four-limbed lope (the rig is a biped's; it sprints bent forward instead),
+the lurker's `play_dead` (it lies in the last frame of `dead`), the bonesack's `burst`. They have not been through the critics,
+and have only been looked at posed in the square, not in a fight.
+
+## 12. Making a model from nothing: the Meshy route
+
+`paladin_m`, `ranger_f` and `wizard_m` were made this way, start to finish, for 29 credits each.
+
+**The prompts live in `tools/meshy/prompts.json`**: the look, the style blocks, the negative prompt and a
+subject line for every model in the game. `node tools/meshy/prompt.mjs <key>` prints one ready to paste
+(`... <key> image` for the picture step, `... <key> 3` to add tier-3 armour); with no key it lists them all.
+Change a prompt there, not here.
+
+1. **Picture** (9 credits): `meshy_text_to_image`, `nano-banana-pro`, `pose_mode: a-pose`, with the
+   `image` prompt. Look at it: right class, right palette, and no letters or marks anywhere (the V and T
+   rule). The pictures are kept in `art/concepts/<key>.png`.
+2. **3D** (15): `meshy_image_to_3d` from that picture, `meshy-t2.5` smart topology at 15,000 triangles,
+   texture `meshy-n1`, `pose_mode: a-pose`.
+3. **Rig** (5): `meshy_rig`. Download `Animation_Walking_withSkin.glb` from its result: the model, its
+   skeleton and the walk the next step calibrates on.
+4. **Animations** (no credits): in Blender, open the motion library `LISANDRA OLD - tactics.blend`, then
+
+   ```python
+   exec(open(r"<repo>/tools/blender/retarget.py").read())
+   T = Target("paladin_m", r"<path>/paladin_m_walk.glb")
+   T.build("paladin")                       # the common set plus the class's own clips
+   T.sheet(["Idle", "Swing", "Smite"], "check")
+   T.export(r"<repo>/assets/models/paladin_m.glb")
+   ```
+
+   It renames Meshy's bones to the library's, measures the offset between the two figures on frame 0 of
+   the walk, carries every library pose across, and composes the clips. It prints how far the library's
+   walk lands from the model's own (8 to 12 degrees at worst on these three). A new class is one more
+   branch in `build()`.
+5. **Game**: an entry in `assets/models/manifest.json` (copy `paladin_m`'s), and `anim` on the class's
+   skills in `src/data/classes.js` so each skill plays its own clip.
+
+Every model made this way has the common sixteen: `Idle`, `Walk`, `Run`, `Hop`, `Cast`, `Hit`, `Stunned`,
+`Wounded`, `Dead_Fall`, `Revive`, `Victory`, `Talk`, `Drink`, `Guard`, `Point`, `Flex`. On top of those:
+
+| Model | Its own clips |
+|---|---|
+| `paladin_m` | `Swing` (plain attack), `Smite`, `Bolt` (Holy Bolt), `Bless` (Blessed Light), `Wave` (Consecration), `Shield_Bash` (unused) |
+| `ranger_f` | `Shoot` (plain attack, Quick Shot, Multishot), `Volley` (Rain of Arrows), `Call` (Wolf Pack) |
+| `wizard_m` | `Bolt` (plain attack, Fire Bolt), `Wave` (Frost Nova), `Meteor`; Chain Lightning uses `Cast` |
+
+None of the three holds a weapon yet (section 4), and none has been through the critics. `paladin_f`,
+`ranger_m` and `wizard_f` are still stand-ins. Finished files for Homunculus, Lily Belle and Jamie are in
+the CHARACTERS folder beside Lisandra's and Stevie's sources, on the library's own rig, and are not in the
+game yet.
 
 ### Looking at a model in the running game
 
