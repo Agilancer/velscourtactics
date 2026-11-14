@@ -192,10 +192,10 @@ export function makeSummon(model) {
 
 // ---- animation: one state machine for every stand-in ----
 // The seven every model has: idle | walk | attack | cast | hit | dead | cheer.
-// A real model may have more (jump, run, wounded, stunned, revive, talk, item, and one per skill);
+// A real model may have more (jump, run, wounded, stunned, guard, revive, talk, item, taunt, point, and one per skill);
 // where it has none, or on a stand-in, the state falls back along this table (null: carry on as you were).
-const FALLBACK = { jump: null, run: 'walk', wounded: 'idle', stunned: 'idle', revive: 'idle', talk: 'idle', item: 'cast' };
-const LOOPS = new Set(['idle', 'walk', 'run', 'wounded', 'stunned', 'talk', 'cheer']);
+const FALLBACK = { jump: null, run: 'walk', wounded: 'idle', stunned: 'idle', guard: 'idle', revive: 'idle', talk: 'idle', item: 'cast', taunt: null, point: null };
+const LOOPS = new Set(['idle', 'walk', 'run', 'wounded', 'stunned', 'guard', 'talk', 'cheer']);
 const STANDIN = new Set(['idle', 'walk', 'attack', 'cast', 'hit', 'dead', 'cheer']);
 export function setAnim(model, state, hold = 0, fallback) {
   const a = (model.userData.anim ||= { state: 'idle', t: 0, hold: 0 });

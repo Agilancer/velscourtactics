@@ -68,7 +68,7 @@ male cut broader shoulders, as the DS game does.
 
 ### The five who matter (remember to send me these)
 
-**Lisandra is in (section 10). I still need the other four from you.** Until they arrive, each wears a class stand-in.
+**Lisandra and Stevie are in (sections 10 and 11). I still need Homunculus, Lily and Jamie from you.** Until they arrive, each wears a class stand-in.
 
 | Key | Who | Subject line |
 |---|---|---|
@@ -285,9 +285,11 @@ A model with no entry keeps its stand-in, so they can arrive one at a time.
 Every model needs the first seven. The rest fall back if missing (in brackets).
 
 `idle`, `walk`, `attack`, `cast`, `hit`, `dead`, `cheer`; then `run` (walk), `jump` (keeps walking),
-`wounded` (idle; played under 30% life), `stunned` (idle), `revive` (idle), `talk` (idle; played while
-that character is speaking), `item` (cast). A skill can name its own state with `anim` in
-`src/data/classes.js` (Lisandra's are `cast_bolt`, `snap`, `lantern`, `wave`); a model without it plays
+`wounded` (idle; played under 30% life), `stunned` (idle), `guard` (idle; played while guarded),
+`revive` (idle), `talk` (idle; played while that character is speaking), `item` (cast), `taunt` (nothing;
+played after putting one of the dead down), `point` (nothing; the leader, when placement opens). A skill can name its own state with `anim` in
+`src/data/classes.js` (Lisandra's are `cast_bolt`, `snap`, `lantern`, `wave`; the Lancer's are `thrust`, `guard_up`, `rally`,
+`charge`); a model without it plays
 `cast` or `attack`.
 
 ## 10. Lisandra, as done
@@ -310,6 +312,30 @@ Two critics reviewed her twice, one on animation and one on how she sits in the 
 4 and 4 to 6 and 6.5, and the second round of fixes went in after that without a third review. What they
 still wanted and has not been done: a guard or dodge reaction, a distinct charge-and-hold for the generic
 cast, and darker gloves.
+
+## 11. Stevie the Stronger, as done
+
+Source: `Stevie the Stronger.glb` (Meshy, the same Mixamo rig as Lisandra, but only a walk and a run).
+The game copy is `assets/models/stevie.glb` (2.3 MB); the Blender working file is saved beside the source
+as `Stevie the Stronger - tactics.blend`.
+
+Her clips were **retargeted from Lisandra's motion library**. The two models share bone names but not
+bind poses, so each of Lisandra's poses is carried over in armature space through an offset measured where
+both are known to be in the same pose: frame 0 of the walk they share. Lisandra's walk, sent through that,
+lands within 8 degrees of Stevie's own walk on every bone. The same route will serve any other model on
+this rig that arrives with a walk.
+
+Her twenty-one clips, on an upright idle (she is not bent):
+
+- the same list as Lisandra's: `Idle`, `Walk`, `Run`, `Hop`, `Cast`, `Hit`, `Stunned`, `Wounded`,
+  `Dead_Fall`, `Revive`, `Victory`, `Talk`, `Drink`
+- the lance and shield: `Thrust` (Lance Thrust and her plain attack), `Charge` (Lance Charge),
+  `Guard_Up` (Tower Shield), `Guard` (how she stands while guarded), `Rally` (Squire Knight),
+  `Shield_Bash` (mapped as `bash`; nothing uses it yet)
+- her own: `Flex` (the `taunt` after a kill), `Point` (when she leads and placement opens)
+
+She has no spear or shield in her hands: weapons are separate models (section 4) and none exist yet, so
+the thrust is an empty-handed lunge for now. She has not been through the critics.
 
 ### Looking at a model in the running game
 

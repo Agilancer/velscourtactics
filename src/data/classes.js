@@ -156,13 +156,13 @@ export const CLASSES = {
   },
   lancer: {
     name: 'Lancer', color: '#c0c0d0', primary: 'str', attrs: [26, 18, 30, 8], life: [88, 9], mana: [28, 1.6],
-    weapon: ['spear'], armor: 'plate', move: 3, jump: 1, role: 'The wall',
+    weapon: ['spear'], armor: 'plate', move: 3, jump: 1, role: 'The wall', basicAnim: 'thrust',
     desc: 'An unbreakable knight-captain. Huge elemental energy lances, up to ten tower shields circling him, and an order of knights at his back.',
     skills: [
-      S('lance_thrust', 'Lance Thrust', 1, 4, [1, 2], 0, 'enemy', 'phys', 1.3, {}, 'A plain thrust, with reach.'),
-      S('tower_shield', 'Tower Shield', 3, 8, [0, 0], 1, 'self', 'buff', 0, { st: ['guard', 3, 1] }, 'Shields up: the Lancer and anyone beside take far less.'),
-      S('squire_knight', 'Squire Knight', 6, 14, [1, 2], 0, 'tile', 'summon', 0, { summon: 'squire' }, 'A knight of the order answers the banner.'),
-      S('lance_charge', 'Lance Charge', 10, 14, [2, 4], 0, 'enemy', 'phys', 1.8, { dash: true, st: ['stun', 1, 0.35] }, 'Runs them down.'),
+      S('lance_thrust', 'Lance Thrust', 1, 4, [1, 2], 0, 'enemy', 'phys', 1.3, { anim: 'thrust' }, 'A plain thrust, with reach.'),
+      S('tower_shield', 'Tower Shield', 3, 8, [0, 0], 1, 'self', 'buff', 0, { st: ['guard', 3, 1], anim: 'guard_up' }, 'Shields up: the Lancer and anyone beside take far less.'),
+      S('squire_knight', 'Squire Knight', 6, 14, [1, 2], 0, 'tile', 'summon', 0, { summon: 'squire', anim: 'rally' }, 'A knight of the order answers the banner.'),
+      S('lance_charge', 'Lance Charge', 10, 14, [2, 4], 0, 'enemy', 'phys', 1.8, { dash: true, st: ['stun', 1, 0.35], anim: 'charge' }, 'Runs them down.'),
     ],
   },
   dragon_knight: {
