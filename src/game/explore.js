@@ -1,6 +1,6 @@
 // Walking the world: the leader moves a tile at a time, the rest of the party follows in a chain,
 // each copying what the one ahead did a step ago, jumps included. Townsfolk stand about; the dead watch.
-import { TOWN, N } from '../world/map.js';
+import { TOWN, N, T } from '../world/map.js';
 import { DPAD } from '../core/input.js';
 import { makePerson, makeZombie, withOverride, hasModel, shadowDisc, label, setAnim, animate } from '../gfx/models.js';
 import { setGear } from '../gfx/gear.js';
@@ -23,6 +23,15 @@ export function foeKey(z, n = 0) {
   const i = Math.abs(n) % c;
   return i ? `${k}_${i + 1}` : k;
 }
+
+/** What a tile is underfoot, for its footsteps: the roads, the square's flags, bare rock and the
+ * crypt's floor ring as stone; the rest is earth, needles and moss. */
+export function ground(w, x, z) {
+  const t = w.inMap(x, z) ? w.type[w.I(x, z)] : T.DIRT;
+  return t === T.ROAD || t === T.FLAGS || t === T.ROCK || t === T.CRYPT || t === T.DAIS ? 'stone' : 'dirt';
+}
+/** Whether someone clinks as they walk (mail or plate on). */
+export const clinks = (h) => h?.equip?.armor?.kind === 'plate';
 
 // Which body a hero wears: <class>_<g>_t<tier> for the armour on (1 Rusted .. 5 Mithril), the highest tier there is a
 // model for at or under it; else the class's own model; else the lowest tier there is (tools/bm/heroes.py).
@@ -189,8 +198,9 @@ export class Explore {
       if (dx || dz) a.model.rotation.y = Math.atan2(dx, dz);
       if (a.hop) setAnim(a.model, 'jump'); else if (dx || dz) setAnim(a.model, 'walk');
     });
-    this.step = { t: 0, dur: jump ? HOP : WALK };
-    if (jump) sfx.jump(); else sfx.step();
+    this.step = { t: 0, dur: jump ? HOP : WALK, hop: jump };
+    const L = this.leader, under = ground(w, tx, tz), mail = clinks(L.hero);
+    if (jump) sfx.jump(ground(w, L.x, L.z), mail); else sfx.step(under, mail, !!this.g.st.auto);
     return true;
   }
   hopInPlace() { if (!this.step && !this.busy) this.startStep(this.leader.x, this.leader.z, true); }
@@ -214,6 +224,7 @@ export class Explore {
       if (s.t >= 1) {
         for (const a of this.actors) { a.x = a.to.x; a.z = a.to.z; }
         this.step = null;
+        if (s.hop) sfx.land(ground(g.world, L.x, L.z), clinks(L.hero));
         this.arrive();
       }
     }
@@ -241,8 +252,10 @@ export class Explore {
     const g = this.g, L = this.leader, w = g.world;
     g.st.pos = { x: L.x, z: L.z };
     const town = w.inTown(L.x, L.z);
-    if (this.inTown !== null && town !== this.inTown) g.ui.banner(town ? 'Herrington Hollow' : 'The Pines', town ? 'Forty roofs, one well' : 'The dead are in there');
-    this.inTown = town;
+    const land = w.regionAt(L.x, L.z);
+    if (this.inTown !== null && town !== this.inTown) g.ui.banner(town ? 'Herrington Hollow' : land.name, town ? 'Forty roofs, one well' : land.sub);
+    else if (this.land && land !== this.land && !town) g.ui.banner(land.name, land.sub);
+    this.inTown = town; this.land = land;
     if ((L.x <= 1 || L.z <= 1 || L.x >= N - 2 || L.z >= N - 2) && !this.endSaid) { this.endSaid = true; g.ui.toast(ROAD_END); setTimeout(() => { this.endSaid = false; }, 9000); }
     this.updatePrompt();
     this.look();
@@ -323,7 +336,7 @@ export class Explore {
     const bang = label('!', { size: 90, color: '#ff3a2a', bg: null, scale: 2.2 });
     bang.position.y = 2.1;
     f.model.add(bang);
-    sfx.alert();
+    sfx.alert(g.world.inTown(L.x, L.z, 16));
     g.ui.banner('Seen!', `${f.z.name} · level ${f.level}`, true);
     setTimeout(() => {
       f.model.remove(bang);

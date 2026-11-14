@@ -1,7 +1,8 @@
-// What is out in the pines. The first five are the dead by how they come at you (bm's shambler, runner and
-// lurker, VELSCOUR's Bloated Bonesack and Chained Brute); after them, the things that keep their company, down
-// to the crypt's keeper. `kind` in map.js packs is the index here, so add to the end and never reorder.
-// A model for each is `'zombie_' + id` in assets/models/manifest.json; `scale` sizes the stand-in (1.5 tall at 1).
+// The dead, and what keeps their company. Five kinds in the pines, by how they come at you (bm's shambler, runner and
+// lurker, VELSCOUR's Bloated Bonesack and Chained Brute); then two for each land past the pines and that land's lord;
+// then the rest of the pines' company, down to the crypt's keeper. `kind` in map.js packs is the index here, map.js
+// REGIONS names which indexes walk where, and WOODS below names the pines' by id: keep the order, add to the end.
+// The stand-in for each is makeZombie in gfx/models.js; the real model's key is 'zombie_' + id (assets/models/manifest.json).
 // living: not one of the dead, so holy work does it no more harm than anyone (Battle).
 const S = (id, name, cost, r, aoe, at, kind, pow, x = {}) => ({ id, name, lvl: 1, cost, r, aoe, at, kind, pow, ...x });
 
@@ -36,6 +37,84 @@ export const ZOMBIES = [
     blurb: 'Too big for one grave. Whoever chained it did not chain it well.',
     skills: [S('chain_sweep', 'Chain Sweep', 0, [0, 0], 1, 'self', 'phys', 0.9, { anim: 'sweep' }), S('slam', 'Slam', 0, [1, 1], 0, 'enemy', 'phys', 1.25, { st: ['stun', 1, 0.3] })],
   },
+  // ---- the White Waste ----
+  {
+    id: 'rimewalker', name: 'Rimewalker', plural: 'Rimewalkers', hp: 1.7, atk: 1.1, def: 1.5, spd: 4, move: 3, jump: 1, sight: 5,
+    color: 0x9ab8c8, scale: 1.1,
+    blurb: 'Froze on the march and kept marching. The ice is most of what holds it up.',
+    skills: [S('frozen_grip', 'Frozen Grip', 0, [1, 1], 0, 'enemy', 'phys', 1.1, { el: 'cold', st: ['slow', 2, 0.6] })],
+  },
+  {
+    id: 'driftling', name: 'Driftling', plural: 'Driftlings', hp: 0.9, atk: 1.35, def: 0.8, spd: 8, move: 5, jump: 2, sight: 3, ambush: true,
+    color: 0xd8e4ea, scale: 0.95,
+    blurb: 'A hump in the snow, until you are past it.',
+    skills: [S('pounce', 'Pounce', 0, [2, 3], 0, 'enemy', 'phys', 1.2, { dash: true, anim: 'pounce' }), S('bite', 'Bite', 0, [1, 1], 0, 'enemy', 'phys', 1.05, { st: ['bleed', 2, 0.4] })],
+  },
+  // ---- the Red Badlands ----
+  {
+    id: 'husk', name: 'Dust Husk', plural: 'Dust Husks', hp: 0.7, atk: 0.9, def: 0.6, spd: 10, move: 5, jump: 2, sight: 6,
+    color: 0xb89a6a, scale: 0.9,
+    blurb: 'The sun took everything that weighed anything. What is left is quick.',
+    skills: [S('flurry', 'Flurry', 0, [1, 1], 0, 'enemy', 'phys', 0.6, { hits: 2 })],
+  },
+  {
+    id: 'slinger', name: 'Rib Slinger', plural: 'Rib Slingers', hp: 0.8, atk: 1.05, def: 0.7, spd: 6, move: 3, jump: 1, sight: 6,
+    color: 0xd8c8a0, scale: 1,
+    blurb: 'Throws what it has. It has ribs.',
+    skills: [S('rib_throw', 'Rib Throw', 0, [2, 5], 0, 'enemy', 'phys', 0.95), S('rake', 'Rake', 0, [1, 1], 0, 'enemy', 'phys', 0.8)],
+  },
+  // ---- the Drowned Fen ----
+  {
+    id: 'drowner', name: 'Bog Drowner', plural: 'Bog Drowners', hp: 1.3, atk: 1.15, def: 1, spd: 5, move: 3, jump: 1, sight: 4,
+    color: 0x4a6a5a, scale: 1.05,
+    blurb: 'It went under once. It thinks you should see what it saw.',
+    skills: [S('drag_under', 'Drag Under', 0, [1, 2], 0, 'enemy', 'phys', 1, { st: ['root', 1, 0.6] }), S('rake', 'Rake', 0, [1, 1], 0, 'enemy', 'phys', 1.1)],
+  },
+  {
+    id: 'leechmother', name: 'Leech Mother', plural: 'Leech Mothers', hp: 1.4, atk: 1, def: 0.8, spd: 5, move: 2, jump: 1, sight: 5, burst: 'poison',
+    color: 0x5a3a4a, scale: 1.15,
+    blurb: 'Not one thing. A great many small things, agreeing.',
+    skills: [S('leech', 'Leech', 0, [1, 3], 0, 'enemy', 'magic', 1, { el: 'shadow', drain: 0.5 }), S('retch', 'Retch', 0, [1, 3], 0, 'enemy', 'magic', 0.9, { el: 'poison', st: ['poison', 3, 0.7] })],
+  },
+  // ---- the Cinder Reach ----
+  {
+    id: 'cinder', name: 'Cinder Wretch', plural: 'Cinder Wretches', hp: 0.9, atk: 1.2, def: 0.8, spd: 8, move: 4, jump: 2, sight: 6, burst: 'burn',
+    color: 0x3a2a26, scale: 1,
+    blurb: 'Still burning. It has been burning a long while, and it would like company.',
+    skills: [S('ember_claw', 'Ember Claw', 0, [1, 1], 0, 'enemy', 'phys', 1.1, { el: 'fire', st: ['burn', 2, 0.5] })],
+  },
+  {
+    id: 'slagback', name: 'Slagback', plural: 'Slagbacks', hp: 2.4, atk: 1.3, def: 1.7, spd: 3, move: 2, jump: 1, sight: 5,
+    color: 0x4a4650, scale: 1.4,
+    blurb: 'The furnace cooled round it. Now it carries the furnace.',
+    skills: [S('slag_spray', 'Slag Spray', 0, [1, 3], 1, 'enemy', 'magic', 0.9, { el: 'fire', st: ['burn', 2, 0.4] }), S('slam', 'Slam', 0, [1, 1], 0, 'enemy', 'phys', 1.25, { st: ['stun', 1, 0.3] })],
+  },
+  // ---- the lords: one each, at home in its land's ruin ----
+  {
+    id: 'warden', name: 'The Frozen Warden', plural: 'Frozen Wardens', lord: true, hp: 4.2, atk: 1.5, def: 1.6, spd: 5, move: 3, jump: 2, sight: 6,
+    color: 0x7a9ab8, scale: 1.7,
+    blurb: 'Nobody relieved it. It holds the fort against the living now, there being no one else.',
+    skills: [S('winter_toll', 'Winter Toll', 0, [0, 0], 2, 'self', 'magic', 1, { el: 'cold', st: ['slow', 2, 0.8], anim: 'sweep' }), S('glaive', 'Glaive', 0, [1, 2], 0, 'enemy', 'phys', 1.4)],
+  },
+  {
+    id: 'dryking', name: 'The Dry King', plural: 'Dry Kings', lord: true, hp: 3.6, atk: 1.55, def: 1.2, spd: 7, move: 4, jump: 2, sight: 6,
+    color: 0xc8a060, scale: 1.55,
+    blurb: 'A crown, a court, and not a drop between them.',
+    skills: [S('sandstorm', 'Sandstorm', 0, [1, 4], 1, 'enemy', 'magic', 1, { st: ['weaken', 3, 0.7] }), S('flurry', 'Flurry', 0, [1, 1], 0, 'enemy', 'phys', 0.75, { hits: 2 })],
+  },
+  {
+    id: 'abbess', name: 'The Drowned Abbess', plural: 'Drowned Abbesses', lord: true, hp: 3.4, atk: 1.6, def: 1.1, spd: 6, move: 3, jump: 1, sight: 6,
+    color: 0x3a5a5a, scale: 1.5,
+    blurb: 'She kept the office through the flood. She keeps it still, to a full house.',
+    skills: [S('dirge', 'Dirge', 0, [1, 4], 1, 'enemy', 'magic', 1.05, { el: 'shadow', st: ['curse', 3, 0.7] }), S('drag_under', 'Drag Under', 0, [1, 2], 0, 'enemy', 'phys', 1.1, { st: ['root', 1, 0.7] })],
+  },
+  {
+    id: 'stoker', name: 'The Stoker', plural: 'Stokers', lord: true, hp: 4.4, atk: 1.6, def: 1.5, spd: 5, move: 3, jump: 1, sight: 6, burst: 'burn',
+    color: 0x5a3a2a, scale: 1.7,
+    blurb: 'The train is gone. The fire is not, and somebody has to feed it.',
+    skills: [S('firebox', 'Firebox', 0, [1, 3], 1, 'enemy', 'magic', 1.1, { el: 'fire', st: ['burn', 2, 0.6] }), S('shovel', 'Shovel', 0, [1, 1], 0, 'enemy', 'phys', 1.4, { st: ['stun', 1, 0.35] })],
+  },
+  // ---- the pines' other company, and the crypt's keeper ----
   {
     id: 'possessed', name: 'The Possessed', plural: 'The Possessed', hp: 0.9, atk: 1.05, def: 0.8, spd: 8, move: 4, jump: 2, sight: 5, living: true,
     color: 0x8a8090, scale: 1.17,
@@ -115,6 +194,7 @@ export const WOODS = [
 // The crypt's own: its keeper on the dais with its callers, and the goblins who came for the rings.
 export const CRYPT_PACK = [['bone_golem', 11], ['necromancer', 10], ['necromancer', 10], ['goblin', 9], ['goblin', 9], ['goblin', 9]];
 
+
 export function zombieStats(kind, level) {
   const z = ZOMBIES[kind];
   return {
@@ -176,4 +256,40 @@ export const QUESTS = [
   { id: 'b_bone_golem', from: 'board', name: 'Bounty: The Keeper of the Crypt', kill: 'bone_golem', need: 1, gold: 600, xp: 500, reward: 'rare',
     text: 'THE OLD CRYPT, where the pines are oldest. Something stands on the dais made of everyone they buried there. Bring back a bone. Any bone. — the Watch',
     done: 'The crypt’s keeper is down in pieces. We counted them. We stopped counting.' },
+  { id: 'b_rimewalker', from: 'board', name: 'Bounty: Rimewalkers', kill: 'rimewalker', need: 5, gold: 520, xp: 420,
+    text: 'FIVE RIMEWALKERS. North, where the road goes white. Break them, do not thaw them. — the Watch',
+    done: 'Five rimewalkers in pieces, and the pieces staying put.' },
+  { id: 'b_driftling', from: 'board', name: 'Bounty: Driftlings', kill: 'driftling', need: 4, gold: 560, xp: 450,
+    text: 'FOUR DRIFTLINGS. If the snow has a shape, the shape is not snow. — the Watch',
+    done: 'Four driftlings dug out before they dug anyone in.' },
+  { id: 'b_husk', from: 'board', name: 'Bounty: Dust Husks', kill: 'husk', need: 6, gold: 540, xp: 430,
+    text: 'SIX DUST HUSKS. East, past the last green thing. They are quicker than you. Plan on it. — the Watch',
+    done: 'Six husks, and the wind has them now.' },
+  { id: 'b_slinger', from: 'board', name: 'Bounty: Rib Slingers', kill: 'slinger', need: 4, gold: 560, xp: 450,
+    text: 'FOUR RIB SLINGERS. They will run out of ribs eventually. Do not wait. — the Watch',
+    done: 'Four slingers with nothing left to throw.' },
+  { id: 'b_drowner', from: 'board', name: 'Bounty: Bog Drowners', kill: 'drowner', need: 5, gold: 540, xp: 430,
+    text: 'FIVE BOG DROWNERS. South, where the road gets soft. Keep off the black water. — the Watch',
+    done: 'Five drowners put under for good.' },
+  { id: 'b_leechmother', from: 'board', name: 'Bounty: Leech Mothers', kill: 'leechmother', need: 3, gold: 600, xp: 480,
+    text: 'THREE LEECH MOTHERS. Burn what is left. Then burn that. — the Watch',
+    done: 'Three leech mothers, and a smell that will not come out.' },
+  { id: 'b_cinder', from: 'board', name: 'Bounty: Cinder Wretches', kill: 'cinder', need: 5, gold: 560, xp: 450,
+    text: 'FIVE CINDER WRETCHES. West, in the ash. Do NOT lead them back through the wheat. — the Watch',
+    done: 'Five cinders out. Properly out.' },
+  { id: 'b_slagback', from: 'board', name: 'Bounty: Slagbacks', kill: 'slagback', need: 3, gold: 640, xp: 520,
+    text: 'THREE SLAGBACKS. Slow. That is the only kind thing to be said of them. — the Watch',
+    done: 'Three slagbacks cooled.' },
+  { id: 'b_warden', from: 'board', name: 'Writ: The Frozen Warden', kill: 'warden', need: 1, gold: 1200, xp: 900, reward: 'rare',
+    text: 'THE WARDEN OF THE BORDER FORT. It was one of ours. Relieve it of its post. — the Watch',
+    done: 'The Warden is relieved. Somebody should have done it years ago.' },
+  { id: 'b_dryking', from: 'board', name: 'Writ: The Dry King', kill: 'dryking', need: 1, gold: 1200, xp: 900, reward: 'rare',
+    text: 'THE DRY KING, holding court in the Badlands. No tribute. No audience. Just end it. — the Watch',
+    done: 'The Dry King is deposed. The court did not object.' },
+  { id: 'b_abbess', from: 'board', name: 'Writ: The Drowned Abbess', kill: 'abbess', need: 1, gold: 1200, xp: 900, reward: 'rare',
+    text: 'THE ABBESS OF THE SWAMP ABBEY. She still rings for evensong. Nobody living should answer. — the Watch',
+    done: 'The Abbess has sung her last office.' },
+  { id: 'b_stoker', from: 'board', name: 'Writ: The Stoker', kill: 'stoker', need: 1, gold: 1200, xp: 900, reward: 'rare',
+    text: 'THE STOKER AT CINDER HALT. No train has stopped there in forty years. He does not know. — the Watch',
+    done: 'The Stoker has banked his last fire.' },
 ];

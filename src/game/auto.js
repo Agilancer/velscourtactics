@@ -41,7 +41,7 @@ export class Auto {
     const fair = ex.foes.filter((f) => danger(f.x, f.zz) <= lvl + 2 && !shy(f.x, f.zz));
     const pool = fair.filter((f) => wanted.has('any') || wanted.has(f.z.id));
     const foes = (pool.length ? pool : fair.length ? fair : ex.foes).map((f) => ({ x: f.x, z: f.zz }));
-    if (foes.length) out.push({ why: 'Hunting the dead in the pines', targets: foes, act: null, near: 3 });
+    if (foes.length) out.push({ why: 'Hunting the dead', targets: foes, act: null, near: 3 });
     return out;
   }
 

@@ -7,16 +7,12 @@ import { RARITY, TIERS, WEAPONS, ARMORS, GEMS, GEM_GRADES, GEM_PRICE, CONSUMABLE
 import { QUESTS } from '../data/enemies.js';
 import { PARTY_MAX, SLOTS, SLOT_NAMES, heroStats, heroSkills, canEquip, slotsFor, xpNeed, lead, partyHeroes, questProgress, questNeed, questReady, startQuest, save } from '../game/party.js';
 import { makePerson } from '../gfx/models.js';
-import { sfx, setMuted } from '../core/audio.js';
+import { sound, sfx, setMuted } from '../core/audio.js';
 import { itemPic, slotPic, gemPic, consumablePic, goodsPic, skillPic, roleIcons, rolesOf, ROLE_NAMES, ic, goods, watchMissing } from './art.js';
 
 const itemHtml = (it, extra = '') => `<b style="color:${RARITY[it.rarity].color}">${esc(itemName(it))}</b><small>${TIERS[it.tier].name} ${RARITY[it.rarity].name}${extra}</small><span>${itemLines(it).join(' · ')}</span>`;
 // a sum of gold, with the coins in front of it
 const gp = (n) => `<i class="ic ic-gold"></i>${n}`;
-// the studio cards before the title (assets/ui/title/, from bm), and the title's song
-const CARDS = ['blastorama', 'herrington'], CARD_HOLD = 3.6;
-const SONG = 'assets/ui/title/title_frozen_hearts.mp3', SONG_LEVEL = 0.22;
-const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch { /* no storage */ } } };
 
 export class UI {
   constructor(g) {
@@ -47,70 +43,14 @@ export class UI {
     for (const b of this.root.querySelectorAll('[data-open]')) b.onclick = () => this.openPanel(b.dataset.open);
     $('#b-auto').onclick = () => g.toggleAuto();
     $('#b-dpad').onclick = () => { g.st.dpad = g.st.dpad === 'A' ? 'B' : 'A'; this.toast(`D-pad: ${DPAD_HINT[g.st.dpad]}.`); this.refresh(); };
-    $('#b-mute').onclick = () => { this.muted = !this.muted; setMuted(this.muted); $('#b-mute').classList.toggle('off', this.muted); };
+    $('#b-mute').onclick = () => { setMuted(!sound.muted); $('#b-mute').classList.toggle('muted', sound.muted); if (!sound.muted) sfx.ui(); };
+    $('#b-mute').classList.toggle('muted', sound.muted);
     $('#modal .x').onclick = () => this.close();
     $('#modal').addEventListener('pointerdown', (e) => { if (e.target.id === 'modal') this.close(); });
     this.sel = null; this.tab = null;
   }
 
-  // ---------- title and character creation ----------
-  title(hasSave) {
-    const s = $('#screen'); s.className = 'title';
-    s.innerHTML = `<div class="logo"><small>Blastorama Gaming presents</small><h1>VELSCOUR</h1><h3>TACTICS</h3><i class="rule"></i><p>A world built upon something that should have stayed dead.</p></div>
-      <div class="col"><button class="btn big" id="t-new">New Game</button>${hasSave ? '<button class="btn big" id="t-cont">Continue</button>' : ''}
-      <p class="keys">Arrows / WASD or the d-pad to walk · Space to jump · Enter to act · P for auto-play · wheel to zoom</p></div>
-      <button class="btn sm" id="t-mus" title="The title's song">Music</button>`;
-    $('#t-new').onclick = () => { sfx.ui(); this.create(); };
-    if (hasSave) $('#t-cont').onclick = () => { sfx.ui(); this.music(false); s.className = 'hide'; this.g.continueGame(); };
-    // The song starts on the first click or key (a browser plays nothing before one), and stays quiet.
-    const songOff = () => store.get('vt.music') === 'off';
-    const mus = $('#t-mus'), mark = () => mus.classList.toggle('off-song', songOff() || !this.song);
-    const kick = (e) => { if (e.target === mus) return; off(); if (!songOff()) this.music(true); setTimeout(mark, 50); };
-    const off = () => { window.removeEventListener('pointerdown', kick, true); window.removeEventListener('keydown', kick, true); };
-    window.addEventListener('pointerdown', kick, true); window.addEventListener('keydown', kick, true);
-    mus.onclick = () => { off(); const on = !this.song; store.set('vt.music', on ? 'on' : 'off'); this.music(on); mark(); };
-    mark();
-    this.cards();
-  }
-  // The two studio cards, one after the other over black; a click, a tap or a key brings on the next. Once a session.
-  cards() {
-    try { if (sessionStorage.getItem('vt.cards')) return; sessionStorage.setItem('vt.cards', '1'); } catch { /* no storage: show them */ }
-    const box = el('div', '', `<small class="skip">${matchMedia('(pointer: coarse)').matches ? 'tap' : 'click'} to skip</small>`); box.id = 'cards'; this.root.append(box);
-    let i = -1, timer = null, done = false;
-    const finish = () => { done = true; clearTimeout(timer); unbind(); box.classList.add('out'); setTimeout(() => box.remove(), 700); };
-    const next = () => {
-      if (done) return;
-      clearTimeout(timer);
-      for (const c of box.querySelectorAll('.card.on')) { c.classList.replace('on', 'gone'); setTimeout(() => c.remove(), 500); }
-      if (++i >= CARDS.length) return finish();
-      const c = el('div', 'card', `<img src="assets/ui/title/${CARDS[i]}.webp" alt="" draggable="false">`);
-      box.append(c); void c.offsetWidth; c.classList.add('on');
-      timer = setTimeout(next, CARD_HOLD * 1000);
-    };
-    const skip = (e) => { if (e.type === 'keydown' && ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(e.key)) return; e.preventDefault(); e.stopPropagation(); next(); };
-    const unbind = () => { box.removeEventListener('pointerdown', skip); window.removeEventListener('keydown', skip, true); };
-    box.addEventListener('pointerdown', skip); window.addEventListener('keydown', skip, true);
-    next();
-  }
-  // The title's song (bm's), through its own little gain so it's quiet on every device; music(false) fades it out.
-  music(on) {
-    if (on) {
-      if (this.song) return;
-      try {
-        const AC = window.AudioContext || window.webkitAudioContext, ctx = new AC(), a = new Audio(SONG), gain = ctx.createGain();
-        a.loop = true; a.crossOrigin = 'anonymous';
-        gain.gain.value = 0; ctx.createMediaElementSource(a).connect(gain).connect(ctx.destination);
-        this.song = { a, ctx, gain };
-        ctx.resume(); a.play().catch(() => {});
-        gain.gain.setTargetAtTime(SONG_LEVEL, ctx.currentTime, 1.2);
-      } catch { this.song = null; }
-      return;
-    }
-    const s = this.song; if (!s) return;
-    this.song = null;
-    s.gain.gain.setTargetAtTime(0, s.ctx.currentTime, 0.6);
-    setTimeout(() => { s.a.pause(); s.ctx.close(); }, 3000);
-  }
+  // ---------- character creation (the title is title.js's) ----------
   create() {
     const s = $('#screen'); s.className = 'create';
     const pickd = { cls: 'paladin', g: 'm' };
@@ -145,7 +85,6 @@ export class UI {
     draw(); spin();
     $('#c-go').onclick = () => {
       const name = $('#c-name').value.trim() || 'Stranger';
-      this.music(false);
       alive = false; gl.dispose(); s.className = 'hide'; s.innerHTML = '';
       this.g.newGame({ name, ...pickd });
     };
@@ -211,6 +150,7 @@ export class UI {
   open(title, draw) {
     const g = this.g;
     if (g.mode !== 'explore' && g.mode !== 'menu') return;
+    this.inShop = false;
     g.mode = 'menu';
     $('#modal').classList.remove('hide');
     $('#modal h2').textContent = title;
@@ -218,7 +158,7 @@ export class UI {
     this.draw = () => { const b = $('#modal .body'), y = b.scrollTop; b.innerHTML = ''; draw(b); b.scrollTop = y; this.refresh(); };
     this.draw();
   }
-  close() { if ($('#modal').classList.contains('hide')) return false; $('#modal').classList.add('hide'); this.draw = null; if (this.g.mode === 'menu') this.g.mode = 'explore'; save(this.g.st); return true; }
+  close() { if ($('#modal').classList.contains('hide')) return false; $('#modal').classList.add('hide'); if (this.inShop) { this.inShop = false; sfx.door(false); } this.draw = null; if (this.g.mode === 'menu') this.g.mode = 'explore'; save(this.g.st); return true; }
   isOpen() { return !$('#modal').classList.contains('hide'); }
   openPanel(which) { sfx.ui(); ({ party: () => this.partyPanel(), bag: () => this.bagPanel(), quests: () => this.questPanel() })[which](); }
 
@@ -269,7 +209,7 @@ export class UI {
         const it = h.equip[slot];
         const r = this.row(`<em>${SLOT_NAMES[slot]}</em> ${it ? itemHtml(it) : '<small>nothing</small>'}`, [
           ['Change', () => { this.picking = this.picking === slot ? null : slot; }],
-          ...(it ? [['Take off', () => { if (this.room()) { st.bag.push(it); h.equip[slot] = null; this.g.fixHp(h); } }]] : []),
+          ...(it ? [['Take off', () => { if (this.room()) { st.bag.push(it); h.equip[slot] = null; this.g.fixHp(h); if (slot === 'weapon') sfx.sheath(); else sfx.ui(); } }]] : []),
         ], it ? itemPic(it, slot) : slotPic(slot));
         right.append(r);
         if (it && it.sockets) {
@@ -284,13 +224,13 @@ export class UI {
           if (this.socketing?.it === it) {
             const have = Object.keys(st.gems).filter((k) => st.gems[k] > 0);
             if (!have.length) right.append(el('div', 'note', 'You have no gems. Zafir sells them; the dead sometimes carry them.'));
-            for (const k of have) right.append(this.row(`<b style="color:${gemInfo(k).color}">${esc(gemInfo(k).full)}</b><small>x${st.gems[k]}</small><span>+${gemInfo(k).val} ${STAT_NAMES[gemInfo(k).stat]}</span>`, [['Set', () => { it.gems[this.socketing.i] = k; st.gems[k]--; this.socketing = null; this.g.fixHp(h); sfx.coin(); }]], gemPic(k)));
+            for (const k of have) right.append(this.row(`<b style="color:${gemInfo(k).color}">${esc(gemInfo(k).full)}</b><small>x${st.gems[k]}</small><span>+${gemInfo(k).val} ${STAT_NAMES[gemInfo(k).stat]}</span>`, [['Set', () => { it.gems[this.socketing.i] = k; st.gems[k]--; this.socketing = null; this.g.fixHp(h); sfx.forge(true); }]], gemPic(k)));
           }
         }
         if (this.picking === slot) {
           const fits = st.bag.filter((x) => slotsFor(x).includes(slot) && canEquip(h, x));
           if (!fits.length) right.append(el('div', 'note', 'Nothing in the bag fits here.'));
-          for (const x of fits) right.append(this.row(itemHtml(x), [['Wear', () => { st.bag.splice(st.bag.indexOf(x), 1); if (it) st.bag.push(it); h.equip[slot] = x; this.picking = null; this.g.fixHp(h); sfx.ui(); }]], itemPic(x, slot)));
+          for (const x of fits) right.append(this.row(itemHtml(x), [['Wear', () => { st.bag.splice(st.bag.indexOf(x), 1); if (it) st.bag.push(it); h.equip[slot] = x; this.picking = null; this.g.fixHp(h); sfx.equip(x); }]], itemPic(x, slot)));
         }
       }
       right.append(el('h4', '', 'Skills'));
@@ -378,7 +318,7 @@ export class UI {
         for (const sp of Object.values(SPELLS)) {
           const known = h.spells.includes(sp.id), low = h.lvl < sp.lvl, full = h.spells.length >= 3;
           b.append(this.row(`<b>${esc(sp.name)}</b><small>${sp.cost} mp · reach ${sp.r[1]}${sp.aoe ? ' · blast ' + sp.aoe : ''} · needs level ${sp.lvl}</small><span>${esc(sp.desc)}</span>`,
-            [[known ? 'Known' : low ? `Level ${sp.lvl}` : full ? 'Full' : `Learn ${gp(sp.price)}`, () => { if (this.pay(sp.price)) h.spells.push(sp.id); }, known || low || full]], skillPic(sp, known || !low)));
+            [[known ? 'Known' : low ? `Level ${sp.lvl}` : full ? 'Full' : `Learn ${gp(sp.price)}`, () => { if (this.pay(sp.price)) { h.spells.push(sp.id); sfx.chime(); } }, known || low || full]], skillPic(sp, known || !low)));
         }
       },
       gems: (b) => { for (const k in GEMS) for (let gr = 0; gr < 3; gr++) { if (gr > tierForLevel(lead(st).lvl)) continue; const id = k + gr, gi = gemInfo(id); b.append(this.row(`<b style="color:${gi.color}">${GEM_GRADES[gr]} ${gi.name}</b><small>you have ${st.gems[id] || 0}</small><span>+${gi.val} ${STAT_NAMES[gi.stat]}</span>`, [[`Buy ${gp(GEM_PRICE[gr])}`, () => { if (this.pay(GEM_PRICE[gr])) st.gems[id] = (st.gems[id] || 0) + 1; }]], gemPic(id))); } },
@@ -390,14 +330,15 @@ export class UI {
         b.append(this.row('<b>A bed</b><small>four copper, paid before</small><span>Everyone wakes whole. So does everything in the pines.</span>', [[`Rest ${gp(4)}`, () => { if (this.pay(4)) { this.close(); g.rest(); } }]], goodsPic(goods('bed'))));
         for (const k in CONSUMABLES) b.append(this.row(`<b>${CONSUMABLES[k].name}</b><small>you have ${st.consum[k] || 0}</small><span>${CONSUMABLES[k].desc}</span>`, [[`Buy ${gp(CONSUMABLES[k].price)}`, () => { if (this.pay(CONSUMABLES[k].price)) st.consum[k] = (st.consum[k] || 0) + 1; }]], consumablePic(k)));
       },
-      enhance: (b) => { b.append(el('div', 'note', 'Hammer and faith: each + adds a tenth to what the piece does. Ten at most.')); gearList(b, (it) => [[it.plus >= 10 ? 'Finished' : `+${it.plus + 1} for ${gp(enhanceCost(it))}`, () => { if (this.pay(enhanceCost(it))) { it.plus++; g.fixAll(); } }, it.plus >= 10]]); },
+      enhance: (b) => { b.append(el('div', 'note', 'Hammer and faith: each + adds a tenth to what the piece does. Ten at most.')); gearList(b, (it) => [[it.plus >= 10 ? 'Finished' : `+${it.plus + 1} for ${gp(enhanceCost(it))}`, () => { if (this.pay(enhanceCost(it))) { it.plus++; g.fixAll(); sfx.forge(); } }, it.plus >= 10]]); },
       enchant: (b) => { b.append(el('div', 'note', 'Adds a new property, or renegotiates the ones already there.')); gearList(b, (it) => [
-        [it.affixes.length >= 4 ? 'Full' : `Add ${gp(enchantCost(it))}`, () => { if (this.pay(enchantCost(it))) { addAffix(it); it.rarity = Math.max(it.rarity, Math.min(4, it.affixes.length)); g.fixAll(); } }, it.affixes.length >= 4],
-        [`Reroll ${gp(Math.round(enchantCost(it) * 0.6))}`, () => { if (this.pay(Math.round(enchantCost(it) * 0.6))) { const n = it.affixes.length; it.affixes = []; for (let i = 0; i < n; i++) addAffix(it); g.fixAll(); } }, !it.affixes.length]]); },
+        [it.affixes.length >= 4 ? 'Full' : `Add ${gp(enchantCost(it))}`, () => { if (this.pay(enchantCost(it))) { addAffix(it); it.rarity = Math.max(it.rarity, Math.min(4, it.affixes.length)); g.fixAll(); sfx.enchant(); } }, it.affixes.length >= 4],
+        [`Reroll ${gp(Math.round(enchantCost(it) * 0.6))}`, () => { if (this.pay(Math.round(enchantCost(it) * 0.6))) { const n = it.affixes.length; it.affixes = []; for (let i = 0; i < n; i++) addAffix(it); g.fixAll(); sfx.enchant(); } }, !it.affixes.length]]); },
       socket: (b) => { b.append(el('div', 'note', 'A socket is a promise. Better gear takes more of them.')); gearList(b, (it) => [
-        [it.sockets >= maxSockets(it) ? 'No room' : `Drill ${gp(socketCost(it))}`, () => { if (this.pay(socketCost(it))) it.sockets++; }, it.sockets >= maxSockets(it)],
-        [`Pry out ${gp(30)}`, () => { if (this.pay(30)) { for (const gm of it.gems) if (gm) st.gems[gm] = (st.gems[gm] || 0) + 1; it.gems = []; g.fixAll(); } }, !it.gems.some(Boolean)]]); },
+        [it.sockets >= maxSockets(it) ? 'No room' : `Drill ${gp(socketCost(it))}`, () => { if (this.pay(socketCost(it))) { it.sockets++; sfx.forge(true); } }, it.sockets >= maxSockets(it)],
+        [`Pry out ${gp(30)}`, () => { if (this.pay(30)) { for (const gm of it.gems) if (gm) st.gems[gm] = (st.gems[gm] || 0) + 1; it.gems = []; g.fixAll(); sfx.forge(true); } }, !it.gems.some(Boolean)]]); },
     };
     this.open(`${npc.name} · ${npc.title}`, (b) => { b.className = 'body shop-' + kind; draws[kind](b); });
+    if (this.isOpen()) { this.inShop = true; sfx.door(true); }
   }
 }

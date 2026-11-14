@@ -100,8 +100,8 @@ button .ic-gold { width: 1.15em; height: 1.15em; margin: 0 .12em 0 .2em; vertica
 #bar { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); display: flex; gap: 4px; }
 #bar button { border-width: 6px 12px; border-image-width: 7px 13px; padding: 0 2px; font-size: .76rem; white-space: nowrap; }
 #bar button .ic { width: 1.35em; height: 1.35em; margin: -2px .25em -2px -2px; vertical-align: -.36em; }
-#bar button.on, #b-mute.off { border-image-source: var(--k-btn-on); color: var(--gold-lt); }
-#b-mute.off { text-decoration: line-through; color: var(--dim); border-image-source: var(--k-btn); }
+#bar button.on { border-image-source: var(--k-btn-on); color: var(--gold-lt); }
+#b-mute.muted { text-decoration: line-through; color: var(--dim); border-image-source: var(--k-btn); }
 #hud.fight #bar [data-open], #hud.fight #pad, #hud.fight #btns .bj small { opacity: .0; pointer-events: none; }
 #hud.fight #pad { opacity: 1; pointer-events: auto; }
 #autostat { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); font-size: .8rem; color: var(--gold-lt); padding: 0 12px 1px; pointer-events: none; white-space: nowrap; }
@@ -225,18 +225,93 @@ i.role.big { width: 44px; height: 44px; padding: 10px; background: var(--k-medal
 #cards .card img { display: block; width: 100%; height: auto; }
 #cards .skip { position: absolute; right: 18px; bottom: 14px; font: 600 .72rem var(--font-head); letter-spacing: .24em; text-transform: uppercase; color: #6c5c40; }
 
-/* ---- title and creation ---- */
-#screen.title { flex-direction: column; gap: 26px; background: radial-gradient(ellipse at center, rgba(5, 3, 3, .35), rgba(5, 3, 3, .9)); }
-.logo { text-align: center; text-shadow: 0 4px 30px #000; padding: 0 16px; }
-.logo small { letter-spacing: .3em; text-transform: uppercase; }
-.logo h1 { font-size: clamp(3rem, 11vw, 7rem); font-weight: 900; color: var(--gold-lt); line-height: .95; letter-spacing: .08em; }
-.logo h3 { font-size: clamp(1.2rem, 4vw, 2.4rem); color: var(--blood); letter-spacing: .6em; margin-left: .6em; }
-.logo .rule { display: block; height: 16px; width: min(560px, 80vw); margin: 10px auto 0; background: var(--k-rule) center / 100% 100% no-repeat; }
-.logo p { font-style: italic; color: var(--text); margin-top: 8px; }
-.col { display: flex; flex-direction: column; gap: 10px; align-items: center; }
-.keys { color: var(--dim); font-size: .85rem; max-width: 90vw; text-align: center; }
-#t-mus { position: absolute; right: 14px; bottom: 14px; }
-#t-mus.off-song { color: var(--dim); text-decoration: line-through; }
+/* ---- the title (title.js): the cards, the VELSCOUR TACTICS logo over the black, the menu ---- */
+#title { position: fixed; inset: 0; z-index: 50; pointer-events: none; font: 14px var(--font-head); color: var(--text); }
+.t-screen { position: absolute; inset: 0; overflow: hidden; pointer-events: auto; transition: opacity .85s ease; }
+.t-screen.out { opacity: 0; pointer-events: none; }
+.t-screen.gone { display: none; }
+.t-veil { position: absolute; inset: 0; background: radial-gradient(ellipse 72% 62% at 50% 40%, rgba(5, 3, 3, .3), rgba(5, 3, 3, .9)),
+          linear-gradient(rgba(5, 3, 3, .62), rgba(5, 3, 3, .18) 46%, rgba(5, 3, 3, .8)); }
+.t-cover { position: absolute; inset: 0; background: #000; transition: opacity .35s ease; }
+.t-cover.reveal { opacity: 0; transition: opacity 3.2s ease .4s; }
+.t-cards { position: absolute; inset: 0; }
+.t-card { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; animation: t-card 5.2s linear both; }
+@keyframes t-card {
+  0% { opacity: 0; transform: scale(.965); animation-timing-function: ease-out; }
+  25% { opacity: 1; transform: scale(.981); animation-timing-function: linear; }
+  77% { opacity: 1; transform: scale(1.015); animation-timing-function: ease-in; }
+  100% { opacity: 0; transform: scale(1.03); } }
+.t-logo { position: relative; width: min(80vw, 1000px); }
+.t-logo img { display: block; width: 100%; height: auto; -webkit-user-drag: none; }
+.t-shine { position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+           -webkit-mask: var(--m) center / 100% 100% no-repeat; mask: var(--m) center / 100% 100% no-repeat; }
+.t-shine i { position: absolute; top: -20%; bottom: -20%; left: 0; width: 26%; transform: translateX(-120%); animation: t-shine 1.5s ease-in-out both;
+             background: linear-gradient(100deg, rgba(255, 250, 230, 0) 15%, rgba(255, 247, 220, .8) 50%, rgba(255, 250, 230, 0) 85%); }
+@keyframes t-shine { from { transform: translateX(-120%); } to { transform: translateX(420%); } }
+.t-glints, .t-motes { position: absolute; inset: 0; pointer-events: none; }
+.t-glint { position: absolute; width: calc(var(--s, 1) * 9%); aspect-ratio: 1; background: var(--t-star) center / contain no-repeat;
+           opacity: 0; transform: translate(-50%, -50%) scale(.1); animation: t-glint 1.15s cubic-bezier(.2, .7, .3, 1) both; }
+@keyframes t-glint {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.1) rotate(-30deg); }
+  20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1) rotate(0deg); }
+  55% { opacity: .8; transform: translate(-50%, -50%) scale(.72) rotate(22deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(.05) rotate(50deg); } }
+.t-mote { position: absolute; width: max(3px, .32%); aspect-ratio: 1; border-radius: 50%; opacity: 0; animation: t-mote 3.2s ease-out both;
+          background: radial-gradient(circle, #fff6d0, rgba(255, 200, 90, .6) 45%, rgba(255, 180, 60, 0) 70%); }
+.t-mote.loop { animation: t-mote 7s ease-in-out infinite; }
+@keyframes t-mote { 0% { opacity: 0; transform: translate(0, 0) scale(var(--z)); } 25% { opacity: .9; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(calc(var(--z) * .4)); } }
+
+/* (the logo waits low, centred, while the game loads; it rises as the menu comes in under it) */
+.t-main { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 16px 3vh;
+          transform: translateY(min(90px, 11vh)); transition: transform 1.8s cubic-bezier(.3, .7, .2, 1); }
+.t-main.menu-on { transform: none; }
+.t-mainlogo { width: clamp(260px, min(84vw, calc((100vh - 280px) * 3.17)), 980px); opacity: 0; }
+.t-mainlogo img { filter: drop-shadow(0 6px 22px rgba(0, 0, 0, .9)); }
+@keyframes t-main { 0% { opacity: 0; transform: scale(.96); } 100% { opacity: 1; transform: none; } }
+@keyframes t-fade { from { opacity: 0; } to { opacity: 1; } }
+.t-tag { margin: clamp(2px, 1vh, 10px) 0 0; font: italic 500 clamp(14px, 1.5vw, 18px) var(--font-body); color: var(--text); text-shadow: 0 2px 8px #000;
+         opacity: 0; transition: opacity 1.2s ease .3s; text-align: center; }
+.t-main.menu-on .t-tag { opacity: .85; }
+.t-under { display: grid; justify-items: center; margin-top: clamp(8px, 2.6vh, 28px); }
+.t-under > * { grid-area: 1 / 1; }
+.t-status { align-self: start; opacity: 0; }
+.t-status span { font: 600 13px var(--font-head); letter-spacing: .28em; text-transform: uppercase; color: #b89a62; text-shadow: 0 1px 4px #000; transition: opacity .5s; }
+.t-main.menu-on .t-status > * { opacity: 0; }
+.t-menu { display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none; }
+.t-main.menu-on .t-menu { pointer-events: auto; }
+.t-btn { position: relative; background: none; border: 0; padding: 8px 36px; outline: none;
+         font: 700 clamp(15px, 1.55vw, 20px) var(--font-head); letter-spacing: .24em; text-transform: uppercase;
+         color: #e2c486; text-shadow: 0 2px 6px #000, 0 0 2px #000; transition: color .2s, text-shadow .2s; }
+.t-btn::before, .t-btn::after { content: ''; position: absolute; top: 50%; width: 7px; height: 7px; margin-top: -4px; opacity: 0; transform: rotate(45deg) scale(0);
+                                background: #e8c070; box-shadow: 0 0 8px rgba(255, 200, 90, .8); transition: opacity .2s, transform .2s; }
+.t-btn::before { left: 10px; } .t-btn::after { right: 10px; }
+.t-btn:hover:not(:disabled), .t-btn:focus-visible { color: #fff4d2; text-shadow: 0 0 14px rgba(255, 200, 90, .75), 0 2px 6px #000; }
+.t-btn:hover:not(:disabled)::before, .t-btn:hover:not(:disabled)::after, .t-btn:focus-visible::before, .t-btn:focus-visible::after { opacity: 1; transform: rotate(45deg) scale(1); }
+.t-btn:disabled { color: #9a8458; cursor: default; }
+.t-menu .t-btn { opacity: 0; transform: translateY(10px); }
+.t-main.menu-on .t-menu .t-btn { opacity: 1; transform: none;
+  transition: color .2s, text-shadow .2s, opacity .8s ease calc(var(--i) * 90ms + .15s), transform .8s ease calc(var(--i) * 90ms + .15s); }
+.t-main.menu-on .t-menu .t-btn:disabled { opacity: .34; }
+.t-keys { margin: clamp(8px, 2.4vh, 24px) 0 0; color: var(--dim); font: .82rem var(--font-body); max-width: 90vw; text-align: center; text-shadow: 0 1px 4px #000;
+          opacity: 0; transition: opacity 1.2s ease .8s; }
+.t-main.menu-on .t-keys { opacity: 1; }
+.t-gate { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .6s, visibility 0s .6s; cursor: pointer; }
+.t-gate.on { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .6s; }
+.t-gate b { font: 600 14px var(--font-head); letter-spacing: .4em; text-transform: uppercase; color: #c9a86a; animation: t-pulse 2.4s ease-in-out infinite; text-align: center; }
+.t-gate b::before, .t-gate b::after { content: ''; display: inline-block; vertical-align: middle; width: 46px; height: 1px; margin: 0 18px; }
+.t-gate b::before { background: linear-gradient(90deg, transparent, #9a7638); } .t-gate b::after { background: linear-gradient(90deg, #9a7638, transparent); }
+@keyframes t-pulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+.t-skip { position: absolute; right: max(22px, env(safe-area-inset-right)); bottom: 18px; font: 11px var(--font-head); letter-spacing: .18em; text-transform: uppercase;
+          color: rgba(200, 176, 128, .45); opacity: 0; transition: opacity 1s; pointer-events: none; }
+.t-skip.on { opacity: 1; transition-delay: 1.4s; }
+@media (max-height: 520px) {
+  .t-mainlogo { width: clamp(220px, min(70vw, calc((100vh - 170px) * 3.17)), 700px); }
+  .t-menu .t-btn { padding: 4px 28px; font-size: 14px; }
+  .t-keys { display: none; }
+}
+
+/* ---- creation ---- */
 .cr { display: grid; grid-template-columns: 300px 300px 1fr; gap: 16px; }
 .cr label { font: 700 .8rem var(--font-head); color: var(--gold); display: block; }
 .cr input { display: block; width: 100%; margin-top: 4px; background: #0c0806; border: 1px solid var(--gold-dk); border-radius: 3px; color: var(--text); font: 1.1rem var(--font-body); padding: 6px 10px; user-select: text; box-shadow: inset 0 2px 6px #000; }

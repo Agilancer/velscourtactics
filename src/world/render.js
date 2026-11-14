@@ -11,10 +11,17 @@ const CAM = new THREE.Vector3(20, 16.5, 20);  // the camera's offset from what i
 const RISE = CAM.y / CAM.x;                    // how fast a ray toward the camera climbs per tile of x and z
 
 const CRYPT_SIDE = 100;                         // (not a tile: the face of the crypt's dais where it steps down)
+const DESERT = 'desert/Desert_Fantasy_Textures/';
 const GROUND_TEX = {
   [T.GRASS1]: 'tex/grass_1_c.webp', [T.GRASS2]: 'tex/grass_2_c.webp', [T.GRASS3]: 'tex/grass_3_c.webp',
   [T.PINE]: 'tex/pinefloor_1_c.webp', [T.DIRT]: 'tex/dirt_1_c.webp', [T.ROAD]: 'tex/road_1_c.webp',
   [T.FLAGS]: 'tex/flags_c.webp', [T.MOSS]: 'tex/moss_1_c.webp', [T.ROCK]: 'tex/granite_1_c.webp',
+  // the lands past the pines: bm's snow, frost, fen, ash and basalt, and its desert packs
+  [T.SNOW]: 'tex/snow_1_c.webp', [T.ICE]: 'tex/frost_1_c.webp', [T.SNOWROCK]: 'tex/snowrock_1_c.webp',
+  [T.SAND]: DESERT + '03_red_desert_sand.png', [T.CLAY]: DESERT + '06_cracked_clay.png', [T.REDROCK]: DESERT + '09_red_canyon_rock.png',
+  [T.OASIS]: 'desert/Desert_Oasis_20_Textures/06_oasis_grass.png', [T.WATER]: 'desert/Desert_Oasis_20_Textures/17_deep_teal_water.png',
+  [T.FEN]: 'tex/fen_1_c.webp', [T.ASH]: 'tex/ash_1_c.webp', [T.BASALT]: 'tex/basalt_1_c.webp', [T.RUST]: 'tex/rust_1_c.webp',
+  [T.RUIN]: DESERT + '12_ruined_flagstones.png',
   [T.CRYPT]: 'tex/crypt/cata_floor_c.webp', [T.DAIS]: 'tex/crypt/cata_floor4_c.webp', [T.GRAVE]: 'tex/crypt/cata_earth_c.webp',
   [CRYPT_SIDE]: 'tex/crypt/cata_block_c.webp',
 };
@@ -38,6 +45,10 @@ function matte(obj) {
     o.material = matted.get(src);
   });
 }
+// which rock a tile's cliff faces wear
+const SIDE = { [T.ROCK]: T.ROCK, [T.MOSS]: T.ROCK, [T.SNOW]: T.SNOWROCK, [T.SNOWROCK]: T.SNOWROCK, [T.ICE]: T.SNOWROCK,
+  [T.SAND]: T.REDROCK, [T.CLAY]: T.REDROCK, [T.REDROCK]: T.REDROCK, [T.ASH]: T.BASALT, [T.BASALT]: T.BASALT, [T.DAIS]: CRYPT_SIDE };
+const SUNK = 0.28;   // how far water lies below its banks
 
 export class Renderer {
   constructor(canvas, world) {
@@ -103,17 +114,18 @@ export class Renderer {
       const b = (buckets[t] ||= { p: [], u: [], c: [], n: [] });
       for (const v of verts) { b.p.push(v[0], v[1], v[2]); b.u.push(v[3], v[4]); b.c.push(shade, shade, shade); b.n.push(v[5], v[6], v[7]); }
     };
+    const top = (x, z) => { const i = w.I(x, z); return w.h[i] * STEP - (w.type[i] === T.WATER ? SUNK : 0); };
     for (let z = 0; z < N; z++) for (let x = 0; x < N; x++) {
-      const i = w.I(x, z), t = w.type[i], y = w.h[i] * STEP;
+      const i = w.I(x, z), t = w.type[i], y = top(x, z);
       // the 7:4 textures are kept square on the ground; the crypt's square ones span three tiles
       const U = SQUARE.has(t) ? 1 / 3 : 1 / 7, V = SQUARE.has(t) ? 1 / 3 : 1 / 4;
       const s = 0.86 + 0.14 * vnoise(x * 0.9, z * 0.9, 77) - (((x + z) & 1) ? 0.035 : 0);
       const x0 = x - 0.5, x1 = x + 0.5, z0 = z - 0.5, z1 = z + 0.5;
       const q = (a, b, c, d) => [a, b, c, a, c, d];
       push(t, q([x0, y, z0, x0 * U, z0 * V, 0, 1, 0], [x0, y, z1, x0 * U, z1 * V, 0, 1, 0], [x1, y, z1, x1 * U, z1 * V, 0, 1, 0], [x1, y, z0, x1 * U, z0 * V, 0, 1, 0]), s);
-      const side = t === T.ROCK || t === T.MOSS ? T.ROCK : t === T.DAIS ? CRYPT_SIDE : T.DIRT;
+      const side = SIDE[t] ?? T.DIRT;
       const sq = SQUARE.has(side), su = sq ? 0.5 : 1 / 4, sx = sq ? 0.5 : 1 / 7, sy = sq ? 0.5 : 1;
-      const hx = x + 1 < N ? w.h[w.I(x + 1, z)] * STEP : y, hz = z + 1 < N ? w.h[w.I(x, z + 1)] * STEP : y;
+      const hx = x + 1 < N ? top(x + 1, z) : y, hz = z + 1 < N ? top(x, z + 1) : y;
       if (hx < y) push(side, q([x1, y, z1, z1 * su, y * sy, 1, 0, 0], [x1, hx, z1, z1 * su, hx * sy, 1, 0, 0], [x1, hx, z0, z0 * su, hx * sy, 1, 0, 0], [x1, y, z0, z0 * su, y * sy, 1, 0, 0]), s * 0.62);
       if (hz < y) push(side, q([x0, y, z1, x0 * sx, y * sy, 0, 0, 1], [x0, hz, z1, x0 * sx, hz * sy, 0, 0, 1], [x1, hz, z1, x1 * sx, hz * sy, 0, 0, 1], [x1, y, z1, x1 * sx, y * sy, 0, 0, 1]), s * 0.8);
     }
@@ -143,7 +155,16 @@ export class Renderer {
     const needles = ['tex/pine_c.webp', 'trees/pine_needles_2.webp', 'tex/pine_3_c.webp', 'trees/pine_needles_4.webp'];
     const M = { solid: {}, ghost: {} };
     const none = new THREE.MeshBasicMaterial({ visible: false });
-    for (const p of [barkO, barkP, ...leaves, ...needles]) { M.solid[p] = solid(p); M.ghost[p] = ghost(p); }
+    // the trees of the other lands: [shape, bark, crown]. A bare tree's crown is its own boughs.
+    const OASIS = 'desert/Desert_Oasis_20_Textures/';
+    const KIND = {
+      pine: ['pine', barkP, null], oak: ['oak', barkO, null],
+      snowpine: ['pine', 'tex/pine_bark_3_c.webp', 'tex/snow_1_c.webp'],
+      dead: ['bare', 'tex/bark_3_c.webp', 'tex/bark_3_c.webp'],
+      char: ['bare', 'tex/basalt_1_c.webp', 'tex/ash_1_c.webp'],
+      palm: ['palm', OASIS + '01_date_palm_bark.png', OASIS + '03_palm_leaf_green.png'],
+    };
+    for (const p of [barkO, barkP, ...leaves, ...needles, ...Object.values(KIND).flatMap((k) => k.slice(1)).filter(Boolean)]) { M.solid[p] ||= solid(p); M.ghost[p] ||= ghost(p); }
 
     // a handful of shapes per kind and size, shared between trees
     const shapes = {};
@@ -160,6 +181,16 @@ export class Renderer {
           const f = k / tiers, rad = R * (1 - f * 0.72), hh = H * 0.36;
           crown.push(new THREE.ConeGeometry(rad, hh, 9).translate(0, H * (0.3 + f * 0.62) + hh * 0.2, 0));
         }
+      } else if (kind === 'bare') {
+        trunk = new THREE.CylinderGeometry(R * 0.07, R * 0.22, H * 0.7, 6).translate(0, H * 0.35, 0);
+        for (let k = 0; k < 2 + size; k++) {
+          const a = (k / (2 + size)) * 6.28 + r(), len = H * (0.22 + r() * 0.14);
+          crown.push(new THREE.CylinderGeometry(R * 0.02, R * 0.07, len, 5).translate(0, len / 2, 0).rotateZ(0.7 + r() * 0.5).rotateY(a).translate(0, H * (0.36 + r() * 0.26), 0));
+        }
+      } else if (kind === 'palm') {
+        const PH = H * 1.25;
+        trunk = new THREE.CylinderGeometry(R * 0.1, R * 0.16, PH, 6).translate(0, PH / 2, 0);
+        for (let k = 0; k < 7; k++) crown.push(new THREE.ConeGeometry(R * 0.3, R * 1.9, 4).scale(1, 1, 0.25).translate(0, R * 0.95, 0).rotateZ(1.25 + r() * 0.3).rotateY((k / 7) * 6.28).translate(0, PH, 0));
       } else {
         trunk = new THREE.CylinderGeometry(R * 0.14, R * 0.26, H * 0.55, 7).translate(0, H * 0.275, 0);
         const blobs = 3 + size * 2;
@@ -175,8 +206,9 @@ export class Renderer {
       return (shapes[key] = { geo, R, H });
     };
     for (const t of this.world.trees) {
-      const s = shape(t.kind, t.size, t.v % 3);
-      const bark = t.kind === 'pine' ? barkP : barkO, leaf = (t.kind === 'pine' ? needles : leaves)[t.v];
+      const K = KIND[t.kind] || KIND.oak;
+      const s = shape(K[0], t.size, t.v % 3);
+      const bark = K[1], leaf = K[2] || (K[0] === 'pine' ? needles : leaves)[t.v];
       const m = new THREE.Mesh(s.geo, [M.solid[bark], M.solid[leaf]]);
       const c = (t.size - 1) / 2;
       m.position.set(t.x + c, 0, t.z + c);
@@ -184,7 +216,7 @@ export class Renderer {
       m.updateMatrix(); m.matrixAutoUpdate = false;
       this.scene.add(m);
       // hide(true) takes the crown away altogether: a fight has to be readable
-      this.faders.push({ tree: true, x: t.x + c, z: t.z + c, r: s.R, h: s.H * t.tall, on: 0, show: () => { m.material = [M.solid[bark], M.solid[leaf]]; }, hide: (hard) => { m.material = [M.ghost[bark], hard ? none : M.ghost[leaf]]; } });
+      this.faders.push({ tree: true, x: t.x + c, z: t.z + c, r: K[0] === 'bare' ? s.R * 0.3 : s.R, h: s.H * t.tall, on: 0, show: () => { m.material = [M.solid[bark], M.solid[leaf]]; }, hide: (hard) => { m.material = [M.ghost[bark], hard ? none : M.ghost[leaf]]; } });
     }
   }
 
@@ -241,6 +273,22 @@ export class Renderer {
     board.position.set(w.board.x, 0, w.board.z);
     const bl = label('Bounties', { size: 36, color: '#ffe2a0' }); bl.position.set(w.board.x, 2.1, w.board.z);
     this.scene.add(board, bl);
+    // the ruins' walls and the standing stones: one instanced mesh per texture
+    const by = {};
+    for (const p of w.props) (by[p.kind + '|' + p.tex] ||= []).push(p);
+    const m4 = new THREE.Matrix4(), rr = rng32(7);
+    for (const k in by) {
+      const [kind, tex] = k.split('|'), list = by[k];
+      const geo = kind === 'wall' ? new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0) : new THREE.CylinderGeometry(0.1, 0.46, 1, 6).translate(0, 0.5, 0);
+      const im = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ map: this.tex(tex) }), list.length);
+      list.forEach((p, n) => {
+        m4.makeRotationY(kind === 'wall' ? 0 : rr() * 6.28).scale(new THREE.Vector3(1, p.h, 1)).setPosition(p.x, w.y(p.x, p.z), p.z);
+        im.setMatrixAt(n, m4);
+      });
+      im.frustumCulled = false;
+      this.scene.add(im);
+    }
+    for (const p of w.places) { const l = label(p.name, { size: 40, color: '#ffe2a0' }); l.position.set(p.cx, 4.6, p.cz); this.scene.add(l); }
   }
 
   // ---- the old crypt: catacomb stone and bone from bm, built in simple shapes ----

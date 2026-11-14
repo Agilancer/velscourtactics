@@ -141,6 +141,18 @@ grip at the origin; the shield's face is toward +Z (Blender's -Y).
 | `zombie_lurker` | A dead woodsman half-covered in pine needles and moss, built to lie flat, one clawed hand forward |
 | `zombie_bonesack` | A bloated corpse, belly swollen and split with yellow sacs, stubby legs, head tipped back |
 | `zombie_brute` | A huge corpse too big for one grave, broken chains at wrists and neck, iron collar, stitched shoulders |
+| `zombie_rimewalker` | A soldier frozen dead on the march and still walking, blue-white frostbitten skin, a rimed greatcoat and cracked border-guard cuirass sheathed in ice, icicles hanging from the jaw and elbows, one arm locked stiff, snow packed in the eye sockets |
+| `zombie_driftling` | A gaunt pale ghoul built to lie flat under snow, bone-white skin, long clawed arms, a tattered white fur mantle and frozen rags that make it a snowdrift from above, black frostbitten fingers and nose, jaw hung open |
+| `zombie_husk` | A sun-dried mummified corpse, thin as rope, leather-brown skin tight on the bones, wind-shredded desert wrappings and the faded silk of a caravan robe trailing behind, hunched forward to sprint, sand pouring from the mouth |
+| `zombie_slinger` | A sun-bleached skeleton in the rags of a caravan guard, half its ribs missing and the rest sharpened, a quiver made of its own ribcage, cracked leather harness, faded red headcloth, one long arm cocked back |
+| `zombie_drowner` | A drowned corpse risen from a bog, swollen grey-green waterlogged skin, a rotted fisherman's oilskin, pond weed and reeds trailing from the shoulders, long dripping arms with webbed black hands, mouth full of mud |
+| `zombie_leechmother` | A bloated drowned corpse in a burst mourning gown, its body a mass of fat black leeches clinging and hanging in ropes, pale belly split open, stubby legs, head tipped back, veil of pond weed |
+| `zombie_cinder` | A charred corpse still smouldering, blackened cracked skin with dull ember-orange in the cracks, the burnt rags of a railway porter's uniform, brass buttons fused to the chest, smoke-stained jaw, clawed hands of coal |
+| `zombie_slagback` | A huge corpse with a hump of cooled furnace slag and iron plate fused across its back and shoulders, a foundryman's leather apron, rivets through the skin, one arm cased in black iron, bent double under the weight |
+| `zombie_warden` | A towering dead fortress captain frozen at his post, an ornate border-guard plate harness cased in ice, a great fur-collared cloak stiff with rime, a crown of icicles grown through the open helm, frost-white beard, gauntlets fused shut |
+| `zombie_dryking` | A tall mummified desert king, sun-black skin on long bones, a tarnished gold collar and the bleached shreds of royal silk, a tall cracked crown of bone and gilt, jeweled finger-claws, robes of wind-torn linen trailing sand |
+| `zombie_abbess` | A tall drowned abbess, grey waterlogged face under a rotted wimple and long veil, a black brocade habit heavy with water and silt, a rosary of river stones, reeds and pond weed hanging from the sleeves, hands folded and clawed |
+| `zombie_stoker` | A giant dead locomotive fireman, soot-black skin cracked with furnace glow, a scorched leather apron and iron-shod boots, a boiler plate riveted across the chest, a soot-caked cap fused to the skull, forearms like burnt timbers |
 | `wolf` | A lean grey wolf, scarred muzzle |
 | `skeleton` | A risen cathedral guard in the corroded remains of ceremonial armour, a rusted crested cap |
 | `ghoul` | A violet-grey ghoul, hunched, long nails, the rags of a fine burial shroud |
@@ -163,6 +175,11 @@ a chest, a signpost, a market stall, fence and wall pieces, six house shapes.
 
 1. The five named: `lisandra`, `homunculus`, `lily`, `jamie`, `stevie`.
 2. `zombie_shambler`, `zombie_gnawer`, `zombie_lurker`, `zombie_bonesack`, `zombie_brute`. **Done (section 12).**
+   **Still to make (stand-ins in the game now):** the eight that walk the lands past the pines, `zombie_rimewalker`,
+   `zombie_driftling` (the White Waste), `zombie_husk`, `zombie_slinger` (the Red Badlands), `zombie_drowner`,
+   `zombie_leechmother` (the Drowned Fen), `zombie_cinder`, `zombie_slagback` (the Cinder Reach), and the four lords,
+   `zombie_warden`, `zombie_dryking`, `zombie_abbess`, `zombie_stoker` (about 1.7 tiles tall on a 1-tile footing).
+   Animation needs: the zombie set; `pounce` for the driftling, `sweep` for the warden.
 3. Four classes, both genders (eight bodies): `paladin`, `ranger`, `wizard`, `barbarian`.
 4. The ten weapons and the two shields.
 5. `wolf`, `skeleton`, `totem`, `turret`.
