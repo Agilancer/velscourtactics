@@ -80,13 +80,13 @@ export function makeItem(kind, tier = 0, rarity = 0, r = Math.random) {
     const a = ARMORS[kind]; it.slot = 'armor'; it.baseName = a.names[tier];
     it.base.def = Math.round(a.def * m); it.base.res = Math.round(a.res * m); if (a.hp) it.base.hp = Math.round(a.hp * m);
   } else if (kind === 'helm') { it.slot = 'helm'; it.baseName = HELMS.names[tier]; it.base.def = Math.round(1.6 * m); it.base.hp = Math.round(5 * m); }
-  // what it looks like worn (data/gear.js, gfx/dye.js), rolled apart from `r` like a weapon's
-  if (it.slot === 'armor' || it.slot === 'helm') it.skin = rollSkin(rarity);
   else if (kind === 'ring') {
     it.slot = 'ring'; it.baseName = RING_NAMES[tier];
     const s = pick(['atk', 'mag', 'def', 'res', 'spd', 'crit'], r);
     it.base[s] = Math.max(1, Math.round((s === 'spd' ? 0.7 : s === 'crit' ? 3 : 1.6) * m));
   } else if (kind === 'amulet') { it.slot = 'amulet'; it.baseName = AMULET_NAMES[tier]; it.base.hp = Math.round(8 * m); it.base.mp = Math.round(5 * m); }
+  // what it looks like worn (data/gear.js, gfx/dye.js), rolled apart from `r` like a weapon's
+  if (it.slot === 'armor' || it.slot === 'helm') it.skin = rollSkin(rarity);
   for (let k = 0; k < RARITY[rarity].affixes; k++) addAffix(it, r);
   if (it.slot !== 'ring' && it.slot !== 'amulet') it.sockets = r() < 0.35 + rarity * 0.15 ? 1 : 0;
   return it;

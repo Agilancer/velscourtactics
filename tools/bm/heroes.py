@@ -1,5 +1,5 @@
-"""Brings bm's 44 hero bodies over (assets/models/heroes/) and writes their manifest entries: each as a recruit of its own,
-and the most of them again as armour tiers for the classes they belong to.
+"""Brings bm's hero bodies over (assets/models/heroes/), 38 of its 44, and writes their manifest entries: each as a recruit's
+body, and the most of them again as armour tiers for the classes they belong to.
 
 python tools/bm/heroes.py            copies from ../bm (origin/main) what isn't here yet, paints the marks off, writes the entries
 python tools/bm/heroes.py --no-copy  only writes the entries
@@ -15,10 +15,10 @@ which piece of the harness it is (helm, chest, shoulders, arms, legs, boots, mai
 paints each piece in the colours of what is worn there.
 
 The marks (the V and T rule: a cross is Tessariel's): the paladins, the lancers, dragoon_f3 and f4 and boomerang_f1 came
-with crosses on their chests, tabards, belts and pauldrons. PAINT lists them, each with a mask in tools/bm/marks, and
-they are painted off the colour and normal maps every time the body is copied (erase; tools/bm/marks/README.md). Each body
-also gets <body>.dye.png beside it, which texels are dyed cloth, bare metal and gilt (dye_mask). Re-running replaces only
-the keys below.
+with crosses on their chests, tabards, belts and pauldrons. Six have them in the mesh as well (SCULPTED) and stay behind.
+PAINT lists all fourteen, each with a mask in tools/bm/marks, and they are painted off the colour, normal and roughness maps
+every time the body is copied (erase; tools/bm/marks/README.md). Each body also gets <body>.dye.png beside it, which
+texels are dyed cloth, bare metal and gilt (dye_mask). Re-running replaces only the keys below.
 """
 import json
 import os
@@ -34,10 +34,13 @@ BM = os.path.join(os.path.dirname(ROOT), "bm")
 MANIFEST = os.path.join(ROOT, "assets", "models", "manifest.json")
 OUT = os.path.join(ROOT, "assets", "models", "heroes")
 
-ALL = ([f"archer_f{i}" for i in range(1, 7)] + [f"bard_{g}{i}" for g in "fm" for i in range(1, 4)]
+# Six bodies have their crosses sculpted into the mesh, not only painted on, so no paint takes them off: they stay in bm
+# till they're re-sculpted (their masks in tools/bm/marks still serve the paint when they are).
+SCULPTED = {"paladin_m2", "paladin_f1", "paladin_f2", "lancer_m2", "lancer_m3", "lancer_m4"}
+ALL = [b for b in ([f"archer_f{i}" for i in range(1, 7)] + [f"bard_{g}{i}" for g in "fm" for i in range(1, 4)]
        + [f"boomerang_{g}{i}" for g in "fm" for i in range(1, 4)] + [f"dragoon_{g}{i}" for g in "fm" for i in range(1, 5)]
        + [f"lancer_f{i}" for i in range(1, 4)] + [f"lancer_m{i}" for i in range(1, 5)] + [f"ninja_m{i}" for i in range(1, 4)]
-       + ["paladin_f1", "paladin_f2", "paladin_m1", "paladin_m2"] + [f"rogue_m{i}" for i in range(1, 5)])
+       + ["paladin_f1", "paladin_f2", "paladin_m1", "paladin_m2"] + [f"rogue_m{i}" for i in range(1, 5)]) if b not in SCULPTED]
 
 # bm's classes as this game's
 CLASS_OF = {"archer": "ranger", "bard": "bard", "boomerang": "boomerang_knight", "dragoon": "dragoon", "lancer": "lancer",
@@ -54,10 +57,9 @@ BODIES = {
     "dragoon_f_t3": "dragoon_f2", "dragoon_f_t4": "dragoon_f3", "dragoon_f_t5": "dragoon_f1",
     "dragoon_m_t3": "dragoon_m2", "dragoon_m_t4": "dragoon_m4", "dragoon_m_t5": "dragoon_m1",
     "gunner_m_t1": "rogue_m1", "gunner_m_t3": "rogue_m2", "gunner_m_t4": "rogue_m3", "gunner_m_t5": "rogue_m4",
-    "paladin_f_t3": "paladin_f1", "paladin_f_t5": "paladin_f2",
-    "paladin_m_t3": "paladin_m1", "paladin_m_t5": "paladin_m2",
+    "paladin_m_t3": "paladin_m1",
     "lancer_f_t3": "lancer_f1", "lancer_f_t4": "lancer_f2", "lancer_f_t5": "lancer_f3",
-    "lancer_m_t3": "lancer_m1", "lancer_m_t4": "lancer_m2", "lancer_m_t5": "lancer_m4",
+    "lancer_m_t3": "lancer_m1",
     "ninja_m_t1": "ninja_m1", "ninja_m_t3": "ninja_m2", "ninja_m_t5": "ninja_m3",
     "ninja_f_t1": "archer_f6", "ninja_f_t3": "archer_f1", "ninja_f_t5": "archer_f3",
 }

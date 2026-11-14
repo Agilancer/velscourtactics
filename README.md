@@ -138,13 +138,14 @@ and the gear sets the letter size, how dark the window is and its size. Those se
 
 A good deal of this came over from bm (its `origin/main`, read with `git -C ../bm show`, never changed). Each piece is
 written out by a tool here that says what it took and what it left behind. Anything carrying either side's mark stayed in
-bm: a cross is Tessariel's, so the cross-shaped shields stayed there, and the crosses on fourteen hero bodies (the
-paladins, the lancers, two dragoons and a boomerang knight) are painted off as they come over (`tools/bm/marks`).
+bm: a cross is Tessariel's, so the cross-shaped shields stayed there, and so did six hero bodies with crosses sculpted into
+them (two paladins and a paladin's armour, three lancers). Eight more had crosses only in their paint, which is painted
+off as they come over (`tools/bm/marks`).
 
 | | | |
 |---|---|---|
 | `assets/gear/` | 129 weapons, shields and lutes, baked small, with their icons | `tools/gear/bake.py`, `tools/gear/sources.txt` |
-| `assets/models/heroes/` | all 44 hero bodies, each a recruit's (`hero_<body>`) and most again as armour tiers 3 to 5 (`<class>_<g>_t<n>`), with a dye mask each (`<body>.dye.png`) | `tools/bm/heroes.py` |
+| `assets/models/heroes/` | 38 hero bodies, each a recruit's (`hero_<body>`) and most again as armour tiers 3 to 5 (`<class>_<g>_t<n>`), with a dye mask each (`<body>.dye.png`) | `tools/bm/heroes.py` |
 | `assets/skins/`, `src/data/skins.js` | bm's 152 player skins: each part's cloth, trim and weave, and the 593 weave swatches in one sheet | `tools/bm/skins.py` |
 | `assets/models/folk/` | ten townsfolk bodies and their paint | `tools/bm/folk.py` |
 | `assets/models/clips/` | bm's hero and townsfolk clip banks (`"bank"` in the manifest) | the two above |

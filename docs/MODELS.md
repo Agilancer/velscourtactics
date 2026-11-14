@@ -325,7 +325,7 @@ played after putting one of the dead down), `point` (nothing; the leader, when p
 
 ### bm's bodies: recruits and what they wear
 
-`python tools/bm/heroes.py` brings all 44 of bm's hero bodies over to `assets/models/heroes/`. Each comes in under two
+`python tools/bm/heroes.py` brings 38 of bm's 44 hero bodies over to `assets/models/heroes/`. Each comes in under two
 kinds of key:
 
 | Key | What it is |
@@ -342,8 +342,10 @@ gilt (blue). bm's own recolour rule decides each one.
 shoulders, arms, legs and feet, each in its own part of the item's skin: one of bm's 152 player skins
 (`src/data/skins.js`), rolled with the item from those of its rarity. That gives the part's cloth, its trim and a weave
 of bm's, laid on the cloth with the shading kept. The metal is toned by the item's tier, from rust-brown to the blue of
-Mithril. A part nothing covers wears the recruit's own `palette`. The fourteen bodies that came with crosses have them
-painted off as they are copied (`tools/bm/marks/README.md`).
+Mithril. A part nothing covers wears the recruit's own `palette`. Eight bodies came with crosses in their paint, and have them
+painted off as they are copied (`tools/bm/marks/README.md`). Six more have crosses sculpted into the mesh, which paint
+can't reach: paladin_m2, f1 and f2, lancer_m2, m3 and m4 stay in bm (`SCULPTED` in `heroes.py`) until someone
+re-sculpts them. Re-sculpting means smoothing each cross off its breastplate or tabard and keeping the UVs.
 
 ## 10. Lisandra, as done
 
