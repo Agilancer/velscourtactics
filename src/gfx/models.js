@@ -342,6 +342,7 @@ export function withOverride(key, standIn, { asleep = false } = {}) {
     if (!o.isMesh) return;
     o.frustumCulled = false;                             // a skinned mesh's bounds are its rest pose's
     o.material = o.material.clone();
+    o.material.userData.own = true;                      // this body's alone (gfx/outline.js lights it as it is)
     // exports often arrive marked as blended; a body is solid unless the manifest says otherwise
     if (!def.blend) { o.material.transparent = false; o.material.depthWrite = true; o.material.opacity = 1; o.material.alphaTest = 0; }
     // There is no environment to reflect, so metal would go black: Meshy's bakes are read as matte paint.
@@ -471,6 +472,7 @@ export const sleep = (model) => model?.userData.sleep?.();
 export function shadowDisc(r = 0.34) {
   const m = new THREE.Mesh(G('disc' + r, () => new THREE.CircleGeometry(r, 16)), mat(0x000000, { transparent: true, opacity: 0.32, depthWrite: false }));
   m.rotation.x = -Math.PI / 2; m.position.y = 0.02; m.renderOrder = 1;
+  m.userData.disc = true;                                // gfx/outline.js rings it in the side's colour
   return m;
 }
 

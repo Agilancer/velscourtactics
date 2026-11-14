@@ -491,7 +491,9 @@ first models under the same keys. The Blender working file holding all eighteen 
 `v2 ornate (eighteen) - tactics.blend` in the meshy folder. What changed in the recipe:
 
 - **No stylising.** The restyled entries have no `bones`, `outline`, `lift` or `normal`: the figures keep the
-  proportions and the shading they were drawn with.
+  proportions and the shading they were drawn with. What makes them read on dark ground is not per model: every
+  party member and every one of the dead gets an edge light and a thin outline in its side's colour, a ring at its
+  feet and its darks lifted a little, at run time (`src/gfx/outline.js`, tuned in its `LOOK`).
 - **Height by the head.** Meshy places `HeadTop_End` wherever a hat ends, so stature is measured from the
   `Head` bone as 0.87 of the body, and `height` = wanted head height in tiles x whole height / stature.
 - **New class branches** in `retarget.py`: `lancer` (Stevie: `Thrust`, `Guard_Up`, `Rally`, `Charge`,
