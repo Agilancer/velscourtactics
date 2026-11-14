@@ -24,6 +24,9 @@ import { ambience } from './core/ambience.js';
 import { title } from './ui/title.js';
 import { pick } from './core/util.js';
 
+// 'a sword', 'an ash staff'
+const an = (name) => `${/^[aeiou]/i.test(name) ? 'an' : 'a'} ${name}`;
+
 class Game {
   constructor() {
     this.world = buildWorld();
@@ -323,7 +326,7 @@ class Game {
       st.gold += gold; addToBag(st, it);
       this.r.openChest(c.id);
       sfx.chest();
-      note(st, 'find', `Opened a chest${c.crypt ? ' in the old crypt' : ''}: ${gold} gold and a ${itemName(it)}.`);
+      note(st, 'find', `Opened a chest${c.crypt ? ' in the old crypt' : ''}: ${gold} gold and ${an(itemName(it))}.`);
       save(st);
       await this.ui.dialog([['', `${c.crypt ? CRYPT.chest : CHEST_LINE} Inside: ${gold} gold and a ${itemName(it)}.`]]);
       sfx.chestShut();
@@ -501,7 +504,7 @@ class Game {
           }
         }
       }
-      if (best) return { npc: npc(best.shop), why: `a ${itemName(best.it)} for ${best.h.name.split(' ')[0]}`, buy: () => { const L = this.ui.stock(best.shop); if (!L.includes(best.it) || st.gold < best.cost) return null; L.splice(L.indexOf(best.it), 1); st.gold -= best.cost; addToBag(st, best.it); this.autoEquip(); return `Bought a ${itemName(best.it)} for ${best.h.name.split(' ')[0]}: ${best.cost} gold.`; } };
+      if (best) return { npc: npc(best.shop), why: `${an(itemName(best.it))} for ${best.h.name.split(' ')[0]}`, buy: () => { const L = this.ui.stock(best.shop); if (!L.includes(best.it) || st.gold < best.cost) return null; L.splice(L.indexOf(best.it), 1); st.gold -= best.cost; addToBag(st, best.it); this.autoEquip(); return `Bought ${an(itemName(best.it))} for ${best.h.name.split(' ')[0]}: ${best.cost} gold.`; } };
     }
     if (o.purse === 'forge' && npc('enhance')) {
       const cand = partyHeroes(st).map((h) => h.equip.weapon).filter((it) => it && it.plus < 10).sort((a, b) => a.plus - b.plus)[0];

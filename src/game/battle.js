@@ -528,7 +528,7 @@ export class Battle {
   }
   badTiles(u) { return enc.badTiles(this, u); }
   // what whoever is up means to do, under the turn order
-  setIntent(u, text) { this.intentEl.innerHTML = text ? `<b style="color:${u.color}">${esc(u.name.split(' ')[0])}</b> · ${esc(text)}` : ''; }
+  setIntent(u, text) { this.intentEl.innerHTML = text ? `<b style="color:${u.color}">${esc(u.hero ? u.name.split(' ')[0] : u.name)}</b> · ${esc(text)}` : ''; }
 
   // ---- the player's one call under auto-play: focus one of the dead, go all out, or hold the line ----
   drawCall() {

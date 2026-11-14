@@ -159,6 +159,8 @@ export function noteKill(st, zombieId) {
 
 // ---- save ----
 export function save(st) {
+  // (the dots of things that are gone go with them)
+  if (st.fresh?.items) { const have = new Set(st.bag.map((it) => it.uid)); for (const id in st.fresh.items) if (!have.has(id)) delete st.fresh.items[id]; }
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(st)); } catch (e) { console.warn('save failed', e); }
 }
 export function load() {
