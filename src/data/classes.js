@@ -4,6 +4,7 @@
 //
 // A skill: r = [min,max] range in tiles, aoe = radius of the blast, at = who it's aimed at,
 // kind = phys | magic | heal | buff | debuff | summon, pow = multiplier on ATK or MAG.
+// anim (optional) names the skill's own animation; a model without it plays 'cast' or 'attack'.
 
 const S = (id, name, lvl, cost, r, aoe, at, kind, pow, x, desc) => ({ id, name, lvl, cost, r, aoe, at, kind, pow, ...x, desc });
 
@@ -189,13 +190,13 @@ export const CLASSES = {
   // Lisandra's own. Nobody else can be one.
   doorkeeper: {
     name: 'Doorkeeper', color: '#e6c27a', primary: 'int', attrs: [10, 18, 18, 32], life: [50, 5], mana: [60, 4.5],
-    weapon: ['staff', 'wand'], armor: 'cloth', move: 3, jump: 1, role: 'Old tricks', hidden: true,
+    weapon: ['staff', 'wand'], armor: 'cloth', move: 3, jump: 1, role: 'Old tricks', hidden: true, basicAnim: 'cast_bolt',
     desc: 'Two hundred years keeping a door in a hill. A few old tricks left, and a snap of the fingers that has worked on forty-three people.',
     skills: [
-      S('old_tricks', 'Old Tricks', 1, 4, [1, 5], 0, 'enemy', 'magic', 1.3, { el: 'fire', st: ['burn', 2, 0.4] }, 'A weak fire bolt, thrown with two hundred years of practice.'),
-      S('the_snap', 'The Snap', 1, 9, [1, 4], 0, 'enemy', 'debuff', 0, { st: ['stun', 1, 0.85] }, 'She snaps her fingers. Whoever it touches believes they should stand still.'),
-      S('lantern_light', 'Lantern Light', 6, 11, [0, 3], 1, 'ally', 'heal', 1.5, {}, 'The light she carried in the war, held up a while.'),
-      S('wave_of_candles', 'Wave of Candles', 10, 20, [0, 0], 2, 'self', 'magic', 1.6, { el: 'fire', st: ['burn', 2, 0.8] }, 'The candles catch in a wave from her hand.'),
+      S('old_tricks', 'Old Tricks', 1, 4, [1, 5], 0, 'enemy', 'magic', 1.3, { el: 'fire', st: ['burn', 2, 0.4], anim: 'cast_bolt' }, 'A weak fire bolt, thrown with two hundred years of practice.'),
+      S('the_snap', 'The Snap', 1, 9, [1, 4], 0, 'enemy', 'debuff', 0, { st: ['stun', 1, 0.85], anim: 'snap' }, 'She snaps her fingers. Whoever it touches believes they should stand still.'),
+      S('lantern_light', 'Lantern Light', 6, 11, [0, 3], 1, 'ally', 'heal', 1.5, { anim: 'lantern' }, 'The light she carried in the war, held up a while.'),
+      S('wave_of_candles', 'Wave of Candles', 10, 20, [0, 0], 2, 'self', 'magic', 1.6, { el: 'fire', st: ['burn', 2, 0.8], anim: 'wave' }, 'The candles catch in a wave from her hand.'),
     ],
   },
 };

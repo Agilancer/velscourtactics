@@ -127,9 +127,12 @@ export class UI {
     return new Promise((res) => {
       const prev = g.mode; g.mode = 'talk';
       let i = 0, timer = null;
-      const end = (v) => { clearTimeout(timer); d.classList.add('hide'); this.onAct = null; if (g.mode === 'talk') g.mode = prev === 'talk' ? 'explore' : prev; res(v); };
+      let spoke = null;
+      const voice = (who) => { if (spoke) g.explore?.speak(spoke, false); spoke = who; if (who && prev === 'explore') g.explore?.speak(who, true); };
+      const end = (v) => { voice(null); clearTimeout(timer); d.classList.add('hide'); this.onAct = null; if (g.mode === 'talk') g.mode = prev === 'talk' ? 'explore' : prev; res(v); };
       const show = () => {
         const [who, text] = lines[i], last = i === lines.length - 1;
+        voice(who);
         d.classList.remove('hide');
         d.querySelector('.who').textContent = who; d.querySelector('.who').classList.toggle('hide', !who);
         d.querySelector('.say').textContent = text.replace('{name}', g.st?.name || '');

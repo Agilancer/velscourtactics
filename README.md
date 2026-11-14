@@ -4,12 +4,12 @@ An isometric open-world tactics game in the VELSCOUR universe. You walk Herringt
 round it with a party of up to six in a chain behind you; when one of the dead sees you, the walk stops
 and it becomes a turn-based fight on the spot, Final Fantasy Tactics style.
 
-This is the first playable build. Every figure is a stand-in made of boxes until the Meshy models arrive
+This is the first playable build. Lisandra has her real model; every other figure is a stand-in made of boxes until the Meshy models arrive
 (`docs/MODELS.md` has the prompts, the animation list and the order to make them in).
 
 ## Run it
 
-`play.bat`, or `python -m http.server 8417` and open http://localhost:8417. No build step: plain ES
+`play.bat`, or `python tools/serve.py 8417` and open http://localhost:8417. No build step: plain ES
 modules, three.js vendored in `vendor/three`.
 
 ## Play it

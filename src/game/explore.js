@@ -102,6 +102,10 @@ export class Explore {
     st.pos = { x: p.x, z: p.z };
   }
   get leader() { return this.actors[0]; }
+  // Whoever in the party is speaking gestures while they do.
+  speak(name, on) {
+    for (const a of this.actors) if (a.model.visible && a.hero.name.split(' ')[0] === name.split(' ')[0]) setAnim(a.model, on ? 'talk' : 'idle');
+  }
 
   free(x, z) {
     const w = this.g.world;
@@ -139,7 +143,8 @@ export class Explore {
       else if (mv) { a.to = { x: mv.x, y: w.y(mv.x, mv.z), z: mv.z }; a.hop = mv.jump; a.model.visible = true; }
       else { a.to = a.from; a.hop = false; }
       const dx = a.to.x - a.x, dz = a.to.z - a.z;
-      if (dx || dz) { a.model.rotation.y = Math.atan2(dx, dz); setAnim(a.model, 'walk'); }
+      if (dx || dz) a.model.rotation.y = Math.atan2(dx, dz);
+      if (a.hop) setAnim(a.model, 'jump'); else if (dx || dz) setAnim(a.model, 'walk');
     });
     this.step = { t: 0, dur: jump ? HOP : WALK };
     if (jump) sfx.jump(); else sfx.step();

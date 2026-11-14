@@ -59,7 +59,7 @@ export const slotsFor = (it) => (it.slot === 'ring' ? ['ring1', 'ring2'] : [it.s
 // The plain attack, shaped like a skill so combat treats it the same.
 export function basicAttack(h) {
   const w = h.equip.weapon, W = w ? WEAPONS[w.kind] : { stat: 'atk', r: [1, 1] };
-  return { id: 'attack', name: 'Attack', cost: 0, r: W.r, aoe: 0, at: 'enemy', kind: W.stat === 'mag' ? 'magic' : 'phys', pow: 1, basic: true, rage: 25, desc: 'A plain blow with what you are holding.' };
+  return { id: 'attack', name: 'Attack', cost: 0, r: W.r, aoe: 0, at: 'enemy', kind: W.stat === 'mag' ? 'magic' : 'phys', pow: 1, basic: true, rage: 25, anim: CLASSES[h.cls].basicAnim, desc: 'A plain blow with what you are holding.' };
 }
 export function heroSkills(h) {
   return [...CLASSES[h.cls].skills.filter((s) => h.lvl >= s.lvl), ...h.spells.map((id) => SPELLS[id]).filter(Boolean)];
