@@ -79,13 +79,13 @@ export const CLASSES = {
   },
   totem_master: {
     name: 'Totem Master', color: '#5ac8a0', primary: 'int', attrs: [18, 16, 22, 24], life: [60, 7], mana: [45, 3],
-    weapon: ['staff'], armor: 'leather', move: 3, jump: 2, role: 'Plants totems that heal and burn',
+    weapon: ['staff'], armor: 'leather', move: 3, jump: 2, role: 'Plants totems that heal and burn', basicAnim: 'bolt',
     desc: 'A shaman who plants spirit totems that burn, shock and heal while ancestors fight at their side.',
     skills: [
-      S('spirit_strike', 'Spirit Strike', 1, 4, [1, 3], 0, 'enemy', 'magic', 1.25, { el: 'light' }, 'An ancestor lends a hand, briefly and hard.'),
-      S('healing_totem', 'Healing Totem', 3, 12, [1, 2], 0, 'tile', 'summon', 0, { summon: 'totem_heal' }, 'A carved post that mends whoever is hurt worst.'),
-      S('searing_totem', 'Searing Totem', 6, 12, [1, 3], 0, 'tile', 'summon', 0, { summon: 'totem_sear' }, 'A carved post that spits fire at the nearest foe.'),
-      S('earth_shock', 'Earth Shock', 10, 16, [1, 4], 1, 'enemy', 'magic', 1.6, { el: 'storm', st: ['stun', 1, 0.3] }, 'The ground itself takes a swing.'),
+      S('spirit_strike', 'Spirit Strike', 1, 4, [1, 3], 0, 'enemy', 'magic', 1.25, { el: 'light', anim: 'bolt' }, 'An ancestor lends a hand, briefly and hard.'),
+      S('healing_totem', 'Healing Totem', 3, 12, [1, 2], 0, 'tile', 'summon', 0, { summon: 'totem_heal', anim: 'plant' }, 'A carved post that mends whoever is hurt worst.'),
+      S('searing_totem', 'Searing Totem', 6, 12, [1, 3], 0, 'tile', 'summon', 0, { summon: 'totem_sear', anim: 'plant' }, 'A carved post that spits fire at the nearest foe.'),
+      S('earth_shock', 'Earth Shock', 10, 16, [1, 4], 1, 'enemy', 'magic', 1.6, { el: 'storm', st: ['stun', 1, 0.3], anim: 'slam' }, 'The ground itself takes a swing.'),
     ],
   },
   death_knight: {
@@ -134,13 +134,13 @@ export const CLASSES = {
   },
   slime_lord: {
     name: 'Slime Lord', color: '#4aa8ff', primary: 'vit', attrs: [18, 14, 32, 16], life: [85, 9], mana: [35, 2.5],
-    weapon: ['mace'], armor: 'plate', move: 3, jump: 2, role: 'Soaks blows, breeds slimelings', basic: 'atk',
+    weapon: ['mace'], armor: 'plate', move: 3, jump: 2, role: 'Soaks blows, breeds slimelings', basic: 'atk', basicAnim: 'swing',
     desc: 'A crowned king of living ooze. Acid floods, endless slimeling broods and grotesque mutations.',
     skills: [
-      S('slime_ball', 'Slime Ball', 1, 5, [1, 4], 0, 'enemy', 'magic', 1.25, { el: 'acid', st: ['slow', 2, 0.6] }, 'A royal handful, thrown.'),
-      S('slimeling', 'Slimeling', 3, 10, [1, 2], 0, 'tile', 'summon', 0, { summon: 'slimeling' }, 'A small loyal subject splits off.'),
-      S('body_slam', 'Body Slam', 6, 12, [1, 3], 1, 'enemy', 'phys', 1.5, { dash: true }, 'The whole king, arriving at once.'),
-      S('acid_splash', 'Acid Splash', 10, 16, [1, 4], 2, 'enemy', 'magic', 1.3, { el: 'acid', st: ['curse', 3, 1] }, 'Armour was a good idea until now.'),
+      S('slime_ball', 'Slime Ball', 1, 5, [1, 4], 0, 'enemy', 'magic', 1.25, { el: 'acid', st: ['slow', 2, 0.6], anim: 'bolt' }, 'A royal handful, thrown.'),
+      S('slimeling', 'Slimeling', 3, 10, [1, 2], 0, 'tile', 'summon', 0, { summon: 'slimeling', anim: 'split' }, 'A small loyal subject splits off.'),
+      S('body_slam', 'Body Slam', 6, 12, [1, 3], 1, 'enemy', 'phys', 1.5, { dash: true, anim: 'slam' }, 'The whole king, arriving at once.'),
+      S('acid_splash', 'Acid Splash', 10, 16, [1, 4], 2, 'enemy', 'magic', 1.3, { el: 'acid', st: ['curse', 3, 1], anim: 'wave' }, 'Armour was a good idea until now.'),
     ],
   },
   boomerang_knight: {
@@ -167,24 +167,24 @@ export const CLASSES = {
   },
   dragon_knight: {
     name: 'Dragon Knight', color: '#ff5a2a', primary: 'str', attrs: [26, 18, 24, 12], life: [72, 8], mana: [30, 2],
-    weapon: ['sword'], armor: 'plate', move: 3, jump: 2, role: 'Fire in the front rank',
+    weapon: ['sword'], armor: 'plate', move: 3, jump: 2, role: 'Fire in the front rank', basicAnim: 'swing',
     desc: 'Blood of the wyrm runs hot. Fire breath, dragon-scale armor and the power to become a dragon.',
     skills: [
-      S('flame_slash', 'Flame Slash', 1, 5, [1, 1], 0, 'enemy', 'phys', 1.3, { el: 'fire', st: ['burn', 2, 0.5] }, 'A cut that catches.'),
-      S('fire_breath', 'Fire Breath', 3, 10, [1, 2], 1, 'enemy', 'magic', 1.15, { el: 'fire', st: ['burn', 2, 0.6] }, 'A river of fire, short and wide.'),
-      S('dragon_scales', 'Dragon Scales', 6, 8, [0, 0], 0, 'self', 'buff', 0, { st: ['guard', 3, 1], st2: ['regen', 3, 1] }, 'Scales over skin. Guards and mends.'),
-      S('summon_whelp', 'Summon Whelp', 10, 16, [1, 2], 0, 'tile', 'summon', 0, { summon: 'whelp' }, 'A small dragon with large opinions.'),
+      S('flame_slash', 'Flame Slash', 1, 5, [1, 1], 0, 'enemy', 'phys', 1.3, { el: 'fire', st: ['burn', 2, 0.5], anim: 'swing' }, 'A cut that catches.'),
+      S('fire_breath', 'Fire Breath', 3, 10, [1, 2], 1, 'enemy', 'magic', 1.15, { el: 'fire', st: ['burn', 2, 0.6], anim: 'breath' }, 'A river of fire, short and wide.'),
+      S('dragon_scales', 'Dragon Scales', 6, 8, [0, 0], 0, 'self', 'buff', 0, { st: ['guard', 3, 1], st2: ['regen', 3, 1], anim: 'scales' }, 'Scales over skin. Guards and mends.'),
+      S('summon_whelp', 'Summon Whelp', 10, 16, [1, 2], 0, 'tile', 'summon', 0, { summon: 'whelp', anim: 'call' }, 'A small dragon with large opinions.'),
     ],
   },
   gunner: {
     name: 'Gunner', color: '#d0a060', primary: 'dex', attrs: [16, 30, 18, 16], life: [55, 6], mana: [35, 2.5],
-    weapon: ['pistol'], armor: 'leather', move: 4, jump: 2, role: 'Powder, turrets and noise',
+    weapon: ['pistol'], armor: 'leather', move: 4, jump: 2, role: 'Powder, turrets and noise', basicAnim: 'shoot',
     desc: 'A powder-stained engineer. Bullet hell, rocket barrages, turrets, drones and a death laser.',
     skills: [
-      S('pistol_shot', 'Pistol Shot', 1, 3, [2, 5], 0, 'enemy', 'phys', 1.25, {}, 'A careful shot.'),
-      S('grenade', 'Grenade', 3, 9, [2, 4], 1, 'enemy', 'phys', 1.1, { el: 'fire' }, 'Thrown underarm. Arrives loudly.'),
-      S('gun_turret', 'Gun Turret', 6, 14, [1, 2], 0, 'tile', 'summon', 0, { summon: 'turret' }, 'Brass, clockwork, and a grudge.'),
-      S('bullet_hell', 'Bullet Hell', 10, 18, [2, 5], 0, 'enemy', 'phys', 0.6, { hits: 4 }, 'Four shots where one would do.'),
+      S('pistol_shot', 'Pistol Shot', 1, 3, [2, 5], 0, 'enemy', 'phys', 1.25, { anim: 'shoot' }, 'A careful shot.'),
+      S('grenade', 'Grenade', 3, 9, [2, 4], 1, 'enemy', 'phys', 1.1, { el: 'fire', anim: 'lob' }, 'Thrown underarm. Arrives loudly.'),
+      S('gun_turret', 'Gun Turret', 6, 14, [1, 2], 0, 'tile', 'summon', 0, { summon: 'turret', anim: 'deploy' }, 'Brass, clockwork, and a grudge.'),
+      S('bullet_hell', 'Bullet Hell', 10, 18, [2, 5], 0, 'enemy', 'phys', 0.6, { hits: 4, anim: 'fan' }, 'Four shots where one would do.'),
     ],
   },
   // Lisandra's own. Nobody else can be one.
