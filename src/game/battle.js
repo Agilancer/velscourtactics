@@ -188,6 +188,7 @@ export class Battle {
     setAnim(u.model, 'dead');
     if (!quiet) { sfx.die(); this.say(`<b>${esc(u.name)}</b> ${u.side === 'foe' ? 'goes down and stays down.' : u.summon ? 'is gone.' : 'has fallen.'}`); }
     if (u.summon) setTimeout(() => { this.r.units.remove(u.model); }, 700);
+    if (u.side === 'foe' && by && by.hero && by.alive) setTimeout(() => { if (by.alive && !this.over) setAnim(by.model, 'taunt'); }, 520);
     if (u.side === 'foe') {
       this.xp += u.s.xp; this.slain.push(u); this.st.slain[u.id] = this.st.day; noteKill(this.st, u.zdef.id);
       if (u.zdef.burst) {
@@ -428,6 +429,7 @@ export class Battle {
   // ---- placing the party before it starts ----
   showPlacement() {
     this.sel = { mode: 'place', pick: this.units.find((u) => u.side === 'party') };
+    setAnim(this.sel.pick.model, 'point');            // the leader sets the line
     this.drawPlacement();
     this.g.ui.banner('Place your party', 'Tap one of yours, then a green tile');
   }
@@ -595,8 +597,8 @@ export class Battle {
       u.bar.firstChild.style.width = (100 * u.hp / u.maxhp) + '%';
       u.bar.lastChild.style.width = u.maxmp ? (100 * u.mp / u.maxmp) + '%' : '0';
     }
-    // how each of them stands while waiting: reeling if stunned, bent double if nearly done for
-    if (!this.over) for (const u of this.units) if (u.alive) setRest(u.model, this.has(u, 'stun') ? 'stunned' : u.hp < u.maxhp * 0.3 ? 'wounded' : 'idle');
+    // how each of them stands while waiting: reeling if stunned, bent double if nearly done for, braced if guarding
+    if (!this.over) for (const u of this.units) if (u.alive) setRest(u.model, this.has(u, 'stun') ? 'stunned' : u.hp < u.maxhp * 0.3 ? 'wounded' : this.has(u, 'guard') ? 'guard' : 'idle');
     const a = this.active, mode = this.sel.mode;
     const focus = (mode === 'target' || mode === 'move' || mode === 'place' || mode === 'menu') && this.cursor ? { x: this.cursor.x, y: this.w.y(this.cursor.x, this.cursor.z), z: this.cursor.z } : a ? a.model.position : this.origin;
     this.r.follow(focus.x, focus.y || 0, focus.z, dt * 0.6);
