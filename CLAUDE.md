@@ -6,6 +6,10 @@ The V and T rule from bm holds here: V = Velscour (the bad one), T = Tessariel (
 dialogue names both, nothing of the one stands near anything of the other, and no art carries letters or
 monograms. Lines live in `src/data/cast.js`; the voice is grim, wry and warm, and nobody explains lore.
 
+The world is `src/world/map.js`: the Hollow, the pines, then a land down each road (`REGIONS`), each with two kinds
+of the dead and a lord, by index into `ZOMBIES` in `src/data/enemies.js` (append there, never reorder). A new kind
+needs a stand-in case in `makeZombie`, a subject line in `tools/meshy/prompts.json` and a row in `docs/MODELS.md`.
+
 Auto-play plays the whole game, so keep it up with anything you add: a new errand outside a fight is an
 entry in `goals()` in `src/game/auto.js`; inside a fight the AI is `Battle.plan`, and a new kind of skill
 effect has to be scored there or neither the dead nor auto-play will use it.

@@ -71,7 +71,7 @@ class Game {
     this.explore.inTown = this.world.inTown(L.x, L.z);
     this.explore.updatePrompt();
     if (!st.flags.opened) this.opening();
-    else this.ui.banner(this.explore.inTown ? 'Herrington Hollow' : 'The Pines', `Day ${st.day}`);
+    else this.ui.banner(this.explore.inTown ? 'Herrington Hollow' : this.world.regionAt(L.x, L.z).name, `Day ${st.day}`);
     this.ui.setAuto(st.auto ? 'Thinking' : null);
   }
   async opening() {
@@ -183,7 +183,7 @@ class Game {
       await this.ui.dialog([['Lisandra', q.done]]);
       const nxt = QUESTS.find((n) => n.from === 'lisandra' && !st.quests[n.id]);
       if (nxt) { startQuest(st, nxt.id); await this.ui.dialog([['Lisandra', nxt.text], ['Lisandra', 'And read the bounty board in the square. The Watch pays by the head, and they are not fussy whose.']]); this.ui.banner(nxt.name, 'A new errand'); }
-      else await this.ui.dialog([['Lisandra', 'Three roads out of the Hollow, and every one of them goes nowhere. Yet. Keep the pines thin while we wait to see where they lead.']]);
+      else await this.ui.dialog([['Lisandra', 'Four roads out of the Hollow, and every one of them goes somewhere worse. White north, red east, wet south, burnt west. Keep the pines thin first. The board will tell you when the Watch wants you farther out.']]);
       this.storyBusy = false;
       save(st);
       return this.checkStory();

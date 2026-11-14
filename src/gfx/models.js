@@ -143,8 +143,25 @@ export function makeZombie(v) {
   const head = grp(0, 1.16, 0.06, part(sph(0.22, 8), c, 0, 0, 0), part(box(0.06, 0.05, 0.02), 0xe8e0a0, -0.08, 0.02, 0.21, { emissive: 0x6a6020 }), part(box(0.06, 0.05, 0.02), 0xe8e0a0, 0.08, 0.02, 0.21, { emissive: 0x6a6020 }), part(box(0.16, 0.05, 0.02), DARK, 0, -0.1, 0.2));
   const armL = grp(-0.31, 0.9, 0, part(box(0.11, 0.46, 0.11), c, 0, -0.22, 0));
   const armR = grp(0.31, 0.9, 0, part(box(0.11, 0.46, 0.11), c, 0, -0.22, 0));
+  // the dead of the lands past the pines: one or two bits each, enough to tell them apart at a glance
+  const ICE = { transparent: true, opacity: 0.8, emissive: 0x203848 }, HOT = { emissive: 0xc04810 };
+  const spike = (col, x, y, z, hgt = 0.3, rz = 0, o) => part(cone(0.07, hgt, 5), col, x, y, z, o).rotateZ(rz);
+  switch (v.id) {
+    case 'rimewalker': torso.add(spike(0xcfeaff, -0.26, 1.08, 0, 0.34, 0.5, ICE), spike(0xcfeaff, 0.26, 1.08, 0, 0.34, -0.5, ICE), spike(0xcfeaff, 0, 1.02, -0.18, 0.4, 0, ICE)); head.add(spike(0xcfeaff, 0, -0.26, 0.14, 0.2, Math.PI, ICE)); break;
+    case 'driftling': torso.add(part(box(0.56, 0.2, 0.44), 0xf2f6f8, 0, 0.98, -0.04), part(box(0.5, 0.5, 0.06), 0xf2f6f8, 0, 0.66, -0.19)); break;
+    case 'husk': torso.add(part(box(0.5, 0.08, 0.32), 0x8a3a2a, 0, 0.62, 0), part(box(0.08, 0.6, 0.04), 0xd8c8a0, 0.16, 0.5, -0.2).rotateX(0.5), part(box(0.08, 0.5, 0.04), 0xd8c8a0, -0.14, 0.52, -0.2).rotateX(0.7)); break;
+    case 'slinger': for (const y of [0.56, 0.68, 0.8]) torso.add(part(box(0.5, 0.05, 0.34), BONE, 0, y, 0)); head.add(part(box(0.46, 0.1, 0.46), 0x8a2a22, 0, 0.14, 0)); armR.add(part(box(0.05, 0.4, 0.05), BONE, 0, -0.5, 0.1).rotateX(0.9)); break;
+    case 'drowner': for (const x of [-0.2, 0, 0.2]) torso.add(part(box(0.06, 0.5, 0.03), 0x2e5a2a, x, 0.72, 0.17)); head.add(part(box(0.4, 0.06, 0.4), 0x2e5a2a, 0, 0.18, 0)); armL.add(part(box(0.14, 0.12, 0.14), 0x1a1a16, 0, -0.5, 0)); armR.add(part(box(0.14, 0.12, 0.14), 0x1a1a16, 0, -0.5, 0)); break;
+    case 'leechmother': torso.add(part(sph(0.34, 10), 0xc8b8b0, 0, 0.66, 0.08)); for (const [x, y, z] of [[0.2, 0.8, 0.3], [-0.18, 0.6, 0.34], [0.05, 0.46, 0.36], [-0.3, 0.84, 0.1], [0.32, 0.56, 0.12]]) torso.add(part(sph(0.09, 6), 0x120c10, x, y, z)); break;
+    case 'cinder': torso.add(part(box(0.3, 0.06, 0.32), 0xff7a20, 0, 0.74, 0, HOT), part(box(0.06, 0.3, 0.32), 0xff7a20, 0.08, 0.66, 0, HOT)); head.add(part(box(0.2, 0.04, 0.02), 0xff7a20, 0, -0.1, 0.21, HOT)); break;
+    case 'slagback': torso.add(part(sph(0.44, 7), 0x26242a, 0, 0.98, -0.2), part(box(0.2, 0.08, 0.2), 0xff7a20, 0.1, 1.24, -0.3, HOT), part(box(0.74, 0.3, 0.4), dark, 0, 0.9, 0)); armR.add(part(box(0.2, 0.5, 0.2), 0x26242a, 0, -0.24, 0)); break;
+    case 'warden': torso.add(part(box(0.74, 0.3, 0.4), 0x8f98a6, 0, 0.9, 0), part(box(0.6, 0.8, 0.05), 0xe8eef2, 0, 0.6, -0.2)); for (const a of [-0.5, 0, 0.5]) head.add(spike(0xcfeaff, Math.sin(a) * 0.2, 0.3, 0, 0.36, -a, ICE)); armR.add(part(cyl(0.025, 0.025, 1.7, 5), WOOD, 0, -0.1, 0.3).rotateX(Math.PI / 2 - 0.4), part(box(0.04, 0.4, 0.16), 0xcfeaff, 0, 0.26, 1.04, ICE)); break;
+    case 'dryking': head.add(part(cyl(0.2, 0.17, 0.2, 6), GOLD, 0, 0.26, 0), spike(BONE, 0, 0.44, 0, 0.2)); torso.add(part(box(0.5, 0.1, 0.34), GOLD, 0, 0.94, 0), part(box(0.5, 0.9, 0.04), 0xe0d4b8, 0, 0.5, -0.2)); break;
+    case 'abbess': head.add(part(cone(0.3, 0.6, 8), 0x14141c, 0, 0.12, -0.04), part(box(0.3, 0.08, 0.04), 0xd8d8d0, 0, 0.12, 0.2)); torso.add(part(cyl(0.2, 0.42, 0.95, 8), 0x14141c, 0, 0.48, 0), part(box(0.05, 0.4, 0.03), 0x2e5a2a, 0.12, 0.5, 0.3)); break;
+    case 'stoker': torso.add(part(box(0.56, 0.5, 0.08), 0x3a3a3e, 0, 0.72, 0.16), part(box(0.2, 0.14, 0.03), 0xff7a20, 0, 0.7, 0.21, HOT), part(box(0.74, 0.3, 0.4), dark, 0, 0.9, 0)); head.add(part(cyl(0.2, 0.24, 0.1, 8), 0x1a1a1a, 0, 0.2, 0)); armR.add(part(cyl(0.03, 0.03, 1.2, 5), WOOD, 0, -0.3, 0.3).rotateX(Math.PI / 2 - 0.4), part(box(0.3, 0.04, 0.34), 0x3a3a3e, 0, -0.06, 0.92)); break;
+  }
   body.add(legL, legR, torso, head, armL, armR);
-  body.rotation.x = v.id === 'gnawer' ? 0.5 : 0.16;
+  body.rotation.x = v.id === 'gnawer' || v.id === 'husk' ? 0.5 : v.id === 'slagback' ? 0.4 : 0.16;
   root.scale.setScalar(v.scale);
   root.userData.parts = { body, legL, legR, armL, armR, head, torso };
   root.userData.zombie = true;
