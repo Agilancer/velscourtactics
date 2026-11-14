@@ -1,8 +1,10 @@
 # Models for VELSCOUR TACTICS
 
 What to make in Meshy (or Tripo), what to type, which animations each model needs, and how a finished
-`.glb` gets into the game. Everything on screen today is a stand-in built from boxes in
-`src/gfx/models.js`; each stand-in has a **key**, and a real model replaces it by using the same key.
+`.glb` gets into the game. Every figure has a **key**. A key with an entry in the manifest
+is that model and is never shown as anything else; a key without one is a stand-in built from boxes in
+`src/gfx/models.js` (today: the dead of the four lands, and the four who mind a recruit's shop), and a real model
+replaces it by using the same key.
 
 ## 1. The look
 
@@ -309,7 +311,12 @@ Wolf: `idle`, `run`, `bite`, `hit`, `dead`. Slime: `idle`, `hop`, `lunge`, `dead
 | `dye` | a palette from `src/gfx/dye.js` (`PALETTES`) the body wears until armour paints over it; only bm's bodies can be dyed (below) |
 | `props` | held models, each `{file, bone, at, rot, scale}`: a weapon's own file hung on the bone whose name ends with `bone`, placed at `at` and turned by the quaternion `rot` in that bone's frame. Don't work these out by hand: `Target.props()` in `retarget.py` prints them after `build`, and the clips are made to suit them (the lancers' entries are the example) |
 
-A model with no entry keeps its stand-in, so they can arrive one at a time.
+A key with no entry keeps its stand-in, so they can arrive one at a time. Once a key has its entry its stand-in is
+never built, so take its case out of `makeZombie` (or `makePerson`'s `KIT`) then.
+
+Bodies are loaded only near the party (`Explore.rouse`: `wake`/`sleep` in `models.js`) and their files freed once
+nobody near wears them, so that a phone can hold the world. Anything that takes a figure off the stage for good calls
+`sleep(model)` first.
 
 ### The states a model can have
 
@@ -505,8 +512,9 @@ made before its 3D task has finished is refused without charge; wait and call ag
 
 `totem_master_m` and `_f`, `slime_lord_m` and `_f`, `dragon_knight_m` and `_f`, `gunner_f`, and the summons
 `skeleton`, `ghoul` and `squire` (20,000 triangles; the squire's prompt takes the character style, the other two
-the monster one). Summons now go through the manifest like everyone else: `battle.js` wraps `makeSummon` in
-`withOverride`, so a summon with an entry is the real model and one without keeps its stand-in. New branches in
+the monster one). Summons now go through the manifest like everyone else: `battle.js` asks
+`withOverride` for the summon's key. All of them have their models, so there are no summon stand-ins any more: a new
+summon needs its manifest entry before it can be seen. New branches in
 `build()`:
 
 | Branch | Its own clips |

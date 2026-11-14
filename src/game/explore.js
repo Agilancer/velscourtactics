@@ -2,7 +2,7 @@
 // each copying what the one ahead did a step ago, jumps included. Townsfolk stand about; the dead watch.
 import { TOWN, N, T, REGIONS, recruitSpots } from '../world/map.js';
 import { DPAD } from '../core/input.js';
-import { makePerson, makeZombie, withOverride, hasModel, shadowDisc, label, setAnim, animate } from '../gfx/models.js';
+import { makePerson, makeZombie, withOverride, hasModel, wake, sleep, shadowDisc, label, setAnim, animate } from '../gfx/models.js';
 import { setGear } from '../gfx/gear.js';
 import { setDye } from '../gfx/dye.js';
 import { lookFor, shieldFor, foeGear } from '../data/gear.js';
@@ -57,7 +57,7 @@ export function outfit(h) {
 const outfitSig = (h) => `${bodyKey(h)}|${h.equip?.weapon?.uid}|${h.equip?.armor?.uid}|${h.equip?.helm?.uid}`;
 export const paletteOf = (h) => (h.heroId && HEROES[h.heroId]?.palette) || null;
 export function heroModel(h) {
-  const m = withOverride(bodyKey(h), makePerson({ cls: h.cls, g: h.g }));
+  const m = withOverride(bodyKey(h), () => makePerson({ cls: h.cls, g: h.g }));
   setGear(m, outfit(h));
   setDye(m, h, paletteOf(h));
   m.userData.outfit = outfitSig(h);
@@ -79,7 +79,7 @@ export class Explore {
   // ---- who is standing where ----
   spawnNpcs() {
     const { world, r, st } = this.g;
-    for (const n of this.npcs) r.units.remove(n.model);
+    for (const n of this.npcs) { sleep(n.model); r.units.remove(n.model); }
     this.npcs = []; this.npcAt.clear();
     for (const f of FOLK) {
       const hero = f.hero && HEROES[f.hero];
@@ -95,7 +95,9 @@ export class Explore {
       } else if (typeof f.at === 'string') { const b = world.buildings.find((b) => b.id === f.at); x = b.front.x; z = b.front.z; } else [x, z] = f.at;
       [x, z] = this.nearestFree(x, z);
       // townsfolk wear bm's bodies where the manifest has one for them (folk_<id>, tools/bm/folk.py)
-      const model = gone || !f.hero ? withOverride(who.model || 'folk_' + (gone ? f.id + '_sub' : f.id), makePerson({ ...look, small: f.small })) : withOverride(hero.model || `${hero.cls}_${hero.g}`, makePerson(look));
+      // (asleep: a body is loaded when the party comes near and freed when it has gone, in update)
+      const model = gone || !f.hero ? withOverride(who.model || 'folk_' + (gone ? f.id + '_sub' : f.id), () => makePerson({ ...look, small: f.small }), { asleep: true })
+        : withOverride(bodyKey({ heroId: f.hero, cls: hero.cls, g: hero.g }), () => makePerson(look), { asleep: true });
       // a recruit waiting to be asked has the plainest of their class's weapons on them, and their own colours
       if (f.hero && !gone) {
         setGear(model, outfit({ cls: hero.cls, name, equip: { weapon: { kind: CLASSES[hero.cls].weapon[0], tier: 0 } } }));
@@ -129,13 +131,13 @@ export class Explore {
 
   spawnFoes() {
     const { world, r, st } = this.g;
-    for (const f of this.foes) r.units.remove(f.model);
+    for (const f of this.foes) { sleep(f.model); r.units.remove(f.model); }
     this.foes = []; this.foeAt.clear();
     world.packs.forEach((p, pi) => p.members.forEach((m, mi) => {
       const id = `p${pi}m${mi}`;
       if (st.slain[id] != null && st.day <= st.slain[id]) return;
       const z = ZOMBIES[m.kind];
-      const model = withOverride(foeKey(z, pi * 3 + mi), makeZombie(z));
+      const model = withOverride(foeKey(z, pi * 3 + mi), () => makeZombie(z), { asleep: true });
       setGear(model, foeGear(z.id, pi + mi));
       model.position.set(m.x, world.y(m.x, m.z), m.z);
       model.rotation.y = Math.random() * 6.28;
@@ -150,7 +152,7 @@ export class Explore {
 
   rebuildParty() {
     const { r, st, world } = this.g;
-    for (const a of this.actors) r.units.remove(a.model);
+    for (const a of this.actors) { sleep(a.model); r.units.remove(a.model); }
     this.actors = []; this.moves = []; this.step = null;
     const p = st.pos || world.start;
     st.party.forEach((id, i) => {
@@ -168,7 +170,7 @@ export class Explore {
     const r = this.g.r, old = a.model, m = heroModel(a.hero);
     m.add(shadowDisc());
     m.position.copy(old.position); m.rotation.copy(old.rotation); m.visible = old.visible;
-    r.units.remove(old); r.units.add(m); a.model = m;
+    sleep(old); r.units.remove(old); r.units.add(m); a.model = m;
   }
   get leader() { return this.actors[0]; }
   // Whoever in the party is speaking gestures while they do.
@@ -227,6 +229,7 @@ export class Explore {
     for (const a of this.actors) if (a.model.userData.outfit !== outfitSig(a.hero)) this.redress(a);
     for (const a of this.actors) animate(a.model, dt);
     const L = this.leader;
+    this.rouse();
     for (const n of this.npcs) if (Math.abs(n.x - L.x) < 22 && Math.abs(n.z - L.z) < 22) animate(n.model, dt);
     this.updateFoes(dt);
     if (this.grace > 0) this.grace -= dt;
@@ -294,6 +297,14 @@ export class Explore {
     if (front) return front;
     for (const [dx, dz] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) { const t = this.thingAt(L.x + dx, L.z + dz); if (t) return t; }
     return null;
+  }
+  // Only those near enough to be seen have their bodies: the rest of the world's sleep (gfx/models.js) till the party
+  // comes their way, and go back to sleep a little farther off than they woke. The reach grows as the view is drawn out.
+  rouse() {
+    const L = this.leader, near = 9 + this.g.r.zoom, far = near + 6;
+    const one = (model, x, z) => { const d = Math.max(Math.abs(x - L.x), Math.abs(z - L.z)); if (d <= near) wake(model); else if (d > far) sleep(model); };
+    for (const n of this.npcs) one(n.model, n.x, n.z);
+    for (const f of this.foes) one(f.model, f.x, f.zz);
   }
   updatePrompt() { const t = this.nearThing(); this.g.ui.setPrompt(t ? t.text : null); }
   interact() {
@@ -368,7 +379,7 @@ export class Explore {
     const { r } = this.g;
     this.foes = this.foes.filter((f) => {
       if (!slainIds.includes(f.id)) { f.model.visible = true; f.model.position.set(f.x, this.g.world.y(f.x, f.zz), f.zz); return true; }
-      r.units.remove(f.model); this.foeAt.delete(key(f.x, f.zz)); return false;
+      sleep(f.model); r.units.remove(f.model); this.foeAt.delete(key(f.x, f.zz)); return false;
     });
     this.g.st.pos = { x: pos.x, z: pos.z };
     this.rebuildParty();
