@@ -208,8 +208,8 @@ export class Show {
     const b = el('div', 'sk-ban ' + (u.side === 'foe' ? 'foe' : 'ally') + (L.big >= 2 ? ' ult' : ''), `<small style="color:${u.color}">${esc(u.name)}</small><b>${esc(sk.name)}</b>`);
     b.style.setProperty('--el', hex);
     hud.append(b);
-    setTimeout(() => b.classList.add('out'), 1500);
-    setTimeout(() => b.remove(), 2100);
+    this.b.later(() => b.classList.add('out'), 1500);
+    this.b.later(() => b.remove(), 2100);
   }
   // A class's last skills: a band across the screen with the name, before anything else happens.
   cutin(u, sk, L) {
@@ -218,14 +218,14 @@ export class Show {
     c.style.setProperty('--el', hex); c.style.setProperty('--who', u.color || '#ffe2a0');
     this.b.hud.append(c);
     this.fx.flash(hex, 0.25);
-    setTimeout(() => c.remove(), 1500);
+    this.b.later(() => c.remove(), 1500);
     return this.b.wait(900);
   }
   // Big words across the middle: the fight starting, the fight won.
   splash(title, sub = '', cls = '') {
     const s = el('div', 'splash ' + cls, `<b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}`);
     this.b.hud.append(s);
-    setTimeout(() => s.remove(), 2600);
+    this.b.later(() => s.remove(), 2600);
   }
 
   // ---- on the way: resolves when the blow lands ----
@@ -286,7 +286,7 @@ export class Show {
         const tiles = b.aoeTiles(sk, tx, tz), kind = L.kind === 'drop' ? 'orb' : L.kind || 'arrow';
         for (let i = 0; i < 10 + tiles.length * 2; i++) {
           const t = tiles[i % tiles.length], dst = this.ground(t.x, t.z).add(new THREE.Vector3(Math.random() - 0.5, 0.1, Math.random() - 0.5));
-          setTimeout(() => fx.shoot(dst.clone().add(new THREE.Vector3(-1.6, 7, -0.8)), dst, { el: L.el, kind, speed: 26, size: kind === 'shard' ? 0.3 : 0.14, color: kind === 'arrow' ? 0xfff2d0 : kind === 'orb' ? P.mid : undefined }).then(() => fx.spray(dst, 4, { speed: 1.4, life: 0.4, size: 0.08, color: P.mid, cell: kind === 'shard' ? CELL.shard : CELL.glow, g: 6 })), i * 28);
+          b.later(() => fx.shoot(dst.clone().add(new THREE.Vector3(-1.6, 7, -0.8)), dst, { el: L.el, kind, speed: 26, size: kind === 'shard' ? 0.3 : 0.14, color: kind === 'arrow' ? 0xfff2d0 : kind === 'orb' ? P.mid : undefined }).then(() => fx.spray(dst, 4, { speed: 1.4, life: 0.4, size: 0.08, color: P.mid, cell: kind === 'shard' ? CELL.shard : CELL.glow, g: 6 })), i * 28);
         }
         return b.wait(380);
       }
@@ -299,7 +299,7 @@ export class Show {
       case 'nova': {
         const p = this.feet(u), R = (sk.aoe || 1) + 0.6;
         if (L.glyph) fx.circle(p, P.mid, R, 0.9);
-        if (L.spin) for (let i = 0; i < 3; i++) setTimeout(() => fx.slash(this.at(u, 0.45), 0xffffff, 2.6, i * 2.1, 0.22), i * 70);
+        if (L.spin) for (let i = 0; i < 3; i++) b.later(() => fx.slash(this.at(u, 0.45), 0xffffff, 2.6, i * 2.1, 0.22), i * 70);
         fx.blast(p, L.el, R, 1 + L.big * 0.5); fx.shake(0.08 + L.big * 0.08);
         if (L.big) { fx.flash('#' + P.core.toString(16).padStart(6, '0'), 0.2 + L.big * 0.1); fx.stop(0.05 * L.big); }
         say(L.spin ? 'whoosh' : L.el === 'cold' ? 'shatter' : L.big || (sk.aoe || 0) >= 2 ? 'boom' : null, p);
@@ -315,12 +315,12 @@ export class Show {
       case 'ground': {
         const p = this.feet(u);
         fx.ring(p, P.mid, 0.2, (sk.aoe || 1) + 1, 0.6); fx.dust(p, 16, 1.3); fx.shake(0.22 + L.big * 0.1); say('boom', p);
-        for (const t of b.aoeTiles(sk, tx, tz)) setTimeout(() => { const g = this.ground(t.x, t.z); fx.spray(g, 5, { speed: 4, life: 0.8, size: 0.18, size1: 0.1, color: 0x8a7a64, g: 12, cell: CELL.stone, spin: 6, dark: true, up: 0.9 }); if (L.el === 'storm') fx.bolt(g.clone().add(new THREE.Vector3(0, 3, 0)), g, P.mid, 0.2, 0.06); }, Math.abs(t.x - u.x) * 40 + Math.abs(t.z - u.z) * 40);
+        for (const t of b.aoeTiles(sk, tx, tz)) b.later(() => { const g = this.ground(t.x, t.z); fx.spray(g, 5, { speed: 4, life: 0.8, size: 0.18, size1: 0.1, color: 0x8a7a64, g: 12, cell: CELL.stone, spin: 6, dark: true, up: 0.9 }); if (L.el === 'storm') fx.bolt(g.clone().add(new THREE.Vector3(0, 3, 0)), g, P.mid, 0.2, 0.06); }, Math.abs(t.x - u.x) * 40 + Math.abs(t.z - u.z) * 40);
         return b.wait(160);
       }
       case 'erupt': {
         say('boom', centre);
-        for (const t of b.aoeTiles(sk, tx, tz)) { const g = this.ground(t.x, t.z); setTimeout(() => { fx.spray(g, 6, { speed: 3.5, life: 0.8, size: 0.24, color: 0xe8e0c8, g: 9, cell: CELL.bone, spin: 8, dark: true, up: 0.95 }); fx.spray(g, 4, { speed: 1, life: 1, size: 0.5, size1: 1.1, color: P.dark, alpha: 0.7, cell: CELL.smoke, dark: true, up: 0.9 }); }, Math.random() * 160); }
+        for (const t of b.aoeTiles(sk, tx, tz)) { const g = this.ground(t.x, t.z); b.later(() => { fx.spray(g, 6, { speed: 3.5, life: 0.8, size: 0.24, color: 0xe8e0c8, g: 9, cell: CELL.bone, spin: 8, dark: true, up: 0.95 }); fx.spray(g, 4, { speed: 1, life: 1, size: 0.5, size1: 1.1, color: P.dark, alpha: 0.7, cell: CELL.smoke, dark: true, up: 0.9 }); }, Math.random() * 160); }
         fx.ring(centre, P.mid, 0.2, (sk.aoe || 1) + 0.8, 0.6); fx.shake(0.2);
         return b.wait(200);
       }
@@ -340,7 +340,7 @@ export class Show {
       }
       case 'tornado': {
         const g = centre;
-        for (let i = 0; i < 5; i++) setTimeout(() => fx.swirl(g, i % 2 ? P.core : P.mid, 26, 0.6 + i * 0.25, 2.6 + i * 0.3, CELL.leaf, 0.22, 1), i * 80);
+        for (let i = 0; i < 5; i++) b.later(() => fx.swirl(g, i % 2 ? P.core : P.mid, 26, 0.6 + i * 0.25, 2.6 + i * 0.3, CELL.leaf, 0.22, 1), i * 80);
         fx.ring(g, P.mid, 0.3, (sk.aoe || 1) + 0.8, 0.8); fx.dust(g, 14, 1.4); say('whoosh', g);
         return b.wait(360);
       }

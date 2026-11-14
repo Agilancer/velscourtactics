@@ -101,10 +101,15 @@ button .ic-gold { width: 1.15em; height: 1.15em; margin: 0 .12em 0 .2em; vertica
 #bar button { border-width: 6px 12px; border-image-width: 7px 13px; padding: 0 2px; font-size: .76rem; white-space: nowrap; }
 #bar button .ic { width: 1.35em; height: 1.35em; margin: -2px .25em -2px -2px; vertical-align: -.36em; }
 #bar button.on { border-image-source: var(--k-btn-on); color: var(--gold-lt); }
+#hud:not(.fight) #b-pace { display: none; }   /* the fight's speed: only in a fight */
+#b-pace { min-width: 3.4em; }
 #b-mute.muted { text-decoration: line-through; color: var(--dim); border-image-source: var(--k-btn); }
 #hud.fight #bar [data-open], #hud.fight #pad, #hud.fight #btns .bj small { opacity: .0; pointer-events: none; }
 #hud.fight #pad { opacity: 1; pointer-events: auto; }
 #hud.fight #tracker { display: none; }   /* the field needs the room; the bounties are back when it's over */
+/* a phone's drawer (the button that opens it, and its copy of the quests): on a big screen the bar stands on its own */
+#b-menu, #dtrack { display: none; }
+#drawer { display: contents; }
 #autostat { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); font-size: .8rem; color: var(--gold-lt); padding: 0 12px 1px; pointer-events: none; white-space: nowrap; }
 #prompt { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); padding: 4px 14px; pointer-events: none; }
 /* the d-pad: the kit's round buttons on its stick ring */
@@ -454,31 +459,125 @@ i.role.big { width: 44px; height: 44px; padding: 10px; background: var(--k-medal
 
 @media (pointer: coarse) { .lg-btn { min-width: 36px; height: 32px; } }
 
-@media (max-width: 760px) {
-  :root { --pb: 9px; --pw: 22px; }
-  .pm { width: 116px; padding: 2px 6px 4px; } .pm small { display: none; }
-  #bar { top: auto; bottom: 186px; left: 10px; transform: none; flex-wrap: wrap; width: 196px; }
-  #bar button { font-size: .7rem; border-width: 5px 10px; border-image-width: 6px 11px; }
-  .cr, .body.pp { grid-template-columns: 1fr; } .cr-m { display: none; }
-  .btn.big { min-width: 200px; }
-  .panel header { padding: 4px 6px 8px 8px; }
+/* ---- a phone, upright or on its side: the screen is the game's. The buttons and the quests fold into a drawer
+   behind one button at the top right, the party is a column of slim bars at the top left (a tap opens the Party
+   screen), and a fight is played by tapping tiles: no d-pad, no party column, the log folded to one line.
+   (combatlog.js asks the same question for its own settings.) ---- */
+@media (max-width: 760px), (max-height: 520px) {
+  :root { --pb: 9px; --pw: 22px;
+    --sl: max(6px, env(safe-area-inset-left)); --sr: max(6px, env(safe-area-inset-right));
+    --st: max(6px, env(safe-area-inset-top)); --sb: max(6px, env(safe-area-inset-bottom)); }
+  #party { left: var(--sl); top: var(--st); gap: 2px; pointer-events: auto; }
+  .pm { width: 92px; padding: 0 4px 2px; border-width: 3px; border-image-width: 9px; }
+  .pm b { font-size: .64rem; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pm small { display: none; }
+  .pm .bars { border-width: 2px 5px; border-image-width: 3px 6px; }
+  .pm i { height: 4px; } .pm i + i { height: 3px; }
+  #hud.fight #party, #hud.fight #topright { display: none; }
+  #topright { right: calc(var(--sr) + 46px); top: calc(var(--st) + 7px); }
+  #gold { font-size: .9rem; }
+  #tracker { display: none; }
+
+  /* the drawer's button: the kit's round button with three gilt bars; a pip when a quest can be claimed,
+     and AUTO under it while auto-play has the party */
+  #b-menu { display: block; position: absolute; right: var(--sr); top: var(--st); z-index: 11; width: 40px; height: 40px; border: 0; padding: 0;
+            border-radius: 50%; background: var(--k-round) center / 100% 100% no-repeat; }
+  #hud.drawer #b-menu { background-image: var(--k-round-on); }
+  #b-menu i { position: absolute; left: 12px; right: 12px; top: 50%; height: 2px; margin-top: -1px; border-radius: 1px; background: var(--gold-lt);
+              box-shadow: 0 -6px 0 var(--gold-lt), 0 6px 0 var(--gold-lt), 0 0 3px #000; }
+  #b-menu.ready::after { content: ''; position: absolute; right: 0; top: 0; width: 11px; height: 11px; border-radius: 50%;
+                         background: radial-gradient(circle at 40% 35%, #fff4c0, #e8a020 60%, #8a5010); box-shadow: 0 0 7px rgba(255, 200, 90, .9), 0 0 0 1px #000; }
+  #b-menu.auto::before { content: 'Auto'; position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: -1px;
+                         font: 700 9px var(--font-head); letter-spacing: .14em; text-transform: uppercase; color: var(--gold-lt); text-shadow: 0 1px 2px #000, 0 0 4px #000; }
+  /* the drawer: the bar's buttons two by two, the quests under them (a tap opens the Quests screen) */
+  #drawer { display: none; position: absolute; right: var(--sr); top: calc(var(--st) + 48px); z-index: 11; width: 218px; max-height: calc(100% - var(--st) - 54px);
+            overflow-y: auto; scrollbar-width: none; flex-direction: column; gap: 6px; padding: 5px 4px 6px;
+            border: 5px solid transparent; border-image: var(--k-panel) 72 fill / 14px / 0 round; animation: rise .18s ease-out; }
+  #hud.drawer #drawer { display: flex; }
+  #bar { position: static; transform: none; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  #bar button { font-size: .74rem; padding: 3px 1px; }
+  #hud.fight #bar [data-open], #hud.fight #b-dpad { display: none; }
+  #dtrack { display: block; font-size: .78rem; line-height: 1.2; }
+  #dtrack:empty, #hud.fight #dtrack { display: none; }
+  #dtrack h4 { color: var(--gold); font-size: .72rem; padding: 0 2px 5px; margin-bottom: 3px; background: var(--k-rule) left bottom / 100% 5px no-repeat; }
+  #dtrack div { padding: 3px 2px; border-bottom: 1px solid #1c120a; }
+  #dtrack div:last-child { border-bottom: 0; }
+  #dtrack .ic { width: 1.15em; height: 1.15em; margin-right: .3em; vertical-align: -.22em; }
+  #dtrack .ready { color: var(--gold-lt); }
+
+  /* the walk */
+  #autostat { top: calc(var(--st) + 8px); max-width: calc(100% - 236px); overflow: hidden; text-overflow: ellipsis; font-size: .7rem; padding: 0 8px 1px; }
+  #hud.fight #autostat { display: none; }
+  #toasts { width: min(440px, calc(100% - 220px)); top: calc(var(--st) + 30px); gap: 3px; }
+  .toast { font-size: .8rem; padding: 2px 10px 3px; }
+  .toast b { font-size: .74rem; }
+  #banner { top: 22%; }
+  #banner p { font-size: .9rem; }
+  #prompt { bottom: calc(var(--sb) + 126px); font-size: .86rem; padding: 2px 10px; max-width: 70vw; }
+  #pad { left: var(--sl); bottom: var(--sb); width: 120px; height: 120px; }
+  #pad::before { inset: 18px; }
+  #pad button { width: 40px; height: 40px; font-size: .8rem; }
+  .pu { left: 40px; top: 0; } .pd { left: 40px; top: 80px; } .pl { left: 0; top: 40px; } .pr { left: 80px; top: 40px; }
+  #btns { right: var(--sr); bottom: calc(var(--sb) + 4px); gap: 10px; }
+  #btns button { width: 56px; height: 56px; font-size: 1.1rem; }
+  #btns button small { font-size: .56rem; }
+  #btns .bj { margin-bottom: 20px; }
+  #hud.fight #pad, #hud.fight #btns { display: none; }   /* in a fight a tap on the tile does what they did */
+  #dialog { border-width: 11px; border-image-width: 18px; bottom: var(--sb); width: min(680px, calc(100% - 12px)); padding: 2px 8px 0; }
+  #dialog .who { font-size: .9rem; }
+  #dialog .say { font-size: 1rem; min-height: 2.6em; }
+  #dialog .opts { margin-top: 3px; }
+
+  /* the panels take the whole screen */
+  #modal .panel, #screen .panel, #screen .panel.wide { width: calc(100% - 8px); max-height: calc(100% - 8px); }
+  .panel header { padding: 2px 6px 6px 8px; }
+  .panel header h2 { font-size: 1rem; }
+  .panel .x { width: 32px; height: 32px; }
   .panel .body { padding: 4px 6px 10px; }
+  .cr-m { display: none; }
+  .btn.big { min-width: 200px; }
   .row { gap: 7px; padding: 4px 2px; flex-wrap: wrap; }
   .row .info { flex: 1 1 160px; }
   .row .acts { margin-left: auto; }
   .pic { width: 40px; height: 40px; border-width: 6px; border-image-width: 6px; }
   .socks { padding-left: 4px; }
-  .bt-menu { width: 160px; top: auto; bottom: 10px; transform: none; max-height: 52vh; }
-  .bt-btn { font-size: .78rem; }
-  .bt-order { top: 6px; left: 130px; transform: none; overflow: hidden; right: 6px; } .bt-info { left: 126px; top: 70px; z-index: 4; }
-  /* the log runs across the top under the turn order, and grows downward */
-  .bt-log { left: 126px; right: 6px; top: 34px; bottom: auto; width: auto; }
+
+  /* the fight: the turn order along the top, the log folded under it, the menu at the side or the foot */
+  .bt-order { top: var(--st); left: var(--sl); right: calc(var(--sr) + 46px); transform: none; overflow: hidden; gap: 3px; padding: 3px 3px 0; }
+  .ord span { font-size: .62rem; padding: 1px 6px; }
+  .bt-log { left: var(--sl); right: calc(var(--sr) + 46px); top: calc(var(--st) + 28px); bottom: auto; width: auto; }
   .lg-grip { top: auto; bottom: -7px; right: auto; left: 50%; margin-left: -22px; width: 44px; height: 14px; border-radius: 7px; cursor: ns-resize;
              background: repeating-linear-gradient(90deg, var(--gold-dk) 0 2px, transparent 2px 5px) center / 26px 6px no-repeat, #140c08; }
   .lg-set { top: calc(100% + 8px); bottom: auto; }
-  .sk-ban { top: 30%; } .ci-text { right: 8%; }
-  #hud.fight #btns { display: none; }
-  #btns button { width: 64px; height: 64px; }
-  #dialog { border-width: 11px; border-image-width: 18px; bottom: 12px; }
-  #dialog .say { font-size: 1.02rem; }
+  .bt-menu { right: var(--sr); gap: 2px; }
+  .bt-who { padding: 1px 8px 3px; }
+  .bt-who b { font-size: .8rem; } .bt-who span { font-size: .7rem; }
+  .bt-btn { font-size: .72rem; line-height: 1.15; border-width: 5px 10px; border-image-width: 6px 11px; padding: 1px 1px; }
+  .bt-btn small { font-size: .62rem; }
+  .bt-btn.go { font-size: .9rem; }
+  .bt-hint { font-size: .76rem; line-height: 1.25; padding: 3px 8px; }
+  .bt-info { left: var(--sl); top: auto; bottom: var(--sb); z-index: 4; font-size: .74rem; line-height: 1.3; padding: 3px 8px; }
+  .bt-result { max-height: calc(100% - 16px); overflow-y: auto; padding: 8px 12px; }
+  .bt-result h2 { font-size: 1.3rem; }
+  .ci-text { right: 8%; }
+}
+/* upright: the menu at the foot on the right, what was tapped at the foot on the left */
+@media (max-width: 760px) and (orientation: portrait) {
+  .cr, .body.pp { grid-template-columns: 1fr; }
+  #toasts { left: auto; right: var(--sr); transform: none; width: calc(100% - var(--sl) - 104px); top: calc(var(--st) + 50px); }
+  .bt-menu { width: 158px; top: auto; bottom: var(--sb); transform: none; max-height: 54vh; }
+  .bt-info { max-width: calc(100% - 180px); }
+  .sk-ban { top: 30%; }
+}
+/* on its side: the menu down the right from under the top row, the log no wider than half the screen */
+@media (max-height: 520px) and (orientation: landscape) {
+  .cr { grid-template-columns: 1fr 1fr; }
+  .body.pp { grid-template-columns: 220px 1fr; }
+  .bt-menu { width: 176px; top: calc(var(--st) + 46px); transform: none; max-height: calc(100% - var(--st) - var(--sb) - 46px); }
+  .bt-log { right: auto; width: min(420px, 50vw); }
+  .bt-info { max-width: min(340px, calc(100% - 200px)); }
+  .sk-ban { top: 18%; }
+  #dialog { width: min(620px, 78vw); }
+  #dialog .say { min-height: 2.4em; }
+  #prompt { bottom: calc(var(--sb) + 8px); max-width: calc(100% - 300px); }
 }

@@ -230,7 +230,10 @@ export class Battle {
   healing(a, sk) { return Math.round(a.s.mag * sk.pow + 4 + a.lvl); }
 
   // ---- doing things ----
-  wait(ms) { return new Promise((r) => setTimeout(r, ms / (this.st.auto ? 1.7 : 1))); }
+  // A pause in the fight, on its clock: shorter under auto-play, twice as long at 1x as at 2x (Game.pace).
+  wait(ms) { return new Promise((r) => setTimeout(r, ms / ((this.st.auto ? 1.7 : 1) * this.g.pace))); }
+  // Something a moment from now, on the fight's clock.
+  later(fn, ms) { return setTimeout(fn, ms / this.g.pace); }
   say(text, cls = '') { this.chron.add(text, cls); }
   float(u, text, cls = '') { this.show.word(u, text, cls); }
   // A status taking hold. st: [id, turns, chance, strength]; `loud` says so when it fails (for a curse that was the point).
@@ -305,8 +308,8 @@ export class Battle {
     u.alive = false; u.hp = 0; u.st = [];
     setAnim(u.model, 'dead');
     if (!quiet) { sfx.die(u.side === 'foe' ? 'foe' : u.summon ? 'summon' : 'hero', u.model.position, this.clinks(u)); this.show.death(u); this.say(`${this.nm(u)} ${u.side === 'foe' ? 'goes down and stays down.' : u.summon ? 'is gone.' : 'has fallen.'}`, 'kill'); }
-    if (u.summon) setTimeout(() => { sleep(u.model); this.r.units.remove(u.model); }, 700);
-    if (u.side === 'foe' && by && by.hero && by.alive) setTimeout(() => { if (by.alive && !this.over) setAnim(by.model, 'taunt'); }, 520);
+    if (u.summon) this.later(() => { sleep(u.model); this.r.units.remove(u.model); }, 700);
+    if (u.side === 'foe' && by && by.hero && by.alive) this.later(() => { if (by.alive && !this.over) setAnim(by.model, 'taunt'); }, 520);
     if (u.side === 'foe') {
       this.xp += u.s.xp; this.slain.push(u); this.st.slain[u.id] = this.st.day; noteKill(this.st, u.zdef.id);
       if (u.zdef.burst) {
@@ -920,6 +923,14 @@ export class Battle {
     for (const u of this.units) this.addBar(u);
     this.show = new Show(this);
   }
+  // The numbers, skill names and bands over the field are CSS animations timed for 2x: at 1x they play at half.
+  paceWords() {
+    const rate = this.g.pace;
+    if (rate === 1 && this.wordPace === 1) return;
+    this.wordPace = rate;
+    for (const e of [this.floats, ...this.hud.querySelectorAll(':scope > .sk-ban, :scope > .cutin, :scope > .splash')])
+      for (const a of e.getAnimations?.({ subtree: true }) || []) if (a.playbackRate !== rate) a.playbackRate = rate;
+  }
   addBar(u) { u.bar = el('div', 'ubar ' + u.side, '<i></i><b></b>'); this.bars.append(u.bar); }
   drawOrder() {
     this.orderEl.innerHTML = '';
@@ -941,8 +952,10 @@ export class Battle {
   }
   confirm() { if (this.cursor) this.tile(this.cursor.x, this.cursor.z); }
 
-  update(dt) {
+  // dt is the fight's clock (slowed at 1x); cam is the frame's own, so the camera keeps up with the player's cursor
+  update(dt, cam = dt) {
     this.show.tick(dt);
+    this.paceWords();
     for (const u of this.units) {
       animate(u.model, dt);
       // the wyrm: a quarter as big again while it lasts
@@ -966,7 +979,7 @@ export class Battle {
     if (!this.over) for (const u of this.units) if (u.alive) setRest(u.model, this.has(u, 'stun') ? 'stunned' : u.hp < u.maxhp * 0.3 ? 'wounded' : this.has(u, 'guard') ? 'guard' : 'idle');
     const a = this.active, mode = this.sel.mode;
     const focus = this.camAt ? this.camAt : (mode === 'target' || mode === 'move' || mode === 'place' || mode === 'menu') && this.cursor ? { x: this.cursor.x, y: this.w.y(this.cursor.x, this.cursor.z), z: this.cursor.z } : a ? a.model.position : this.origin;
-    this.r.follow(focus.x, focus.y || 0, focus.z, dt * (this.camAt ? 1.4 : 0.6));
+    this.r.follow(focus.x, focus.y || 0, focus.z, cam * (this.camAt ? 1.4 : 0.6));
     if (this.cursor && mode !== 'wait' && mode !== 'over') this.r.setCursor(this.cursor.x, this.cursor.z); else this.r.setCursor(null);
     if (a && a.alive && mode !== 'place' && mode !== 'over') this.r.setTurnRing(Math.round(a.model.position.x), Math.round(a.model.position.z));
     this.r.updateFade(this.units.filter((u) => u.alive).map((u) => ({ x: u.model.position.x, z: u.model.position.z, y: u.model.position.y })), this.b);

@@ -23,9 +23,13 @@ export class UI {
       <div id="hud" class="hide">
         <div id="party"></div>
         <div id="topright"><div id="gold" title="Gold"></div><div id="tracker"></div></div>
-        <div id="bar">
-          <button data-open="party"><i class="ic ic-party"></i>Party</button><button data-open="bag"><i class="ic ic-pack"></i>Bag</button><button data-open="quests"><i class="ic ic-journal"></i>Quests</button>
-          <button id="b-auto" title="Auto-play (P)">Auto</button><button id="b-dpad" title="Which diagonal the d-pad's Left means"></button><button id="b-mute">Sound</button>
+        <button id="b-menu" title="Menu" aria-label="Menu"><i></i></button>
+        <div id="drawer">
+          <div id="bar">
+            <button data-open="party"><i class="ic ic-party"></i>Party</button><button data-open="bag"><i class="ic ic-pack"></i>Bag</button><button data-open="quests"><i class="ic ic-journal"></i>Quests</button>
+            <button id="b-auto" title="Auto-play (P)">Auto</button><button id="b-pace" title="Fight speed (F)"></button><button id="b-dpad" title="Which diagonal the d-pad's Left means"></button><button id="b-mute">Sound</button>
+          </div>
+          <div id="dtrack"></div>
         </div>
         <div id="autostat" class="hide"></div>
         <div id="prompt" class="hide"></div>
@@ -43,9 +47,16 @@ export class UI {
     g.input.bindPad(this.root);
     for (const b of this.root.querySelectorAll('[data-open]')) b.onclick = () => this.openPanel(b.dataset.open);
     $('#b-auto').onclick = () => g.toggleAuto();
+    $('#b-pace').onclick = () => g.toggleSpeed();
     $('#b-dpad').onclick = () => { g.st.dpad = g.st.dpad === 'A' ? 'B' : 'A'; this.toast(`D-pad: ${DPAD_HINT[g.st.dpad]}.`); this.refresh(); };
     $('#b-mute').onclick = () => { setMuted(!sound.muted); $('#b-mute').classList.toggle('muted', sound.muted); if (!sound.muted) sfx.ui(); };
     $('#b-mute').classList.toggle('muted', sound.muted);
+    // On a phone (css/style.css) the buttons and the quests fold into a drawer behind one button, out of the way
+    // of the field; it shuts again on a tap on the map, a panel opening, or a fight starting or ending.
+    $('#b-menu').onclick = () => { sfx.ui(); this.drawer(); };
+    $('#view').addEventListener('pointerdown', () => this.drawer(false));
+    $('#dtrack').onclick = () => this.openPanel('quests');
+    $('#party').onclick = () => { if (g.mode === 'explore') this.openPanel('party'); };   // a phone's party bars open the Party screen
     $('#modal .x').onclick = () => this.close();
     $('#modal').addEventListener('pointerdown', (e) => { if (e.target.id === 'modal') this.close(); });
     this.sel = null; this.tab = null;
@@ -98,7 +109,8 @@ export class UI {
 
   // ---------- HUD ----------
   showHud(on) { $('#hud').classList.toggle('hide', !on); }
-  battleMode(on) { $('#hud').classList.toggle('fight', on); }
+  battleMode(on) { $('#hud').classList.toggle('fight', on); this.drawer(false); }
+  drawer(on = !$('#hud').classList.contains('drawer')) { $('#hud').classList.toggle('drawer', on); }
   refresh() {
     const st = this.g.st; if (!st) return;
     $('#party').innerHTML = partyHeroes(st).map((h, i) => {
@@ -108,9 +120,16 @@ export class UI {
     }).join('');
     $('#gold').innerHTML = `${gp('')}<b>${st.gold}</b>`;
     const act = QUESTS.filter((q) => st.quests[q.id]?.state === 'active');
-    $('#tracker').innerHTML = act.map((q) => { const r = questReady(st, q); return `<div class="${r ? 'ready' : ''}"><i class="ic ic-${r ? 'qready' : 'qbusy'}"></i>${esc(q.name)} <b>${questProgress(st, q)}/${questNeed(q)}</b></div>`; }).join('');
+    const lines = act.map((q) => { const r = questReady(st, q); return `<div class="${r ? 'ready' : ''}"><i class="ic ic-${r ? 'qready' : 'qbusy'}"></i>${esc(q.name)} <b>${questProgress(st, q)}/${questNeed(q)}</b></div>`; }).join('');
+    // (refresh runs four times a second: only touch the DOM when the words change, or a tap on them can go astray)
+    if (lines !== this.lines) { this.lines = lines; $('#tracker').innerHTML = lines; $('#dtrack').innerHTML = lines ? '<h4>Quests</h4>' + lines : ''; }
+    // the drawer's button says when one is ready to claim, and when auto-play has the party
+    $('#b-menu').classList.toggle('ready', act.some((q) => questReady(st, q)));
+    $('#b-menu').classList.toggle('auto', !!st.auto);
     $('#b-auto').classList.toggle('on', !!st.auto);
     $('#b-dpad').textContent = `D-pad ${st.dpad}`;
+    $('#b-pace').textContent = `${this.g.fightSpeed}x`;
+    $('#b-pace').classList.toggle('on', this.g.fightSpeed === 2);
   }
   setPrompt(text) { const p = $('#prompt'); p.classList.toggle('hide', !text); if (text) p.innerHTML = `<kbd>A</kbd> ${esc(text)}`; }
   setAuto(text) { const p = $('#autostat'); p.classList.toggle('hide', !text); if (text) p.textContent = 'Auto: ' + text; }
@@ -157,6 +176,7 @@ export class UI {
     const g = this.g;
     if (g.mode !== 'explore' && g.mode !== 'menu') return;
     this.inShop = false;
+    this.drawer(false);
     g.mode = 'menu';
     $('#modal').classList.remove('hide');
     $('#modal h2').textContent = title;
