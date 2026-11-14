@@ -6,10 +6,16 @@ import { QUESTS } from '../data/enemies.js';
 import { PARTY_MAX, heroStats, partyHeroes, questReady, lead } from './party.js';
 
 export class Auto {
-  constructor(g) { this.g = g; this.path = []; this.goal = null; this.holdT = 0; this.failT = 0; this.lost = []; }
+  constructor(g) { this.g = g; this.path = []; this.goal = null; this.holdT = 0; this.failT = 0; this.lost = []; this.apart = { day: 0, ids: new Set() }; }
   reset() { this.path = []; this.goal = null; }
   // A lost fight: where it started, and the leader's level then.
   noteLoss(x, z) { this.lost.push({ x, z, lvl: lead(this.g.st).lvl }); if (this.lost.length > 8) this.lost.shift(); }
+  // A fight where nobody could get at anybody: leave those ones be for the rest of the day, or it starts over.
+  noteApart(ids) {
+    const day = this.g.st.day;
+    if (this.apart.day !== day) this.apart = { day, ids: new Set() };
+    for (const id of ids) this.apart.ids.add(id);
+  }
   hold(secs = 1.2) { this.holdT = secs; this.reset(); }
 
   // What to do next, most pressing first. Each: { why, targets: [{x,z}], act }.
@@ -38,7 +44,8 @@ export class Auto {
     if (shut.length) out.push({ why: 'Going for a chest', targets: shut, act: (c) => { if (!st.opened[c.id]) g.interact({ kind: 'chest', chest: c }); } });
     // the dead: the kinds a bounty wants first, and nothing far above the party's level
     const wanted = new Set(QUESTS.filter((q) => st.quests[q.id]?.state === 'active' && q.kill && !questReady(st, q)).map((q) => q.kill));
-    const fair = ex.foes.filter((f) => danger(f.x, f.zz) <= lvl + 2 && !shy(f.x, f.zz));
+    const apart = (f) => this.apart.day === st.day && this.apart.ids.has(f.id);
+    const fair = ex.foes.filter((f) => danger(f.x, f.zz) <= lvl + 2 && !shy(f.x, f.zz) && !apart(f));
     const pool = fair.filter((f) => wanted.has('any') || wanted.has(f.z.id));
     const foes = (pool.length ? pool : fair.length ? fair : ex.foes).map((f) => ({ x: f.x, z: f.zz }));
     if (foes.length) out.push({ why: 'Hunting the dead', targets: foes, act: null, near: 3 });
