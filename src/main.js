@@ -343,8 +343,10 @@ class Game {
       }
     }
   }
-  endBattle(how, pos, slain) {
+  // how: win | lose | flee | apart (a stalemate on Auto: nobody could get at anybody; see Battle.stalemate)
+  endBattle(how, pos, slain, standing = []) {
     const st = this.st;
+    if (how === 'apart') this.auto.noteApart(standing);
     this.battle = null; this.mode = 'explore';
     this.ui.battleMode(false);
     if (how === 'lose') {
@@ -355,7 +357,7 @@ class Game {
       this.explore.resume({ x: inn.front.x + 1, z: inn.front.z + 1 }, [], 2);
       this.ui.banner('Herrington Hollow', `Day ${st.day}`);
       sfx.gasp();
-    } else this.explore.resume(pos, slain, how === 'flee' ? 6 : 2);
+    } else this.explore.resume(pos, slain, how === 'win' ? 2 : 6);
     this.auto.reset();
     if (st.auto) this.autoEquip();
     const L = this.explore.leader;
