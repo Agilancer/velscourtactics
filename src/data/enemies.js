@@ -61,14 +61,14 @@ export const ZOMBIES = [
     id: 'slinger', name: 'Rib Slinger', plural: 'Rib Slingers', hp: 0.8, atk: 1.05, def: 0.7, spd: 6, move: 3, jump: 1, sight: 6,
     color: 0xd8c8a0, scale: 1,
     blurb: 'Throws what it has. It has ribs.',
-    skills: [S('rib_throw', 'Rib Throw', 0, [2, 5], 0, 'enemy', 'phys', 0.95), S('rake', 'Rake', 0, [1, 1], 0, 'enemy', 'phys', 0.8)],
+    skills: [S('rib_throw', 'Rib Throw', 0, [2, 5], 0, 'enemy', 'phys', 0.95, { anim: 'throw' }), S('rake', 'Rake', 0, [1, 1], 0, 'enemy', 'phys', 0.8)],
   },
   // ---- the Drowned Fen ----
   {
     id: 'drowner', name: 'Bog Drowner', plural: 'Bog Drowners', hp: 1.3, atk: 1.15, def: 1, spd: 5, move: 3, jump: 1, sight: 4,
     color: 0x4a6a5a, scale: 1.05,
     blurb: 'It went under once. It thinks you should see what it saw.',
-    skills: [S('drag_under', 'Drag Under', 0, [1, 2], 0, 'enemy', 'phys', 1, { st: ['root', 1, 0.6] }), S('rake', 'Rake', 0, [1, 1], 0, 'enemy', 'phys', 1.1)],
+    skills: [S('drag_under', 'Drag Under', 0, [1, 2], 0, 'enemy', 'phys', 1, { st: ['root', 1, 0.6], anim: 'drag' }), S('rake', 'Rake', 0, [1, 1], 0, 'enemy', 'phys', 1.1)],
   },
   {
     id: 'leechmother', name: 'Leech Mother', plural: 'Leech Mothers', hp: 1.4, atk: 1, def: 0.8, spd: 5, move: 2, jump: 1, sight: 5, burst: 'poison',
@@ -106,7 +106,7 @@ export const ZOMBIES = [
     id: 'abbess', name: 'The Drowned Abbess', plural: 'Drowned Abbesses', lord: true, hp: 3.4, atk: 1.6, def: 1.1, spd: 6, move: 3, jump: 1, sight: 6,
     color: 0x3a5a5a, scale: 1.5,
     blurb: 'She kept the office through the flood. She keeps it still, to a full house.',
-    skills: [S('dirge', 'Dirge', 0, [1, 4], 1, 'enemy', 'magic', 1.05, { el: 'shadow', st: ['curse', 3, 0.7] }), S('drag_under', 'Drag Under', 0, [1, 2], 0, 'enemy', 'phys', 1.1, { st: ['root', 1, 0.7] })],
+    skills: [S('dirge', 'Dirge', 0, [1, 4], 1, 'enemy', 'magic', 1.05, { el: 'shadow', st: ['curse', 3, 0.7] }), S('drag_under', 'Drag Under', 0, [1, 2], 0, 'enemy', 'phys', 1.1, { st: ['root', 1, 0.7], anim: 'drag' })],
   },
   {
     id: 'stoker', name: 'The Stoker', plural: 'Stokers', lord: true, hp: 4.4, atk: 1.6, def: 1.5, spd: 5, move: 3, jump: 1, sight: 6, burst: 'burn',

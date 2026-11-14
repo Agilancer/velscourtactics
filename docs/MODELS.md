@@ -171,8 +171,9 @@ Monsters get the style block too, minus "5-heads-tall" and "neutral expression".
 
 `garrick`, `orrin`, `zafir`, `fortunato`, `tamsin`, `aggie`, the apprentices, `kit`, `jory`, `hob`, `agnes`
 (see `src/data/cast.js` for who each is), and the eight recruits, who can use the class models.
-The scenery is in (the sixth batch, section 12): pine, oak, the well, the bounty board, a signpost, a market
-stall, fence and stone wall pieces, a cottage and a townhouse. Still wanted: more house shapes, and the townsfolk.
+The scenery is in (the sixth and seventh batches, section 12): pine, oak, a tree for each land (snow pine, dead
+tree, charred tree, palm), the well, the bounty board, a signpost, a market stall, fence and stone wall pieces, a
+cottage, a townhouse, the inn and the forge. Still wanted: more house shapes, and the townsfolk.
 
 ## 7. The first batch: what to make first
 
@@ -582,13 +583,60 @@ for anything whose file is missing.
 | Key | Size (wide x deep x tall, tiles) | In the world |
 |---|---|---|
 | `pine`, `oak` | made 1 tall; 1,563 and 2,717 triangles | every pine and oak of the map (about 3,100), scaled to the old trees' heights, each crown one of four greens; a fight takes the crowns and leaves the trunks |
-| `cottage`, `townhouse` | 4.8 x 4.6 x 4.2; 4.8 x 4.6 x 5.5 | each building's `look` in `map.js`; the inn is two townhouses with their doors toward the middle; every other house is mirrored, and each is slid so its door is near the front tile |
+| `cottage`, `townhouse` | 4.8 x 4.6 x 4.2; 4.8 x 4.6 x 5.5 | each building's `look` in `map.js`; a wide plot of townhouses takes two with their doors toward the middle (the inn has its own since the seventh batch); every other house is mirrored, and each is slid so its door is near the front tile |
 | `well`, `bounty_board` | 1.3 x 1.1 x 1.8; 1.7 x 0.7 x 2.0 | the square |
 | `market_stall`, `signpost` | 2.2 x 1.4 x 2.2; 1.7 x 1.0 x 2.3 | three stalls round the square, a signpost on each road out (`decor` in `map.js`) |
 | `fence`, `stone_wall` | 2 tiles long each | the town's edge, leaving the roads open: stone near the four roads, fence beyond (`decor`) |
 
 Every board, sign and sheet of parchment is blank, as the V and T rule asks. None of the twenty has been through
 the critics.
+
+### The seventh batch: the dead past the pines, the lands' trees, the inn and the forge
+
+Twenty models for about 568 credits (550 were asked for; the dead tree took three pictures): the twelve dead of
+the four lands, a tree for each land, the inn and the forge, and two class bodies, `boomerang_knight_f` and
+`gunner_m`. The same route as the sixth batch (pictures in `art/concepts/v2/`); the Blender working file is now
+`v2 ornate (seventy-eight) - tactics.blend` in the meshy folder.
+
+**The dead** go through the zombie branch of `retarget.py`, each with its own posture (lean, neck, droop, arms,
+knees) and walk; the dust husk runs on the gnawer's lunging gait. Two new clips, which the skills ask for by `anim`
+in `enemies.js` (an unknown one falls back to the attack, so the stand-ins are unchanged):
+
+| Key | `height` | Its own clips (the shared set as in the sixth batch) |
+|---|---|---|
+| `zombie_rimewalker` | 1.85 | `Rake` (attack) |
+| `zombie_driftling` | 1.6 | `Bite` (attack), `Pounce` |
+| `zombie_husk` | 1.6 | `Rake` (attack) |
+| `zombie_slinger` | 1.7 | `Rake` (attack), `Throw` (Rib Throw: a rib wrenched out over the shoulder and slung) |
+| `zombie_drowner` | 1.75 | `Rake` (attack), `Drag` (Drag Under: both hands out to seize, then hauled back and down) |
+| `zombie_leechmother` | 1.75 | `Rake` (attack), `Retch` (cast) |
+| `zombie_cinder` | 1.7 | `Rake` (attack) |
+| `zombie_slagback` | 2.2 | `Slam` (attack), `Sweep` |
+| `zombie_warden` | 2.6 | `Slam` (attack), `Sweep` (Winter Toll) |
+| `zombie_dryking` | 2.5 | `Rake` (attack) |
+| `zombie_abbess` | 2.3 | `Rake` (attack), `Drag` (Drag Under) |
+| `zombie_stoker` | 2.6 | `Slam` (attack), `Sweep` |
+
+The dry king's gold collar came out of the 3D step with faint marks like writing on it; they were painted out of
+the texture in Blender (a blur over the gold of the collar band only) before export.
+
+**The trees** take a plainer style block of their own, `style.tree` in `prompts.json` (`prompt.mjs` uses it for
+`pine`, `oak`, `snowpine`, `dead_tree`, `char_tree` and `palm`): the village block put ironwork and stonework round
+a tree's foot. The first dead tree stood in a stone planter under a roof and the second had iron spikes and a
+brass band, one spike like a cross; the third, from the tree block, is clean. The charred tree and the snow pine
+keep a few small stones at the foot, which are part of the root mesh and hardly show at the game's distance.
+
+| Key | Size (wide x deep x tall, tiles) | In the world |
+|---|---|---|
+| `snowpine`, `dead_tree`, `char_tree`, `palm` | made 1 tall, about 4,600 triangles each, trunk and crown split | every tree of that kind in the lands (`KIND` in `render.js`), each crown tinted one of four shades; the code-built shapes stay for a missing file |
+| `inn` | 9.7 x 4.7 x 6.0 | The Last Toll's whole 11-wide plot, instead of two townhouses |
+| `forge` | 4.8 x 3.2 x 3.9 | The Proud Anvil. Meshy walled in the open smithy of the picture: it is a stone workshop with a timber front |
+
+**The class bodies**: `boomerang_knight_f` (1.8, Jamie's clips: `Throw`, `Twin`, `Whirl`, `Typhoon`) and
+`gunner_m` (1.82, `gunner_f`'s: `Shoot`, `Fan`, `Lob`, `Deploy`). The gunner's crossed bandoliers make an X of
+gear on the chest, which was judged not to be a device. `bodyKey` prefers a bm tier body at or under the armour
+worn, so `boomerang_knight_f` shows at tiers 1 and 2 only, and `gunner_m` not at all while `gunner_m_t1` is in the
+manifest.
 
 ### Looking at a model in the running game
 

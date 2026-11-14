@@ -223,7 +223,7 @@ export class Renderer {
       const geo = mergeGeometries([flat(trunk), mergeGeometries(crown.map(flat))], true);
       return (shapes[key] = { geo, R, H });
     };
-    const live = { pine: [], oak: [] };   // the trees that take their models when those come
+    const live = { pine: [], oak: [], snowpine: [], dead: [], char: [], palm: [] };   // the trees that take their models when those come
     for (const t of this.world.trees) {
       const K = KIND[t.kind] || KIND.oak;
       const s = shape(K[0], t.size, t.v % 3);
@@ -241,12 +241,16 @@ export class Renderer {
       this.faders.push(f);
       if (live[t.kind]) live[t.kind].push({ t, m, f, wear });
     }
-    // the pine and the oak models: as tall as the shapes they stand in for (an oak a little less, being broad),
-    // each tree's crown one of four greens (the pine's needles are frosted at the tips; these take the frost off)
-    const GREENS = { oak: [0xffffff, 0xe2ead4, 0xd2e0da, 0xf0e6cc], pine: [0xb8d4a0, 0xaccaa8, 0xc4d6a4, 0xa8c49c] };
-    for (const kind in live) loadProp(kind).then((p) => {
+    // the tree models: as tall as the shapes they stand in for (an oak or a bare tree a little less, being broad; a
+    // palm more), each tree's crown one of four greens (the pine's needles are frosted at the tips; these take the
+    // frost off), the snow, the bare boughs and the ash only a shade warmer or cooler. A bare tree hides only its trunk.
+    const GREENS = { oak: [0xffffff, 0xe2ead4, 0xd2e0da, 0xf0e6cc], pine: [0xb8d4a0, 0xaccaa8, 0xc4d6a4, 0xa8c49c],
+      snowpine: [0xffffff, 0xeef2f6, 0xe4eaf0, 0xf4f4ee], dead: [0xffffff, 0xece6dc, 0xe2e2e2, 0xf0ece4],
+      char: [0xffffff, 0xe8e0dc, 0xdcdcdc, 0xf0e8e0], palm: [0xffffff, 0xe6eed8, 0xf0ecd4, 0xdce6d6] };
+    const PROP = { dead: 'dead_tree', char: 'char_tree' }, UP = { oak: 0.8, dead: 0.85, char: 0.85, palm: 1.2 };
+    for (const kind in live) if (live[kind].length) loadProp(PROP[kind] || kind).then((p) => {
       if (!p) return;
-      const up = kind === 'oak' ? 0.8 : 1, wide = Math.max(p.size.x, p.size.z) / 2;
+      const up = UP[kind] || 1, wide = Math.max(p.size.x, p.size.z) / 2 * (KIND[kind][0] === 'bare' ? 0.4 : 1);
       const wears = GREENS[kind].map((hex) => {
         const solid = p.mats.map((x, k) => { const n = x.clone(); if (k) n.color.setHex(hex); return n; });
         return { solid, ghost: solid.map((x) => { const n = x.clone(); n.transparent = true; n.opacity = 0.2; return n; }) };
@@ -261,11 +265,12 @@ export class Renderer {
     });
   }
 
-  // ---- Herrington Hollow: a cottage or a townhouse for each building (its `look`), the inn two townhouses with their
-  // doors toward the middle; without the models, walls, roofs and doors from bm's building textures ----
+  // ---- Herrington Hollow: a cottage or a townhouse for each building (its `look`), the inn and the forge their own;
+  // a wide plot of townhouses takes two with their doors toward the middle; without the models, walls, roofs and
+  // doors from bm's building textures ----
   buildTown() {
     const w = this.world;
-    const DOOR_AT = { townhouse: -0.95, cottage: 0.44 };              // each model's door, from its middle along x
+    const DOOR_AT = { townhouse: -0.95, cottage: 0.44, inn: 0, forge: 0 };   // each model's door, from its middle along x
     const TINTS = [0xffffff, 0xf2e6d6, 0xe2e6ee, 0xeee2cc, 0xe6eadc, 0xf6ece6];
     const ghostOf = (m) => { const c = m.clone(); c.transparent = true; c.opacity = 0.25; c.depthWrite = false; return c; };
     w.buildings.forEach((b, n) => {
@@ -282,10 +287,11 @@ export class Renderer {
         const tint = new THREE.Color(TINTS[n % TINTS.length]);
         const solid = p.mats.map((x) => { const c = x.clone(); c.color.copy(tint); return c; });
         // a house is turned over (mirrored) every other slot, and slid along so its door comes near the front tile
-        const homes = b.w > 6 ? [[cx - 2.5, -1], [cx + 2.5, 1]] : [[cx, n % 2 ? -1 : 1]];
+        const pair = b.w > 6 && p.size.x < b.w / 2;
+        const homes = pair ? [[cx - 2.5, -1], [cx + 2.5, 1]] : [[cx, n % 2 ? -1 : 1]];
         for (const [hx, s] of homes) {
           const m = new THREE.Mesh(p.geo, solid);
-          m.position.set(hx + (b.w > 6 ? 0 : clamp(-DOOR_AT[b.look] * s, -0.4, 0.4)), 0, cz); m.scale.set(s, 1, 1);
+          m.position.set(hx + (pair ? 0 : clamp(-(DOOR_AT[b.look] || 0) * s, -0.4, 0.4)), 0, cz); m.scale.set(s, 1, 1);
           wear(m, solid);
         }
         sign.position.set(b.doorX, p.size.y + 0.5, cz); fd.h = p.size.y;    // over the ridge, not off by a neighbour's
