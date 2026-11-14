@@ -1,5 +1,5 @@
 // VELSCOUR TACTICS. Boots the world, then hands over to whichever of walking, talking or fighting is going on.
-import { buildWorld } from './world/map.js';
+import { buildWorld, TOWN } from './world/map.js';
 import { Renderer } from './world/render.js';
 import { Input } from './core/input.js';
 import { UI } from './ui/ui.js';
@@ -12,7 +12,10 @@ import { QUESTS } from './data/enemies.js';
 import { CLASSES } from './data/classes.js';
 import { WEAPONS, makeItem, itemStats, itemName, tierForLevel, RARITY } from './data/items.js';
 import { PARTY_MAX, SLOTS, newState, load, save, recruit, restAll, startQuest, questReady, heroStats, canEquip, slotsFor, gainXp, lead, partyHeroes } from './game/party.js';
-import { sfx } from './core/audio.js';
+import { sound, sfx } from './core/audio.js';
+import { music } from './core/music.js';
+import { ambience } from './core/ambience.js';
+import { title } from './ui/title.js';
 import { pick } from './core/util.js';
 
 class Game {
@@ -40,7 +43,14 @@ class Game {
     this.canvas.addEventListener('pointerdown', (e) => { if (this.mode === 'battle') this.battle.pointer(e.clientX, e.clientY, true); });
     window.addEventListener('wheel', (e) => { if (!this.ui.isOpen()) this.r.setZoom(this.r.zoom + Math.sign(e.deltaY) * 1.2); }, { passive: true });
 
-    this.ui.title(!!load());
+    // the sounds sit where their makers are on screen
+    sound.where = (x, y, z) => (this.r.project(x, y, z).x / window.innerWidth) * 2 - 1;
+    // the title (title.js) has been up since the first paint: its menu comes up now the Hollow is built
+    title.onMenu = (a) => {
+      if (a === 'new') { title.hide(); this.ui.create(); }
+      else if (a === 'continue' && load()) { title.hide(); this.continueGame(); }
+    };
+    title.ready({ continue: !!load() });
     let last = performance.now();
     const frame = (now) => { const dt = Math.min(0.05, (now - last) / 1000); last = now; this.update(dt); requestAnimationFrame(frame); };
     requestAnimationFrame(frame);
@@ -55,7 +65,20 @@ class Game {
     else if (this.battle) this.battle.update(dt);
     else if (this.explore) { this.auto.update(dt); this.explore.update(dt); }
     this.r.render();
+    const set = this.place(), fight = this.mode === 'battle' || this.mode === 'alert';
+    music.update(dt, { set, fight });
+    ambience.update(dt, { on: !!this.explore && !title.up, set, fight, ear: this.r.target, world: this.world });
     if ((this.hudT -= dt) <= 0 && this.st) { this.hudT = 0.25; this.ui.refresh(); }
+  }
+
+  /** Where the party is, for the music and the world's sound: the Hollow, the pines round it, or far
+   * out where the pines go black. */
+  place() {
+    const L = this.explore?.leader;
+    if (!L) return null;
+    if (this.world.inTown(L.x, L.z)) return 'hollow';
+    const dx = Math.max(TOWN.x0 - L.x, 0, L.x - TOWN.x1), dz = Math.max(TOWN.z0 - L.z, 0, L.z - TOWN.z1);
+    return Math.hypot(dx, dz) > 26 ? 'deep' : 'pines';
   }
 
   // ---- starting ----
@@ -71,12 +94,15 @@ class Game {
     this.explore.inTown = this.world.inTown(L.x, L.z);
     this.explore.updatePrompt();
     if (!st.flags.opened) this.opening();
-    else this.ui.banner(this.explore.inTown ? 'Herrington Hollow' : this.world.regionAt(L.x, L.z).name, `Day ${st.day}`);
+    else music.play();
+    if (st.flags.opened) this.ui.banner(this.explore.inTown ? 'Herrington Hollow' : this.world.regionAt(L.x, L.z).name, `Day ${st.day}`);
     this.ui.setAuto(st.auto ? 'Thinking' : null);
   }
   async opening() {
     const st = this.st;
+    music.intro();
     await this.ui.dialog(OPENING);
+    music.endIntro(5);
     st.flags.opened = true;
     recruit(st, 'lisandra');
     startQuest(st, 'first');
@@ -113,6 +139,7 @@ class Game {
         if (h.equip[slot]) st.bag.push(h.equip[slot]);
         h.equip[slot] = it; this.fixHp(h);
         this.ui.toast(`${h.name.split(' ')[0]} puts on the ${itemName(it)}.`);
+        sfx.equip(it);
       }
     }
   }
@@ -129,7 +156,7 @@ class Game {
     }
     const h = recruit(st, npc.hero);
     if (!h) return;
-    sfx.level();
+    if (!music.stinger('found')) sfx.level();
     const where = st.party.includes(npc.hero) ? 'joins the party' : 'will wait at The Last Toll (your party is full)';
     this.ui.banner(d.name, `${CLASSES[d.cls].name} · ${where}`);
     this.partyChanged();
@@ -150,7 +177,7 @@ class Game {
     if (!t) return;
     const s = heroStats(t);
     if (k === 'potion') t.hp = Math.min(s.hp, t.hp + Math.round(s.hp * 0.45)); else t.mp = Math.min(s.mp, t.mp + Math.round(s.mp * 0.45));
-    st.consum[k]--; sfx.heal();
+    st.consum[k]--; sfx.drink();
     this.ui.toast(`${t.name.split(' ')[0]} drinks it.`);
   }
 
@@ -163,7 +190,7 @@ class Game {
     for (const h of partyHeroes(st)) if (gainXp(h, q.xp)) this.ui.toast(`${h.name.split(' ')[0]} reaches level ${h.lvl}.`);
     if (q.reward === 'potion3') st.consum.potion += 3;
     if (q.reward === 'rare') { const it = makeItem(CLASSES[lead(st).cls].weapon[0], tierForLevel(lead(st).lvl), 2); if (st.bag.length < st.bagSize) st.bag.push(it); this.ui.toast(`The Watch hands over a ${itemName(it)}.`); }
-    sfx.coin(); sfx.level();
+    sfx.coin(); if (!music.stinger('triumph')) sfx.level();
     this.ui.banner('Done: ' + q.name, `${q.gold} gold · ${q.xp} experience`);
     save(st);
   }
@@ -195,14 +222,15 @@ class Game {
     const st = this.st;
     sfx.ui();
     if (t.kind === 'board') return this.ui.questPanel(true);
-    if (t.kind === 'well') return this.ui.dialog([['', pick(WELL_LINES)]]);
+    if (t.kind === 'well') { sfx.well(); return this.ui.dialog([['', pick(WELL_LINES)]]); }
     if (t.kind === 'chest') {
       st.opened[t.chest.id] = true;
       const gold = 40 + Math.floor(Math.random() * 60), it = makeItem(pick(Object.keys(WEAPONS)), tierForLevel(lead(st).lvl), 1 + (Math.random() < 0.4 ? 1 : 0));
       st.gold += gold; if (st.bag.length < st.bagSize) st.bag.push(it);
       this.r.chests[t.chest.id].children[1].rotation.x = -0.9;
-      sfx.coin();
+      sfx.chest();
       await this.ui.dialog([['', `${CHEST_LINE} Inside: ${gold} gold and a ${itemName(it)}.`]]);
+      sfx.chestShut();
       this.explore.updatePrompt(); save(st);
       return;
     }
@@ -235,6 +263,7 @@ class Game {
       this.explore.spawnFoes();
       this.explore.resume({ x: inn.front.x + 1, z: inn.front.z + 1 }, [], 2);
       this.ui.banner('Herrington Hollow', `Day ${st.day}`);
+      sfx.gasp();
     } else this.explore.resume(pos, slain, how === 'flee' ? 6 : 2);
     this.auto.reset();
     if (st.auto) this.autoEquip();
@@ -247,6 +276,7 @@ class Game {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
+  title.status('Waking the Hollow…');
   await loadManifest();
   try { await document.fonts.load('700 40px Cinzel'); } catch { /* the fallback font will do */ }
   window.game = new Game();

@@ -9,6 +9,7 @@ Charged_Spell_Cast, Hit_Reaction, Dead, ...). Then, from Blender's Python (or th
     T.build("paladin")                                         # the common set plus that class's own clips
     T.sheet(["Idle", "Swing", "Smite"], "paladin_check")       # contact sheet into tools/build/shots/
     T.export(r"<repo>/assets/models/paladin_m.glb")
+    T.props()                                                  # a class that holds things (the lancer): the manifest's "props"
 
 How it works. Meshy's rig has the library's 24 bones under other names and with another bind pose, so local
 rotations cannot be copied. Every library pose is carried over in armature space through an offset measured
@@ -18,7 +19,7 @@ from one, legs from another, blended, retimed), all starting and ending in one i
 """
 import bpy, os, math
 import numpy as np
-from mathutils import Vector
+from mathutils import Vector, Quaternion, Matrix
 
 H = 'mixamorig:Hips'
 # Meshy's bone names -> the library's
@@ -64,6 +65,19 @@ class Target:
             b.name = 'mixamorig:' + RENAME.get(b.name, b.name)
         self.walk = next(a for a in bpy.data.actions if a not in acts)
         self.walk.name = key + ':own_walk'
+        self.setup(fresh=True)
+
+    @classmethod
+    def attach(cls, key):
+        """A figure imported earlier and still in the file: picked up as it is, without importing or sending the library through again."""
+        self = cls.__new__(cls)
+        self.key = key; self.arm = bpy.data.objects[key]; self.mesh = bpy.data.objects[key + '_mesh']
+        self.walk = bpy.data.actions[key + ':own_walk']
+        self.setup(fresh=False)
+        return self
+
+    def setup(self, fresh):
+        key = self.key
         self.order = []
         def walk(b):
             self.order.append(b.name)
@@ -86,6 +100,8 @@ class Target:
             b = self.arm.data.bones[n]
             self.restq[n] = (b.matrix_local if not b.parent else b.parent.matrix_local.inverted() @ b.matrix_local).to_quaternion()
         self.resth = self.arm.data.bones[H].matrix_local.copy()
+        if not fresh:
+            self.I0 = self.grab('M_Idle_02', 0); self.home = self.I0[H][1].copy(); self.body(); return
         for s in SRC: self.retarget(s)
         # how close is the library's walk, sent through, to this figure's own walk?
         worst = 0
@@ -94,7 +110,7 @@ class Target:
             for n in self.order:
                 d = math.degrees(a[n][0].rotation_difference(b[n][0]).angle); worst = max(worst, min(d, 360 - d))
         print(key, 'retarget check: worst bone', round(worst, 1), 'deg off its own walk; size ratio', round(self.ratio, 3))
-        self.I0 = self.grab('M_Idle_02', 0); self.home = self.I0[H][1].copy()
+        self.I0 = self.grab('M_Idle_02', 0); self.home = self.I0[H][1].copy(); self.body()
 
     n = lambda self, name: self.key + ':' + name
 
@@ -109,6 +125,8 @@ class Target:
         return out
 
     def write(self, name, keys):
+        held = getattr(self, 'held', None)                   # the hands turned to point what they hold (see hold)
+        if held and not name.startswith('M_'): keys = [(f, held(name, i, len(keys), p)) for i, (f, p) in enumerate(keys)]
         name = self.n(name)
         old = bpy.data.actions.get(name)
         if old: bpy.data.actions.remove(old)
@@ -153,17 +171,258 @@ class Target:
             p = dict(p); q, l = p[H]; p[H] = (c @ q, l); return p
         return al
 
-    def build(self, cls):
+    # ---- posing in the body's own terms, on top of any pose ----
+    # Meshy's bone tails point anywhere, so a limb's direction is taken from joint to joint, never from a bone's axis.
+    def body(self):
+        bl = self.arm.data.bones; P = lambda n: bl['mixamorig:' + n].head_local
+        self.U = (P('Head') - P('Hips')).normalized()
+        lf = P('LeftUpLeg') - P('RightUpLeg'); self.Lf = (lf - self.U * lf.dot(self.U)).normalized()
+        self.F = self.U.cross(self.Lf).normalized()
+        if self.F.dot(P('LeftToeBase') - P('LeftFoot')) < 0: self.F = -self.F
+        self.restQ = {n: bl[n].matrix_local.to_quaternion() for n in self.order}
+        self.reloff = {n: (bl[n].parent.matrix_local.inverted() @ bl[n].matrix_local).translation for n in self.order if bl[n].parent}
+        self.FEET = ['mixamorig:%s%s' % (s, b) for s in ('Left', 'Right') for b in ('Foot', 'ToeBase')]
+        self.NECK = ['mixamorig:Neck', 'mixamorig:Head']
+        self.tall = (P('Head') - P('LeftFoot')).dot(self.U)
+        self.floor = self.lowest(self.I0)
+
+    def fk(self, p):
+        """Armature-space rotation and joint position of every bone, for a pose of local rotations."""
+        Q, X = {}, {}
+        for n in self.order:
+            b = self.arm.data.bones[n]
+            if b.parent:
+                Q[n] = Q[b.parent.name] @ self.restq[n] @ p[n][0]; X[n] = X[b.parent.name] + Q[b.parent.name] @ self.reloff[n]
+            else:
+                Q[n] = self.restq[n] @ p[n][0]; X[n] = b.head_local + self.restQ[n] @ p[n][1]
+        return Q, X
+
+    def lowest(self, p):
+        return min(x.dot(self.U) for n, x in self.fk(p)[1].items() if n in self.FEET)
+
+    def ground(self, p):
+        """The root raised or lowered so the lowest foot is on the floor again (after bending the knees)."""
+        q, l = p[H]; p = dict(p); p[H] = (q, l + self.restQ[H].inverted() @ (self.U * (self.floor - self.lowest(p)))); return p
+
+    def spin(self, p, n, R):
+        """Bone n turned by R in armature space; what hangs from it follows."""
+        Q, _ = self.fk(p); b = self.arm.data.bones[n]
+        base = Q[b.parent.name] @ self.restq[n] if b.parent else self.restq[n]
+        p = dict(p); p[n] = (base.inverted() @ R @ Q[n], p[n][1]); return p
+
+    def frame(self, p, n):
+        """The body's up, left and forward, as bone n carries them in this pose."""
+        R = self.fk(p)[0][n] @ self.restQ[n].inverted()
+        return R @ self.U, R @ self.Lf, R @ self.F
+
+    def aim(self, p, n, child, d):
+        _, X = self.fk(p)
+        return self.spin(p, n, (X[child] - X[n]).normalized().rotation_difference(d))
+
+    def dirn(self, fr, side, th, ph):
+        """th: degrees from straight down (90 level, 180 straight up); ph: heading, 0 out to that side, 90 forward,
+        180 across the body, -90 back."""
+        U, Lf, F = fr; S = Lf if side == 'Left' else -Lf; t, f = math.radians(th), math.radians(ph)
+        return (-U * math.cos(t) + (S * math.cos(f) + F * math.sin(f)) * math.sin(t)).normalized()
+
+    def limb(self, p, side, up=None, low=None, leg=False):
+        """A whole arm (or leg) set by direction in the chest's (hips') frame: up and low are (th, ph) as in dirn,
+        or low a number: degrees bent from the upper part, an elbow forward or a knee back."""
+        a, b, c = [('mixamorig:' + x % side) for x in (('%sUpLeg', '%sLeg', '%sFoot') if leg else ('%sArm', '%sForeArm', '%sHand'))]
+        fr = self.frame(p, H if leg else 'mixamorig:Spine2')
+        if up is not None: p = self.aim(p, a, b, self.dirn(fr, side, *up))
+        if low is not None:
+            if isinstance(low, (int, float)):
+                _, X = self.fk(p); u = (X[b] - X[a]).normalized(); to = -fr[2] if leg else fr[2]
+                ax = u.cross(to); ax = ax if ax.length > 1e-3 else u.cross(fr[0])
+                d = Quaternion(ax.normalized(), math.radians(low)) @ u
+            else: d = self.dirn(fr, side, *low)
+            p = self.aim(p, b, c, d)
+        return p
+
+    def tilt(self, p, bones, how, deg):
+        """Each bone turned in its parent's frame: 'fwd' pitches forward (negative: back), 'left' leans to its left,
+        'yaw' turns to its left."""
+        for n in bones:
+            b = self.arm.data.bones[n]; U, Lf, F = self.frame(p, b.parent.name if b.parent else n)
+            ax = {'fwd': U.cross(F), 'left': U.cross(Lf), 'yaw': F.cross(Lf)}[how].normalized()
+            p = self.spin(p, n, Quaternion(ax, math.radians(deg)))
+        return p
+
+    def turned(self, p, deg):
+        """The whole figure turned about the up axis (a spin), on its tile."""
+        return self.spin(p, H, Quaternion(self.U, math.radians(deg)))
+
+    # ---- held things ----
+    # A weapon is a model of its own (MODELS.md section 4: upright along +Z, grip at the origin) which the game hangs on a
+    # hand bone, at a place and turn in that bone's frame (the manifest's "props"). The place is fixed once, on the idle
+    # (calibrate); after that each clip turns the hand so the thing points where that clip wants it (hold).
+    @staticmethod
+    def basis(z, y):
+        """The turn that takes a model's +Z to z and its +Y as near to y as it will go."""
+        z = z.normalized(); y = (y - z * y.dot(z)).normalized(); x = y.cross(z)
+        return Matrix((x, y, z)).transposed().to_quaternion()
+
+    def calibrate(self, p, side, model, z, y, at):
+        """In pose p the model held in that hand has its +Z along z, its +Y toward y and its grip at `at` (armature space)."""
+        Q, X = self.fk(p); h = 'mixamorig:%sHand' % side
+        if not hasattr(self, 'grip'): self.grip = {}
+        self.grip[side] = {'model': model, 'rot': Q[h].inverted() @ self.basis(z, y), 'pos': Q[h].inverted() @ (at - X[h])}
+
+    def hold(self, p, side, z, y):
+        """The hand turned so what it holds has its +Z along z and its +Y toward y."""
+        h = 'mixamorig:%sHand' % side; Q, _ = self.fk(p)
+        return self.spin(p, h, self.basis(z, y) @ self.grip[side]['rot'].inverted() @ Q[h].inverted())
+
+    def knuckles(self, p, side, d):
+        """Where a fist round a shaft along d points its knuckles: along the forearm as near as it can; with the forearm
+        along the shaft, forward (an upright shaft) or down and out (a level one)."""
+        _, X = self.fk(p); A = (X['mixamorig:%sHand' % side] - X['mixamorig:%sForeArm' % side]).normalized()
+        U, Lf, F = self.frame(p, 'mixamorig:Spine2'); S = Lf if side == 'Left' else -Lf
+        perp = lambda v: v - d * v.dot(d)
+        R = perp(F) if perp(F).length > 0.5 else perp(S - U)
+        return perp(A) + 0.25 * R.normalized()
+
+    def props(self):
+        """The manifest's "props": each held model's place in its hand bone's own frame (the glTF keeps the bones' frames),
+        turned from the model file's y-up axes to Blender's, scaled from metres to the armature's units."""
+        s = 1 / self.arm.matrix_world.to_scale()[0]; out = []
+        for side, g in self.grip.items():
+            r = g['rot'] @ Quaternion((1, 0, 0), math.radians(90))
+            out.append({'file': g['model'] + '.glb', 'bone': side + 'Hand', 'at': [round(v, 3) for v in g['pos']],
+                        'rot': [round(v, 5) for v in (r.x, r.y, r.z, r.w)], 'scale': round(s, 3)})
+        return out
+
+    def dress(self):
+        """Copies of the held models on the hands, for the renders here (the export leaves them out)."""
+        s = 1 / self.arm.matrix_world.to_scale()[0]
+        use(self.arm, self.n('Idle')); sc.frame_set(0); bpy.context.view_layer.update()
+        for side, g in self.grip.items():
+            nm = self.key + ':' + g['model']
+            o = bpy.data.objects.get(nm) or bpy.data.objects.new(nm, bpy.data.objects[g['model']].data)
+            if not o.users_collection: self.mesh.users_collection[0].objects.link(o)
+            o['prop'] = 1; o.parent = self.arm; o.parent_type = 'BONE'; o.parent_bone = 'mixamorig:%sHand' % side
+            o.matrix_parent_inverse = Matrix.Identity(4); bpy.context.view_layer.update()
+            pb = self.arm.pose.bones[o.parent_bone]
+            o.matrix_world = self.arm.matrix_world @ pb.matrix @ Matrix.LocRotScale(g['pos'], g['rot'], Vector((s, s, s)))
+
+    # ---- the mesh ----
+    def cloth(self, passes=4):
+        """Loose cloth off the legs. Meshy weights capes, robes and sashes to the thighs and calves, so they swing out like
+        fins in a walk and stand up off a corpse. A vertex well behind the legs goes wholly to the hips; one far out from
+        them (a robe's hem) keeps at most 30% of its leg weight. The moved region is then smoothed."""
+        me = self.mesh.data; vgs = self.mesh.vertex_groups; gi = {g.name: g.index for g in vgs}
+        legs = {gi[n] for n in self.LEGS if n in gi}; hip = gi[H]
+        M = self.arm.matrix_world.inverted() @ self.mesh.matrix_world; bl = self.arm.data.bones; Pj = lambda n: bl['mixamorig:' + n].head_local
+        r0, r1, rb = 0.07 * self.tall, 0.17 * self.tall, 0.05 * self.tall
+        segs = {s: [(Pj(s + 'UpLeg'), Pj(s + 'Leg')), (Pj(s + 'Leg'), Pj(s + 'Foot'))] for s in ('Left', 'Right')}
+        sm = lambda x: 0.0 if x <= 0 else 1.0 if x >= 1 else x * x * (3 - 2 * x)
+        W = [{g.group: g.weight for g in v.groups} for v in me.vertices]; moved = []
+        for i, v in enumerate(me.vertices):
+            w = W[i]
+            if sum(w.get(k, 0) for k in legs) < 0.01: continue
+            co = M @ v.co; side = 'Left' if (co - Pj('Hips')).dot(self.Lf) > 0 else 'Right'; best = None
+            for a, b in segs[side]:
+                ab = b - a; t = max(0, min(1, (co - a).dot(ab) / ab.length_squared)); d = co - (a + ab * t)
+                if best is None or d.length < best[0]: best = (d.length, d.dot(self.F))
+            k = max(0.7 * sm((best[0] - r0) / (r1 - r0)), sm((-best[1] - r0) / rb))
+            if k < 0.02: continue
+            for g in [g for g in w if g in legs]: take = w[g] * k; w[g] -= take; w[hip] = w.get(hip, 0) + take
+            moved.append(i)
+        nb = [[] for _ in me.vertices]
+        for e in me.edges: a, b = e.vertices; nb[a].append(b); nb[b].append(a)
+        for _ in range(passes):
+            new = {}
+            for i in moved:
+                acc = {}
+                for j in nb[i] + [i]:
+                    for g, x in W[j].items(): acc[g] = acc.get(g, 0) + x / (len(nb[i]) + 1)
+                mixw = {g: 0.5 * W[i].get(g, 0) + 0.5 * acc.get(g, 0) for g in set(W[i]) | set(acc)}
+                top = sorted(mixw.items(), key=lambda kv: -kv[1])[:4]; s = sum(x for _, x in top) or 1
+                new[i] = {g: x / s for g, x in top if x > 1e-4}
+            W = [new.get(i, w) for i, w in enumerate(W)]
+        for i in moved:
+            for g in [g.group for g in me.vertices[i].groups]: vgs[g].remove([i])
+            for g, x in W[i].items(): vgs[g].add([i], x, 'REPLACE')
+        print(self.key, 'cloth:', len(moved), 'vertices eased off the legs')
+
+    def uncap(self, radius=0.18):
+        """Deletes the bag Meshy sometimes closes a long skirt with: faces below the knees, near the body's axis and
+        clear of the legs (a dark dome between the boots)."""
+        import bmesh
+        bl = self.arm.data.bones; Pj = lambda n: bl['mixamorig:' + n].head_local
+        M = self.arm.matrix_world.inverted() @ self.mesh.matrix_world; ctr = (Pj('LeftFoot') + Pj('RightFoot')) / 2
+        segs = [(Pj(s + a), Pj(s + b)) for s in ('Left', 'Right') for a, b in (('UpLeg', 'Leg'), ('Leg', 'Foot'), ('Foot', 'ToeBase'))]
+        def dseg(c):
+            return min((c - (a + (b - a) * max(0, min(1, (c - a).dot(b - a) / (b - a).length_squared)))).length for a, b in segs)
+        knee = Pj('LeftLeg').dot(self.U); r = radius * self.tall
+        bm = bmesh.new(); bm.from_mesh(self.mesh.data); kill = []
+        for f in bm.faces:
+            c = M @ f.calc_center_median(); h = c - ctr; h = h - self.U * h.dot(self.U)
+            if c.dot(self.U) < knee - 0.035 * self.tall and h.length < r and dseg(c) > 0.055 * self.tall: kill.append(f)
+        bmesh.ops.delete(bm, geom=kill, context='FACES'); bm.to_mesh(self.mesh.data); bm.free()
+        print(self.key, 'uncap:', len(kill), 'faces gone')
+
+    def lighten(self, k):
+        """Lifts the texture's darks and mids (a gamma of 1/k), once."""
+        for slot in self.mesh.material_slots:
+            for nd in slot.material.node_tree.nodes:
+                if nd.type == 'TEX_IMAGE' and nd.image and not nd.image.get('lit') and nd.image.colorspace_settings.name == 'sRGB':
+                    px = np.array(nd.image.pixels[:]).reshape(-1, 4); px[:, :3] = px[:, :3] ** (1 / k)
+                    nd.image.pixels = px.ravel().tolist(); nd.image['lit'] = k; nd.image.update()
+
+    def build(self, cls, arms=None):
         g, mix, L, W = self.grab, self.mix, self.lock, self.write
         UP, RARM, LARM, ARMS, HEAD, SPINE, LEGS = self.UP, self.RARM, self.LARM, self.ARMS, self.HEAD, self.SPINE, self.LEGS
+        NECK, SIDES, arm, tilt, G = self.NECK, ('Left', 'Right'), self.limb, self.tilt, self.ground
+        leg = lambda p, s, up, low: self.limb(p, s, up, low, leg=True)
         idle = lambda f: g('M_Idle_02', f % 44.8)
+        # the arms hang 10 degrees off the body (15 on the bulky ones, to clear pauldrons and hip plates), elbows a little bent
+        AR = arms or (15 if self.key.startswith(('homunculus', 'paladin', 'barbarian', 'death_knight', 'lancer')) else 10)
+        self.held = None
+
+        def both(p, up, low):
+            for s in SIDES: p = arm(p, s, up, low)
+            return p
         ARMDOWN = mix(g('M_Walking', 0), g('M_Walking', 12.4), 0.5)
-        BI = lambda f=0: L(mix(idle(f), ARMDOWN, 0.6, ARMS)); B0 = BI(0)
+        BI = lambda f=0: L(both(idle(f), (AR, 20), 14)); B0 = BI(0)
         alD = self.aligner('M_Dead', 30); WND = alD(g('M_Dead', 34))
         RAISE = g('M_mage_soell_cast_6', 27); UPBOTH = g('M_Charged_Spell_Cast', 46); CROUCH = g('M_Charged_Spell_Cast', 24)
-        HR = g('M_Hit_Reaction', 20); CLASP = g('M_Attack', 2)
+        HR = g('M_Hit_Reaction', 20)
         back = mix(B0, HR, 0.7, RARM)
         thrust = mix(mix(B0, CROUCH, 1.0, RARM), CROUCH, 0.5, SPINE + HEAD)
+        crouch = lambda p, w: G(mix(p, CROUCH, w, LEGS))                       # knees bent, the feet kept on the floor
+
+        if cls == 'lancer':
+            # The lance (w_lance, 3 m) stands upright in the right fist, the forearm level before the hip; the tower shield
+            # (w_shield_tower) hangs from the left fist at the side, its face out. From here on every key the clips write
+            # goes through `held`, which turns the hands: the lance up, or level at the foe in the thick of Thrust and
+            # Charge, tilted forward to Point; the shield's face out to the left, or to the front in Guard_Up and Shield_Bash.
+            carry = lambda p: arm(p, 'Right', (AR, 45), 40)
+            BI = lambda f=0: L(carry(both(idle(f), (AR, 20), 14))); B0 = BI(0)
+
+            def fr(p):                     # the tile's up, left and forward; the hips' instead as the body goes over (Dead_Fall)
+                R = self.fk(p)[0][H] @ self.restQ[H].inverted(); k = min(1, max(0, (1 - (R @ self.U).dot(self.U)) / 0.3))
+                R = Quaternion().slerp(R, k); return R @ self.U, R @ self.Lf, R @ self.F
+            aim = lambda p, th, ph: self.dirn(fr(p), 'Right', th, ph)          # the lance: th from straight down, ph 90 forward
+            face = lambda p, ph: self.dirn(fr(p), 'Left', 90, ph)              # the shield's face: 0 out to the left, 90 to the front
+            Q0, X0 = self.fk(B0); hand = lambda s: X0['mixamorig:%sHand' % s]
+            palm = lambda s: hand(s) + (hand(s) - X0['mixamorig:%sForeArm' % s]).normalized() * 0.045 * self.tall
+            self.calibrate(B0, 'Right', 'w_lance', aim(B0, 174, 75), self.knuckles(B0, 'Right', aim(B0, 174, 75)), palm('Right'))
+            # the shield gripped above its middle, so at the idle its foot is 7 cm off the floor, whatever the figure's height
+            at = palm('Left') + face(B0, 30) * 0.03 * self.tall
+            foot = -min(v.co.z for v in bpy.data.objects['w_shield_tower'].data.vertices) + 0.07   # metres, grip to floor
+            at += self.U * (self.floor + foot / self.arm.matrix_world.to_scale()[0] - at.dot(self.U))
+            self.calibrate(B0, 'Left', 'w_shield_tower', fr(B0)[0], -face(B0, 30), at)
+            STEADY = {'Walk', 'Run', 'Hop', 'Hit', 'Stunned', 'Wounded', 'Talk', 'Shield_Bash'}    # the lance arm kept still
+
+            def held(name, i, n, p):
+                mid = 0 < i < n - 1                                            # the first and last keys are the idle
+                if name in STEADY: p = carry(p)
+                d = aim(p, *((93, 90) if name in ('Thrust', 'Charge') and mid else (130, 90) if name == 'Point' and mid else (174, 75)))
+                p = self.hold(p, 'Right', d, self.knuckles(p, 'Right', d))
+                return self.hold(p, 'Left', fr(p)[0], -face(p, 90 if name in ('Guard_Up', 'Shield_Bash') and mid else 30))
+            self.held = held
 
         def blow(name, src, s0, s1, n, legs=0.7, df=2, tail=8):
             # the upper body from the source, the legs partly, the hips never turning
@@ -172,157 +431,208 @@ class Target:
                 p = g(src, s0 + (s1 - s0) * i / (n - 1)); keys.append((2 + i * df, L(mix(mix(B0, p, 1.0, UP), p, legs, LEGS))))
             keys.append((2 + (n - 1) * df + tail, BI(2 + (n - 1) * df + tail))); W(name, keys)
 
-        # ---- what every figure has ----
+        # ---- what every figure has (24 frames a second; a blow or a cast lands about 0.3 s in, frame 7) ----
         W('Idle', [(f, BI(f)) for f in (0, 9, 18, 27, 36, 45)])
         W('Walk', [(i * 2, L(g('own_walk', self.w0 + i * 24.8 / 12))) for i in range(13)])
         W('Run', [(i, L(g('M_Running', i * 15.2 / 15))) for i in range(16)])
-        dip = mix(B0, CROUCH, 0.45, LEGS + SPINE)
-        W('Hop', [(0, B0), (3, L(dip)), (8, L(mix(B0, UPBOTH, 0.15, ARMS))), (12, L(mix(B0, CROUCH, 0.2, LEGS))), (16, B0)])
+
+        def tuck(k):                                                           # in the air: knees up, arms up
+            p = B0
+            for s in SIDES: p = leg(p, s, (40 * k, 90), 70 * k)
+            return L(both(p, (40, 60), 20))
+        W('Hop', [(0, B0), (3, L(crouch(B0, 0.5))), (6, tuck(1)), (10, tuck(0.8)), (13, L(crouch(B0, 0.35))), (16, B0)])
         W('Cast', [(0, B0)] + [(4 + i * 3, L(mix(BI(4 + i * 3), g('M_Charged_Spell_Cast', 34 + i * 24 / 8), 0.7, ARMS))) for i in range(9)] + [(34, BI(34))])
         alH = self.aligner('M_Hit_Reaction', 0)
-        hk = lambda s: L(mix(B0, alH(g('M_Hit_Reaction', s)), 0.5, [n for n in UP if n not in RARM]))
-        W('Hit', [(0, B0), (3, hk(8)), (6, hk(14)), (10, BI(10))])
-        s1 = alH(g('M_Hit_Reaction', 14)); s2 = alH(g('M_Hit_Reaction', 19)); s3 = mix(s1, WND, 0.5, HEAD)
-        W('Stunned', [(0, L(s1)), (10, L(s2)), (20, L(s3)), (30, L(s1))])
-        alW = self.aligner('M_Dead', 34)
-        w1 = mix(alW(g('M_Dead', 34)), B0, 0.5, HEAD); w2 = mix(alW(g('M_Dead', 35.5)), B0, 0.5, HEAD)
-        W('Wounded', [(0, L(w1)), (18, L(w2)), (36, L(w1))])
+
+        def hit(s, k):                                                         # thrown back: chest, head and arms
+            p = mix(B0, alH(g('M_Hit_Reaction', s)), 1.0, SPINE + HEAD)
+            p = tilt(tilt(p, SPINE, 'fwd', -6 * k), NECK, 'fwd', -6 * k)
+            return L(crouch(both(p, (AR + 18 * k, -10), 25 * k), 0.3 * k))
+        W('Hit', [(0, B0), (2, hit(8, 1)), (5, hit(11, 0.85)), (9, hit(16, 0.4)), (15, BI(15))])
+
+        def daze(lean, fwd):                                                   # arms limp, the head lolling, a slow circle
+            p = tilt(tilt(B0, SPINE, 'left', lean), SPINE, 'fwd', fwd)
+            p = tilt(tilt(p, NECK, 'fwd', 9), NECK, 'left', 2.5 * lean)
+            return L(crouch(both(p, (5, 10), 8), 0.2))
+        W('Stunned', [(0, daze(3, 0)), (10, daze(0, 3)), (20, daze(-3, 0)), (30, daze(0, -1)), (40, daze(3, 0))])
+
+        def hurt(k):                                                           # bent over a hand on the gut, breathing
+            p = tilt(tilt(B0, SPINE, 'fwd', 8 + 1.5 * k), NECK, 'fwd', 5)
+            p = arm(arm(p, 'Right', (25, 120), (85, 175)), 'Left', (AR + 6, 30), 20)
+            return L(crouch(p, 0.22))
+        W('Wounded', [(0, hurt(0)), (18, hurt(1)), (36, hurt(0))])
         W('Dead_Fall', [(0, B0)] + [(3 + i * 2, L(alD(g('M_Dead', 30 + i * 41 / 19)))) for i in range(20)])
-        W('Revive', [(i * 2, L(alD(g('M_Dead', 71 - i * 41 / 19)))) for i in range(20)] + [(46, B0)])
+        rv = [71, 66, 61, 57, 54, 51, 48, 45, 42, 39, 36, 33, 30]                # slow through the kneel
+        W('Revive', [(i * 3, L(alD(g('M_Dead', s)))) for i, s in enumerate(rv)] + [(len(rv) * 3 + 8, B0)])
         W('Victory', [(f, L(mix(B0, RAISE, w, RARM))) for f, w in ((0, 0.6), (8, 0.95), (16, 0.6), (24, 0.95), (32, 0.6))])
         t1 = mix(B0, RAISE, 0.24, RARM); t2 = mix(BI(20), WND, 0.25, HEAD); t3 = mix(mix(BI(30), UPBOTH, 0.2, LARM), RAISE, 0.12, RARM)
         W('Talk', [(0, B0), (8, L(t1)), (18, L(t2)), (28, L(t3)), (38, L(t2)), (46, B0)])
-        d1 = mix(mix(B0, CROUCH, 1.0, RARM), RAISE, 0.45, RARM); d2 = mix(d1, alD(g('M_Dead', 12)), 0.4, HEAD + ['mixamorig:Spine2'])
-        W('Drink', [(0, B0), (6, L(d1)), (10, L(d2)), (24, L(d2)), (34, BI(34))])
-        alA = self.aligner('M_Attack', 2); brace = alA(g('M_Attack', 2)); brace2 = alA(g('M_Attack', 5))
-        W('Guard', [(0, L(brace)), (18, L(brace2)), (36, L(brace))])
+
+        def sip(k):                                                            # the hand at the chin, the head back
+            return L(tilt(tilt(arm(B0, 'Right', (60, 95), (150, 170)), NECK, 'fwd', -10 * k), ['mixamorig:Spine2'], 'fwd', -6 * k))
+        W('Drink', [(0, B0), (6, L(arm(B0, 'Right', (45, 95), (100, 150)))), (10, sip(1)), (22, sip(1.15)), (28, sip(0.3)), (36, BI(36))])
+
+        def ward(k):                                                           # upright, forearms crossed before the chest
+            p = arm(arm(B0, 'Left', (40, 95), (95 + 3 * k, 165)), 'Right', (40, 95), (105 + 3 * k, 165))
+            return L(crouch(tilt(p, SPINE, 'fwd', 1 + k), 0.18))
+        W('Guard', [(0, ward(0)), (18, ward(1)), (36, ward(0))])
         W('Point', [(0, B0), (6, L(mix(B0, CROUCH, 1.0, RARM))), (20, L(mix(B0, CROUCH, 1.0, RARM))), (30, BI(30))])
         fl = mix(B0, UPBOTH, 0.8, ARMS); fl2 = mix(mix(B0, UPBOTH, 0.62, ARMS), CROUCH, 0.25, LEGS)
         W('Flex', [(0, B0), (6, L(fl2)), (11, L(fl)), (17, L(fl2)), (23, L(fl)), (34, BI(34))])
         names = ['Idle', 'Walk', 'Run', 'Hop', 'Cast', 'Hit', 'Stunned', 'Wounded', 'Dead_Fall', 'Revive', 'Victory', 'Talk', 'Drink', 'Guard', 'Point', 'Flex']
 
-        # the arm thrown forward: a bolt, for anyone who throws one
-        def bolt(name='Bolt'):
+        # ---- the moves the classes share ----
+        def bolt(name='Bolt'):                                                 # the arm thrown forward
             W(name, [(0, B0), (3, L(back)), (7, L(thrust)), (10, L(thrust)), (19, BI(19))])
-        # arms wide, turning: something that spreads all round
-        def wave(name='Wave'):
-            def key(f, s):
-                src = g('M_mage_soell_cast_1', s); return L(mix(mix(BI(f), src, 1.0, ARMS), src, 0.5, SPINE))
-            W(name, [(0, B0)] + [(4 + i * 3, key(4 + i * 3, 10 + i * 64 / 11)) for i in range(12)] + [(42, BI(42))])
-        # one arm held high: a blessing, a call
-        def raised(name, arm, hold=16):
-            a = mix(mix(B0, UPBOTH, 1.0, arm), UPBOTH, 0.3, HEAD); a2 = mix(a, g('M_Charged_Spell_Cast', 50), 1.0, arm)
-            W(name, [(0, B0), (8, L(a)), (8 + hold // 2, L(a2)), (8 + hold, L(a)), (16 + hold, L(mix(B0, a, 0.5, arm))), (26 + hold, BI(26 + hold))])
-        # both arms up, then everything pulled down out of the sky
-        def meteor(name='Meteor'):
+
+        def wave(name='Wave'):                                                 # gathered in, then burst out all round
+            gat = L(crouch(tilt(both(B0, (35, 140), (80, 175)), SPINE, 'fwd', 5), 0.4))
+            burst = lambda yaw: L(tilt(tilt(both(B0, (105, 15), 10), SPINE, 'fwd', -3), SPINE, 'yaw', yaw))
+            W(name, [(0, B0), (3, gat), (7, burst(0)), (12, burst(4)), (19, burst(-4)), (25, burst(0)), (35, BI(35))])
+
+        def raised(name, arm_, hold=16):                                       # one arm held high: a blessing, a call
+            a = mix(mix(B0, UPBOTH, 1.0, arm_), UPBOTH, 0.3, HEAD); a2 = mix(a, g('M_Charged_Spell_Cast', 50), 1.0, arm_)
+            W(name, [(0, B0), (8, L(a)), (8 + hold // 2, L(a2)), (8 + hold, L(a)), (16 + hold, L(mix(B0, a, 0.5, arm_))), (26 + hold, BI(26 + hold))])
+
+        def meteor(name='Meteor'):                                             # both arms up, then everything pulled down
             upb = mix(mix(B0, UPBOTH, 0.9, ARMS), UPBOTH, 0.3, HEAD)
-            down = mix(mix(B0, CROUCH, 0.7, LEGS + SPINE), ARMDOWN, 1.0, ARMS)
-            W(name, [(0, B0), (8, L(upb)), (20, L(mix(upb, UPBOTH, 1.0, ARMS))), (25, L(down)), (33, L(down)), (44, BI(44))])
+            down = L(both(crouch(tilt(B0, SPINE, 'fwd', 7), 1.0), (40, 90), 15))
+            W(name, [(0, B0), (8, L(upb)), (18, L(mix(upb, UPBOTH, 1.0, ARMS))), (23, down), (31, down), (42, BI(42))])
+
+        def swing(name='Swing'):                                               # one hand: cocked back overhead, across, through
+            wind = L(crouch(tilt(arm(B0, 'Right', (115, -40), (165, -100)), SPINE, 'yaw', -7), 0.15))
+            hit_ = L(crouch(tilt(tilt(arm(B0, 'Right', (75, 105), 25), SPINE, 'yaw', 6), SPINE, 'fwd', 3), 0.3))
+            foll = L(crouch(tilt(arm(B0, 'Right', (40, 150), 15), SPINE, 'yaw', 9), 0.25))
+            W(name, [(0, B0), (3, wind), (7, hit_), (10, foll), (13, foll), (22, BI(22))])
+
+        def smite(name='Smite', deep=0):                                       # both hands overhead, then down (deep: to the ground)
+            over = L(tilt(both(B0, (160, 85), (172, 150)), SPINE, 'fwd', -3))
+            down = L(crouch(tilt(both(B0, (55 - 15 * deep, 90), 20 + 10 * deep), SPINE, 'fwd', 7 + 5 * deep), 0.6 + 0.3 * deep))
+            W(name, [(0, B0), (4, over), (7, down), (12, down), (24, BI(24))])
+
+        def jab(name='Thrust'):                                                # drawn back at the hip, out at shoulder height
+            wind = L(crouch(arm(arm(B0, 'Right', (40, -90), (95, 90)), 'Left', (40, 60), 30), 0.3))
+            out = mix(B0, g('M_Attack', 37), 0.6, LEGS)
+            out = L(G(tilt(arm(arm(out, 'Right', (85, 85), (87, 88)), 'Left', (70, 70), 20), SPINE, 'fwd', 4)))
+            W(name, [(0, B0), (3, wind), (7, out), (10, out), (20, BI(20))])
+
+        def charge(name='Charge'):                                             # running into it, the point leading
+            wind = L(crouch(arm(B0, 'Right', (40, -90), (95, 90)), 0.35))
+            go = mix(B0, g('M_Running', 4), 1.0, LEGS)
+            go = L(G(tilt(arm(arm(go, 'Right', (85, 85), (87, 88)), 'Left', (60, 70), 25), SPINE, 'fwd', 8)))
+            W(name, [(0, B0), (3, wind), (7, go), (11, go), (22, BI(22))])
+
+        def leap(name='Leap'):                                                 # gathered, arms up, then down hard in a crouch
+            prep = L(crouch(both(B0, (30, -60), 15), 0.5))
+            up_ = L(tilt(both(B0, (160, 85), (170, 120)), SPINE, 'fwd', -3))
+            land = L(both(crouch(tilt(B0, SPINE, 'fwd', 10), 1.0), (45, 95), 10))
+            W(name, [(0, B0), (2, prep), (5, up_), (8, land), (13, land), (24, BI(24))])
+
+        def whirl(name='Whirl', turns=1, up=85):                               # upright, arms out, the whole figure spinning
+            pose = L(crouch(tilt(both(B0, (up, 5), 8), SPINE, 'fwd', -1), 0.2))
+            keys = [(0, B0), (3, L(crouch(tilt(both(B0, (50, 120), 20), SPINE, 'yaw', -8), 0.3)))]
+            steps = 6 * turns
+            keys += [(5 + i * 2, self.turned(pose, 60 * i)) for i in range(steps + 1)]
+            W(name, keys + [(5 + steps * 2 + 4, pose), (5 + steps * 2 + 12, BI(5 + steps * 2 + 12))])
+
+        def raise_(name='Raise'):                                              # a hand down to the ground, then up with it
+            low = L(both(crouch(tilt(B0, SPINE, 'fwd', 8), 0.4), (35, 90), 15))
+            high = mix(mix(B0, UPBOTH, 0.9, RARM), UPBOTH, 0.3, HEAD)
+            W(name, [(0, B0), (7, low), (13, low), (22, L(high)), (30, L(high)), (40, BI(40))])
 
         # ---- what each class has besides ----
         if cls == 'paladin':                      # mace and shield
-            blow('Swing', 'M_Right_Hand_Sword_Slash', 4, 32, 8)                 # plain attack
-            blow('Smite', 'M_Charged_Slash', 8, 48, 10, legs=0.8)               # Smite: the hammer from overhead
-            bolt()                                                                # Holy Bolt
-            raised('Bless', LARM)                                                 # Blessed Light
-            wave()                                                                # Consecration
+            swing(); smite(); bolt(); raised('Bless', LARM); wave()          # plain attack, Smite, Holy Bolt, Blessed Light, Consecration
             blow('Shield_Bash', 'M_Left_Slash', 14, 56, 9, legs=0.4)
             names += ['Swing', 'Smite', 'Bolt', 'Bless', 'Wave', 'Shield_Bash']
-        elif cls == 'ranger':                     # bow: the right arm holds it out, the left draws to the chest
-            aim = mix(mix(mix(B0, CROUCH, 1.0, RARM), CLASP, 1.0, LARM), CROUCH, 0.3, SPINE)
-            loose = mix(aim, ARMDOWN, 0.7, LARM)
-            W('Shoot', [(0, B0), (4, L(mix(B0, aim, 0.6))), (8, L(aim)), (11, L(aim)), (13, L(loose)), (18, L(loose)), (28, BI(28))])   # Quick Shot, Multishot, plain attack
-            up = mix(mix(mix(B0, RAISE, 0.75, RARM), CLASP, 1.0, LARM), RAISE, 0.3, HEAD)
-            upl = mix(up, ARMDOWN, 0.7, LARM)
-            W('Volley', [(0, B0), (6, L(up)), (10, L(upl)), (14, L(up)), (18, L(upl)), (22, L(up)), (26, L(upl)), (36, BI(36))])       # Rain of Arrows
-            call = mix(mix(B0, HR, 1.0, RARM), RAISE, 0.3, [n for n in RARM if n.endswith('RightArm')])
-            W('Call', [(0, B0), (6, L(call)), (20, L(mix(call, RAISE, 0.2, HEAD))), (30, BI(30))])                                    # Wolf Pack: a whistle
+        elif cls == 'ranger':                     # bow: the left arm holds it out, the right draws to the jaw
+            def bow(draw, up=0, lean=0):
+                p = tilt(tilt(B0, SPINE, 'yaw', -10), SPINE, 'fwd', -lean)     # turned side-on to the target
+                p = arm(p, 'Left', (88 + up, 55), (88 + up, 50))
+                p = arm(p, 'Right', *{'nock': ((85 + up, 35), (90 + up, 60)), 'full': ((85 + up, -55), (95 + up, 175)),
+                                      'loose': ((85 + up, -70), (80 + up, -100))}[draw])
+                return L(crouch(p, 0.15))
+            W('Shoot', [(0, B0), (3, bow('nock')), (6, bow('full')), (8, bow('loose')), (13, bow('loose')), (24, BI(24))])       # Quick Shot, Multishot, plain attack
+            W('Volley', [(0, B0), (4, bow('nock', 45, 5)), (7, bow('full', 45, 5)), (9, bow('loose', 45, 5)), (13, bow('full', 45, 5)),
+                         (15, bow('loose', 45, 5)), (19, bow('full', 45, 5)), (21, bow('loose', 45, 5)), (32, BI(32))])            # Rain of Arrows: up into the sky
+            whistle = L(tilt(arm(arm(B0, 'Right', (60, 95), (150, 170)), 'Left', (AR + 10, 20), 30), NECK, 'fwd', -8))
+            W('Call', [(0, B0), (6, whistle), (22, whistle), (32, BI(32))])                                                     # Wolf Pack: fingers to the mouth
             names += ['Shoot', 'Volley', 'Call']
         elif cls == 'wizard':                     # staff
-            bolt()                                                                # Fire Bolt and plain attack
-            wave()                                                                # Frost Nova
-            meteor()                                                              # Meteor
+            bolt(); wave(); meteor()                                          # Fire Bolt and plain attack, Frost Nova, Meteor
             names += ['Bolt', 'Wave', 'Meteor']
-        # something lifted out of the ground: down on a knee with a hand low, then up with it
-        def raise_(name='Raise'):
-            low = mix(mix(B0, CROUCH, 0.8, LEGS + SPINE), ARMDOWN, 1.0, ARMS)
-            high = mix(mix(B0, UPBOTH, 0.9, RARM), UPBOTH, 0.3, HEAD)
-            W(name, [(0, B0), (7, L(low)), (13, L(low)), (22, L(high)), (30, L(high)), (40, BI(40))])
-        # a spin with the arms out, the whole body turning
-        def spin(name='Whirl'):
-            al = self.aligner('M_Axe_Spin_Attack', 8)
-            W(name, [(0, B0)] + [(2 + i * 2, L(al(g('M_Axe_Spin_Attack', 8 + i * 44 / 12)))) for i in range(13)] + [(34, BI(34))])
-        # overhead, then down into a low lunge: a leap's landing, a charge
-        def leap(name='Leap'):
-            al = self.aligner('M_Attack', 6)
-            W(name, [(0, B0)] + [(2 + i * 2, L(al(g('M_Attack', 6 + i * 54 / 11)))) for i in range(12)] + [(32, BI(32))])
-
-        if cls == 'barbarian':                    # two axes
-            blow('Swing', 'M_Right_Hand_Sword_Slash', 4, 32, 8)                 # plain attack
-            blow('Bash', 'M_Left_Slash', 14, 56, 9, legs=0.5)                   # Bash: the other axe
-            leap()                                                                # Leap
-            spin()                                                                # Whirlwind
-            blow('Slam', 'M_Charged_Slash', 8, 48, 10, legs=0.8)                # Earthquake
+        elif cls == 'barbarian':                  # two axes
+            swing()                                                           # plain attack
+            blow('Bash', 'M_Left_Slash', 14, 56, 9, legs=0.5)                 # Bash: the other axe
+            leap(); whirl()                                                   # Leap, Whirlwind
+            smite('Slam', deep=1)                                             # Earthquake: both axes into the ground
             names += ['Swing', 'Bash', 'Leap', 'Whirl', 'Slam']
         elif cls == 'necromancer':                # wand
-            bolt()                                                                # Bone Spike, plain attack
-            raise_()                                                              # Raise Skeleton
-            hexp = mix(mix(mix(B0, CROUCH, 1.0, LARM + RARM), WND, 0.3, HEAD), CROUCH, 0.25, SPINE)
-            W('Curse', [(0, B0), (10, L(hexp)), (26, L(hexp)), (38, BI(38))])                                                         # Weaken: a slow point with both hands
+            bolt(); raise_()                                                  # Bone Spike and plain attack, Raise Skeleton
+            def curse(k):                                                     # Weaken: both hands clawing forward and down, hunched
+                return L(crouch(tilt(tilt(both(B0, (55 - 5 * k, 80), (50 - 5 * k, 90)), SPINE, 'fwd', 7), NECK, 'fwd', 6), 0.2))
+            W('Curse', [(0, B0), (6, curse(0)), (12, curse(1)), (18, curse(0)), (26, curse(1)), (36, BI(36))])
             names += ['Bolt', 'Raise', 'Curse']
         elif cls == 'dragoon':                    # spear
-            blow('Thrust', 'M_Thrust_Slash', 24, 58, 9)                          # Lance Jab, plain attack
-            leap()                                                                # Jump and Dragon Dive: the landing
-            lean = mix(mix(mix(B0, CROUCH, 0.7, SPINE + LEGS), HR, 0.6, ARMS), CROUCH, 0.5, HEAD)
-            W('Breath', [(0, B0), (5, L(mix(B0, UPBOTH, 0.3, SPINE + HEAD))), (10, L(lean)), (24, L(lean)), (34, BI(34))])              # Dragon Breath: head and chest thrown forward
+            jab(); leap()                                                     # Lance Jab and plain attack; Jump and Dragon Dive land
+            cup = L(tilt(tilt(both(B0, (55, 100), (150, 175)), SPINE, 'fwd', -3), NECK, 'fwd', -4))
+            fire = L(crouch(tilt(tilt(both(B0, (82, 85), (85, 88)), SPINE, 'fwd', 7), NECK, 'fwd', 10), 0.3))
+            W('Breath', [(0, B0), (5, cup), (8, fire), (22, fire), (32, BI(32))])                                               # Dragon Breath: hands at the mouth, then thrown out
             names += ['Thrust', 'Leap', 'Breath']
         elif cls == 'death_knight':               # sword
-            blow('Swing', 'M_Right_Hand_Sword_Slash', 4, 32, 8)                 # Frost Strike, plain attack
-            blow('Smite', 'M_Charged_Slash', 8, 48, 10, legs=0.8)               # Obliterate
-            bolt()                                                                # Death Coil
-            raise_()                                                              # Raise Ghoul
+            swing(); smite(); bolt(); raise_()                                # Frost Strike and plain attack, Obliterate, Death Coil, Raise Ghoul
             names += ['Swing', 'Smite', 'Bolt', 'Raise']
         elif cls == 'carrion_witch':              # staff
-            bolt()                                                                # Rot Bolt, plain attack
-            wave()                                                                # Crow Swarm: the cloak thrown open
-            pin = mix(mix(B0, CLASP, 1.0, ARMS), WND, 0.4, HEAD); jab = mix(pin, ARMDOWN, 0.25, RARM)
-            W('Hex', [(0, B0), (7, L(pin)), (11, L(jab)), (14, L(pin)), (18, L(jab)), (22, L(pin)), (32, BI(32))])                      # Voodoo Doll: a pin in the poppet
+            bolt(); wave()                                                    # Rot Bolt and plain attack, Crow Swarm
+            doll = lambda p: arm(p, 'Left', (30, 80), (95, 150))              # Voodoo Doll: the poppet held before the chest,
+            lift = L(tilt(arm(doll(B0), 'Right', (140, 60), (165, 100)), NECK, 'fwd', 6))
+            stab = L(crouch(tilt(tilt(arm(doll(B0), 'Right', (60, 100), (40, 170)), SPINE, 'fwd', 5), NECK, 'fwd', 8), 0.2))
+            W('Hex', [(0, B0), (4, lift), (7, stab), (10, lift), (13, stab), (24, BI(24))])                                     # the pin raised high and stabbed down
             names += ['Bolt', 'Wave', 'Hex']
-        elif cls == 'bard':                       # lute: hands at the chest, the right one strumming
-            hold = mix(B0, CLASP, 1.0, ARMS); st = mix(hold, ARMDOWN, 0.35, RARM)
-            W('Strum', [(0, B0), (5, L(hold)), (8, L(st)), (11, L(hold)), (14, L(st)), (17, L(hold)), (26, BI(26))])                    # Plucked Note, plain attack
-            sway = lambda p, f: mix(p, idle(f), 0.6, SPINE)
-            W('Ballad', [(0, B0), (5, L(hold))] + [(8 + i * 3, L(sway(st if i % 2 == 0 else hold, 8 + i * 3))) for i in range(10)] + [(46, BI(46))])   # Ballad of Valor, Lullaby
-            raised('Bless', RARM)                                                 # Hymn of Mending
+        elif cls == 'bard':                       # lute: the neck held out to its left, the right hand strumming
+            def lute(p, k=0, dip=0.1):
+                p = arm(arm(p, 'Left', (40, 60), (100, 25)), 'Right', (25 + 10 * k, 80), (85 - 15 * k, 170))
+                return L(crouch(p, dip))
+            W('Strum', [(0, B0), (4, lute(B0, -1)), (7, lute(B0, 1, 0.25)), (10, lute(B0, -1)), (13, lute(B0, 1, 0.25)), (16, lute(B0, -1)), (26, BI(26))])   # Plucked Note
+            sing = lambda k, sway: L(tilt(lute(tilt(tilt(B0, SPINE, 'fwd', -4), NECK, 'fwd', -7), k), SPINE, 'left', sway))
+            sweep = L(tilt(tilt(arm(arm(B0, 'Left', (40, 60), (100, 25)), 'Right', (95, 10), 10), SPINE, 'fwd', -4), NECK, 'fwd', -8))
+            W('Ballad', [(0, B0), (4, sing(-1, 0)), (8, sweep), (14, sweep), (20, sing(1, 3)), (28, sing(-1, -3)), (36, sing(1, 3)), (46, BI(46))])   # Ballad of Valor, Lullaby
+            raised('Bless', RARM)                                             # Hymn of Mending
             names += ['Strum', 'Ballad', 'Bless']
-        elif cls == 'lancer':                     # spear and tower shield
-            blow('Thrust', 'M_Thrust_Slash', 24, 58, 9)                          # Lance Thrust, plain attack
-            wall = mix(mix(mix(B0, CLASP, 1.0, LARM), CROUCH, 0.35, LEGS + SPINE), UPBOTH, 0.25, LARM)
-            W('Guard_Up', [(0, B0), (6, L(wall)), (24, L(wall)), (34, BI(34))])                                                       # Tower Shield: the shield brought up and set
-            raised('Rally', RARM)                                                 # Squire Knight: the banner arm up
-            leap('Charge')                                                        # Lance Charge
+        elif cls == 'lancer':                     # lance and tower shield
+            jab()                                                             # Lance Thrust, plain attack
+            wall = L(crouch(arm(B0, 'Left', (30, 100), 35), 0.35))
+            W('Guard_Up', [(0, B0), (6, wall), (24, wall), (34, BI(34))])     # Tower Shield: set low before the body, the lance upright behind it
+            raised('Rally', RARM)                                             # Squire Knight: the banner arm up
+            charge()                                                          # Lance Charge
             blow('Shield_Bash', 'M_Left_Slash', 14, 56, 9, legs=0.4)
             names += ['Thrust', 'Guard_Up', 'Rally', 'Charge', 'Shield_Bash']
         elif cls == 'arcane_sorcerer':            # wand: star-fire and gravity
-            bolt()                                                                # Star Missiles, plain attack
-            raised('Bless', RARM)                                                 # Moonbeam: a hand held up to the moon
-            meteor()                                                              # Falling Star
-            wave()                                                                # Black Hole
+            bolt(); raised('Bless', RARM); meteor(); wave()                   # Star Missiles and plain attack, Moonbeam, Falling Star, Black Hole
             names += ['Bolt', 'Bless', 'Meteor', 'Wave']
         elif cls == 'boomerang_knight':           # two crescent blades: thrown, and caught again
-            follow = mix(thrust, ARMDOWN, 0.5, RARM); catch = mix(B0, CROUCH, 0.8, RARM)
-            W('Throw', [(0, B0), (4, L(back)), (8, L(thrust)), (12, L(follow)), (22, L(catch)), (30, BI(30))])                          # Boomerang, plain attack
-            both = mix(B0, HR, 0.7, ARMS); r = mix(both, CROUCH, 1.0, RARM); lr = mix(r, CROUCH, 1.0, LARM)
-            W('Twin', [(0, B0), (4, L(both)), (8, L(r)), (13, L(lr)), (24, L(mix(B0, CROUCH, 0.8, ARMS))), (32, BI(32))])               # Twin Rang: one, then the other
-            spin()                                                                # Swirling Blades
-            wave('Typhoon')                                                       # Typhoon
+            TP = {'cock': ((150, -60), (172, -120)), 'loose': ((95, 85), (90, 88)), 'follow': ((45, 115), 15), 'catch': ((135, 70), (165, 110))}
+            t = lambda p, s, ph: arm(p, s, *TP[ph])
+            at = lambda p, yaw, k=0.15: L(crouch(tilt(p, SPINE, 'yaw', yaw), k))
+            W('Throw', [(0, B0), (4, at(t(B0, 'Right', 'cock'), -7)), (7, at(t(B0, 'Right', 'loose'), 5, 0.25)), (10, at(t(B0, 'Right', 'follow'), 8, 0.25)),
+                        (17, at(t(B0, 'Right', 'catch'), 0)), (22, at(t(B0, 'Right', 'catch'), 0)), (30, BI(30))])       # Boomerang, plain attack: thrown, then caught
+            W('Twin', [(0, B0), (3, at(t(B0, 'Right', 'cock'), -10)), (6, at(t(t(B0, 'Right', 'loose'), 'Left', 'cock'), 8, 0.25)),
+                       (9, at(t(t(B0, 'Right', 'follow'), 'Left', 'loose'), -10, 0.25)), (12, at(t(t(B0, 'Right', 'follow'), 'Left', 'follow'), -6, 0.2)),
+                       (20, at(t(t(B0, 'Right', 'catch'), 'Left', 'catch'), 0)), (24, at(t(t(B0, 'Right', 'catch'), 'Left', 'catch'), 0)), (32, BI(32))])   # Twin Rang: one, then the other
+            whirl()                                                           # Swirling Blades
+            whirl('Typhoon', turns=2, up=125)                                 # Typhoon: twice round, the arms high
             names += ['Throw', 'Twin', 'Whirl', 'Typhoon']
         elif cls == 'doorkeeper':                 # Lisandra: her own seventeen clips, which live in the library, carried over as they are
             own = ['Idle', 'Walk_Bent', 'Run_Bent', 'Hop', 'Bolt', 'Cast', 'Snap', 'Lantern_Up', 'Wave', 'Hit', 'Dead_Fall',
                    'Revive', 'Wounded', 'Stunned', 'Victory', 'Talk', 'Drink']
             for s in own: self.retarget(s, name=s)                                # replaces the common clip of the same name
+            # Victory: the lantern held up at its highest, with a cackle in the shoulders
+            f0, f1 = bpy.data.actions[self.n('Lantern_Up')].frame_range
+            hi = max((self.fk(g('Lantern_Up', f0 + (f1 - f0) * i / 16))[1]['mixamorig:LeftHand'].dot(self.U), f0 + (f1 - f0) * i / 16) for i in range(17))[1]
+            top = g('Lantern_Up', hi); bob = lambda k: tilt(tilt(top, SPINE, 'fwd', 3 * k), NECK, 'fwd', -3 * k)
+            W('Victory', [(0, bob(-1)), (6, bob(1)), (12, bob(-1)), (18, bob(1)), (24, bob(-1))])
             names += [s for s in own if s not in names]
-        self.names = names
+        self.names = names; self.held = None
         return names
 
     def sheet(self, names, tag, n=7, w=190, h=235, view=(0.75, -1, 0.35)):
@@ -347,6 +657,37 @@ class Target:
         path = os.path.join(SHOTS, tag + '.png'); out.filepath_raw = path; out.file_format = 'PNG'; out.save(); bpy.data.images.remove(out)
         for o, v in was: o.hide_render = v
         return path
+
+    def _shoot(self, view, scale, w, h, aim=0.9):
+        cam = bpy.data.objects['ShotCam']; sc.camera = cam; cam.data.type = 'ORTHO'; cam.data.ortho_scale = scale
+        d = Vector(view).normalized(); cam.location = Vector((0, 0, aim)) + d * 8; cam.rotation_euler = (-d).to_track_quat('-Z', 'Y').to_euler()
+        sc.render.engine = 'BLENDER_WORKBENCH'; sh = sc.display.shading; sh.light = 'STUDIO'; sh.color_type = 'TEXTURE'; sh.show_specular_highlight = False
+        sc.view_settings.view_transform = 'Standard'; sc.view_settings.exposure = 0.4      # AgX greys the colours out
+        sc.render.film_transparent = True; sc.render.image_settings.color_mode = 'RGBA'
+        sc.render.resolution_x = w; sc.render.resolution_y = h; sc.render.resolution_percentage = 100; sc.render.image_settings.file_format = 'PNG'
+        was = [(o, o.hide_render) for o in bpy.data.objects if o.type in ('MESH', 'ARMATURE')]
+        for o, _ in was: o.hide_render = not (o is self.mesh or (o.get('prop') and o.parent is self.arm))
+        return was
+
+    def tiles(self, names, folder, n=7, w=160, h=200, view=(0.75, -1, 0.35), scale=2.6):
+        """Each clip as n frames, one picture per frame: <folder>/<clip>_<i>.png, for tools/clipsheet.py to lay out with labels."""
+        os.makedirs(folder, exist_ok=True); was = self._shoot(view, scale, w, h)
+        for name in names:
+            low = name.startswith(('Dead', 'Revive'))           # lying down: a wider frame, aimed lower
+            self._shoot(view, scale * (1.45 if low else 1), w, h, aim=0.55 if low else 0.9)
+            a = use(self.arm, self.n(name)); f0, f1 = a.frame_range
+            for i in range(n):
+                f = f0 + (f1 - f0) * i / max(1, n - 1); sc.frame_set(int(f), subframe=f - int(f))
+                sc.render.filepath = os.path.join(folder, '%s_%d.png' % (name, i)); bpy.ops.render.render(write_still=True)
+        for o, v in was: o.hide_render = v
+
+    def turn(self, folder, w=300, h=400, scale=2.3, views=(('front', (0, -1, 0.12)), ('three_quarter', (0.75, -1, 0.35)), ('side', (1, 0, 0.12)), ('back', (0, 1, 0.12)))):
+        """The figure in its idle, from several sides: <folder>/body_<side>.png."""
+        os.makedirs(folder, exist_ok=True); use(self.arm, self.n('Idle')); sc.frame_set(0)
+        for side, view in views:
+            was = self._shoot(view, scale, w, h, aim=1.0)
+            sc.render.filepath = os.path.join(folder, 'body_%s.png' % side); bpy.ops.render.render(write_still=True)
+            for o, v in was: o.hide_render = v
 
     def export(self, path, tex=1024):
         for slot in self.mesh.material_slots:

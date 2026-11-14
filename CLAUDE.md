@@ -14,6 +14,10 @@ Auto-play plays the whole game, so keep it up with anything you add: a new erran
 entry in `goals()` in `src/game/auto.js`; inside a fight the AI is `Battle.plan`, and a new kind of skill
 effect has to be scored there or neither the dead nor auto-play will use it.
 
+Sound: an event worth hearing is a call on `sfx` in `src/core/audio.js` (recordings in `assets/audio/sfx`, each
+with a made-up stand-in); music sets and stingers are `src/core/music.js`, the world's beds and fires
+`src/core/ambience.js`. The title (`src/ui/title.js`) runs before the game loads; `?nosplash` skips its cards.
+
 After changing data or the map run `node tools/check.mjs`. To try the game, serve the folder
 (`python -m http.server 8417`) and open it. In the Claude browser pane `requestAnimationFrame` does not
 fire, so step it by hand: `game.update(1/60)` in a loop (battle waits are real `setTimeout`s).
