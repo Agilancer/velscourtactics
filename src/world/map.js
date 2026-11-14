@@ -19,16 +19,18 @@ export const TOWN = { x0: 40 + O, x1: 88 + O, z0: 52 + O, z1: 77 + O, cx: 64 + O
 const CORE = 62;   // how far the pines run from the square before the other lands begin
 
 // The lands. `kinds` index data/enemies.js (two that walk it, then its lord); `rock`/`low` are a knoll's top and skirt.
+// `wall` and `spire` texture the code-built blocks and stones; `ruin` and `stone` are the models drawn instead (assets/props).
 export const REGIONS = [
   { id: 'pines', name: 'The Pines', sub: 'The dead are in there' },
   { id: 'waste', name: 'The White Waste', sub: 'Nothing rots here. That is the trouble', kinds: [5, 6, 13], rock: T.SNOWROCK, low: T.SNOW,
-    place: 'The Frozen Border Fort', wall: 'tex/ashlar_c.webp', spire: 'tex/frost_1_c.webp' },
+    place: 'The Frozen Border Fort', wall: 'tex/ashlar_c.webp', spire: 'tex/frost_1_c.webp', ruin: 'ruin_waste', stone: 'spire_ice' },
   { id: 'badlands', name: 'The Red Badlands', sub: 'Dry bones keep', kinds: [7, 8, 14], rock: T.REDROCK, low: T.CLAY,
-    place: 'The Dry Court', wall: 'desert/Desert_Fantasy_Textures_Vol_2/11_mudbrick_wall.png', spire: 'desert/Desert_Fantasy_Textures/09_red_canyon_rock.png' },
+    place: 'The Dry Court', wall: 'desert/Desert_Fantasy_Textures_Vol_2/11_mudbrick_wall.png', spire: 'desert/Desert_Fantasy_Textures/09_red_canyon_rock.png',
+    ruin: 'ruin_badlands', stone: 'spire_hoodoo' },
   { id: 'fen', name: 'The Drowned Fen', sub: 'Mind where the ground stops', kinds: [9, 10, 15], rock: T.ROCK, low: T.MOSS,
-    place: 'The Swamp Abbey', wall: 'tex/course_c.webp', spire: null },
+    place: 'The Swamp Abbey', wall: 'tex/course_c.webp', spire: null, ruin: 'ruin_fen' },
   { id: 'ash', name: 'The Cinder Reach', sub: 'The line ran through here once', kinds: [11, 12, 16], rock: T.BASALT, low: T.ASH,
-    place: 'Cinder Halt', wall: 'tex/block_c.webp', spire: 'tex/basalt_1_c.webp' },
+    place: 'Cinder Halt', wall: 'tex/block_c.webp', spire: 'tex/basalt_1_c.webp', ruin: 'ruin_ash', stone: 'spire_basalt' },
 ];
 
 // Height is in half-steps: world y = h * 0.5. Walking takes one half-step up or down; a jump takes two up.
@@ -36,21 +38,22 @@ export const STEP = 0.5;
 
 // Buildings sit in two rows with their doors on the south face, where the camera can see them.
 // `id` ties a building to the merchant or folk who stand at its door (see data/cast.js); `look` is the house it is
-// drawn as (assets/props: a tall timbered townhouse or a low thatched cottage; the inn is two townhouses side by side).
+// drawn as (assets/props: a tall timbered townhouse or shop house, a low thatched cottage or a stone one; the inn and
+// the forge have their own).
 const SLOTS_X = [42, 48, 54, 70, 76, 82].map((x) => x + O);
 const BUILDINGS = [
   // row A, north of the main street
   { id: 'weapons', name: 'Ironhand Arms', slot: 0, row: 0, wall: 'wall_12', roof: 'roof_2', door: 'door_2', look: 'townhouse' },
   { id: 'forge', name: 'The Proud Anvil', slot: 1, row: 0, wall: 'wall_16', roof: 'roof_3', door: 'door_4', look: 'forge' },
-  { id: 'armor', name: 'Thicker Than Hope', slot: 2, row: 0, wall: 'wall_09', roof: 'roof_1', door: 'door_1', look: 'townhouse' },
+  { id: 'armor', name: 'Thicker Than Hope', slot: 2, row: 0, wall: 'wall_09', roof: 'roof_1', door: 'door_1', look: 'shophouse' },
   { id: 'spells', name: "Vey's Scrolls", slot: 3, row: 0, wall: 'wall_14', roof: 'roof_4', door: 'door_3', look: 'townhouse' },
   { id: 'gems', name: 'The Lapidary', slot: 4, row: 0, wall: 'wall_08', roof: 'roof_2', door: 'door_5', look: 'cottage' },
-  { id: 'rings', name: "Fortunato's Wheel", slot: 5, row: 0, wall: 'wall_18', roof: 'roof_1', door: 'door_2', look: 'townhouse' },
+  { id: 'rings', name: "Fortunato's Wheel", slot: 5, row: 0, wall: 'wall_18', roof: 'roof_1', door: 'door_2', look: 'shophouse' },
   // row B, south of the main street, fronting the back lane
-  { id: 'bags', name: 'Reed Saddlery', slot: 0, row: 1, wall: 'wall_10', roof: 'roof_3', door: 'door_1', look: 'cottage' },
+  { id: 'bags', name: 'Reed Saddlery', slot: 0, row: 1, wall: 'wall_10', roof: 'roof_3', door: 'door_1', look: 'cottage_2' },
   { id: 'inn', name: 'The Last Toll', slot: 1, row: 1, wall: 'wall_20', roof: 'roof_4', door: 'door_4', wide: 2, look: 'inn' },
   { id: 'enchant', name: 'The Veiled Kiln', slot: 3, row: 1, wall: 'wall_13', roof: 'roof_2', door: 'door_3', look: 'townhouse' },
-  { id: 'socket', name: "The Curator's Bench", slot: 4, row: 1, wall: 'wall_17', roof: 'roof_1', door: 'door_5', look: 'cottage' },
+  { id: 'socket', name: "The Curator's Bench", slot: 4, row: 1, wall: 'wall_17', roof: 'roof_1', door: 'door_5', look: 'cottage_2' },
   { id: 'cottage', name: 'Moss Cottage', slot: 5, row: 1, wall: 'wall_11', roof: 'roof_3', door: 'door_2', look: 'cottage' },
 ];
 
@@ -142,7 +145,7 @@ export function buildWorld(seed = 4013) {
   const lisandraSpot = { x: roadS(83 + O) + 2, z: 83 + O };
 
   // --- a place in each land: broken walls round a paved floor, a chest in the middle, and its lord at home ---
-  const props = [];    // { kind: 'wall' | 'spire', x, z, tex, h }
+  const props = [];    // { kind: 'wall' | 'spire', x, z, tex, look, h }
   const places = [];   // { name, region, x, z, w, d }
   const chests = [];
   const flatFree = (x0, z0, x1, z1, reg) => {
@@ -164,10 +167,10 @@ export function buildWorld(seed = 4013) {
         const X = x + dx, Z = z + dz, i = I(X, Z), edge = dx === 0 || dz === 0 || dx === w - 1 || dz === d - 1;
         type[i] = T.RUIN;
         const open = (dz === d - 1 && Math.abs(X - gate) <= 1) || (dx === 0 && dz === 5);   // the gate south, a breach west
-        if (edge && !open && r() < 0.78) { block[i] = 1; props.push({ kind: 'wall', x: X, z: Z, tex: R.wall, h: 1.1 + r() * 1.5 }); }
+        if (edge && !open && r() < 0.78) { block[i] = 1; props.push({ kind: 'wall', x: X, z: Z, tex: R.wall, look: R.ruin, h: 1.1 + r() * 1.5 }); }
       }
       // two stubs of an inner wall, so the fight inside has something to stand behind
-      for (const [dx, dz] of [[3, 3], [3, 4], [9, 6], [9, 7]]) { block[I(x + dx, z + dz)] = 1; props.push({ kind: 'wall', x: x + dx, z: z + dz, tex: R.wall, h: 0.9 + r() * 0.8 }); }
+      for (const [dx, dz] of [[3, 3], [3, 4], [9, 6], [9, 7]]) { block[I(x + dx, z + dz)] = 1; props.push({ kind: 'wall', x: x + dx, z: z + dz, tex: R.wall, look: R.ruin, h: 0.9 + r() * 0.8 }); }
       const c = { id: 'place' + reg, x: x + 6, z: z + 3 };
       chests.push(c); block[I(c.x, c.z)] = 1;
       places.push({ name: R.place, region: reg, x, z, w, d, cx: x + 6, cz: z + 5 });
@@ -229,7 +232,7 @@ export function buildWorld(seed = 4013) {
     const x = 2 + Math.floor(r() * (N - 4)), z = 2 + Math.floor(r() * (N - 4)), i = I(x, z), R = REGIONS[region[i]];
     if (!R.spire || block[i] || keep[i] || h[i] !== 0 || nearRoad(x, z) || r() > (region[i] === 4 ? 0.3 : 0.14)) continue;
     block[i] = 1;
-    props.push({ kind: 'spire', x, z, tex: R.spire, h: 1.2 + r() * 2.4 });
+    props.push({ kind: 'spire', x, z, tex: R.spire, look: R.stone, h: 1.2 + r() * 2.4 });
   }
 
   // --- trees: pines and oaks at home, snow pines north, palms at the water, bare trunks in the Fen and the Reach ---

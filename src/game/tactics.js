@@ -64,9 +64,12 @@ function shoveDir(u, sk, o, c) {
 export function plan(b, u) {
   const foes = b.foesOf(u).filter((f) => !f.gone), friends = b.friendsOf(u);
   const S = weights(b, u), big = worthIt(b, u, foes, friends);
-  const R = u.moved ? [{ x: u.x, z: u.z, d: 0, prev: null }] : [...b.reach(u).values()].filter((t) => !t.pass || (t.x === u.x && t.z === u.z));
-  const skills = [];
-  if (!u.acted) { if (u.basic) skills.push(u.basic); for (const sk of u.skills) if (u.side === 'foe' || u.summon || (sk.cost <= u.mp && (!sk.hpCost || u.hp > lifeCost(u, sk)))) skills.push(sk); }
+  const usable = b.usable(u), skills = u.acted ? [] : usable;
+  // how far it is, walking, to somewhere it could strike from (Battle.strikeSteps); and while there is a way, never a
+  // tile with none, whatever it would do there (a hollow it couldn't climb out of, to guard the friends in it)
+  const steps = b.strikeSteps(u, usable, foes), hereN = steps.get(K(u.x, u.z));
+  const R = (u.moved ? [{ x: u.x, z: u.z, d: 0, prev: null }] : [...b.reach(u).values()].filter((t) => !t.pass || (t.x === u.x && t.z === u.z)))
+    .filter((t) => hereN === undefined || steps.has(K(t.x, t.z)));
   const nearFoe = (x, z) => foes.reduce((m, f) => Math.min(m, manhattan(x, z, f.x, f.z)), 99);
   const inRange = (sk, t, x, z) => { const d = manhattan(t.x, t.z, x, z); return d >= sk.r[0] && d <= sk.r[1]; };
   const freeTile = (c) => b.open(c.x, c.z) && !b.unitAt(c.x, c.z) && !b.trapAt(c.x, c.z);
@@ -120,7 +123,7 @@ export function plan(b, u) {
         hit.forEach((o, i) => {
           if (hurts(sk)) {
             const d = b.damage(u, o, sk, true, u, b.falloff(hit, i)), n = d.n * (sk.hits || 1), kills = n >= o.hp;
-            let v = Math.min(n, o.hp) * S.dmg + (kills ? 14 * S.kill : 0) + (sk.st ? 2 : 0) + (sk.st2 ? 3 : 0) + (sk.delay ? 3 : 0) + (b.has(o, 'taunt') ? 10 : 0);
+            let v = Math.min(n, o.hp) * S.dmg + (kills ? b.killWorth(u, sk, o, foes) * S.kill : 0) + (sk.st ? 2 : 0) + (sk.st2 ? 3 : 0) + (sk.delay ? 3 : 0) + (b.has(o, 'taunt') ? 10 : 0);
             if (sk.push || sk.pull) { const dir = sk.push && shoveDir(u, sk, o, c); v += 3 + (dir ? shoveGain(b, u, o, dir, sk.push) : 0); }
             if (!kills) for (const m of marks(sk)) if (!b.has(o, m) && setups.some((cb) => cb.need === m)) v += 5;
             if (o === focus) v += 25;
@@ -154,10 +157,23 @@ export function plan(b, u) {
     }
   }
   if (best.sk) { best.spared = spared && !costly(best.sk); return best; }
-  // nothing worth doing from anywhere in reach: close the distance (or get off bad ground, or stand by the hurt)
-  let to = null, bv = -nearFoe(u.x, u.z) + tileWorth({ x: u.x, z: u.z, d: 0 }) * 0.5;
-  for (const t of R) { const v = -nearFoe(t.x, t.z) + tileWorth(t) * 0.5; if (v > bv + 1e-6) { bv = v; to = t; } }
-  return { tile: to };
+  // Nothing worth doing from anywhere in reach: close in. Not as the crow flies (with a stand of trunks or a rise
+  // between them, that leaves both sides standing still for good) but along the walk to where it could strike;
+  // among tiles as near, the better ground (off a hazard, out of reach, by the hurt).
+  if (hereN !== undefined) {
+    let to = null;
+    for (const t of R) {
+      const n = steps.get(K(t.x, t.z));
+      if (n === undefined || n > hereN) continue;
+      const v = -n * 3 + tileWorth(t) * 0.5;
+      if ((n < hereN || bad.has(K(u.x, u.z))) && (!to || v > to.v)) to = { t, v };
+    }
+    return { tile: to && (to.t.x !== u.x || to.t.z !== u.z) ? to.t : null };
+  }
+  // nowhere it could ever strike from: edge toward them anyway, and say it's stuck (Battle.stalemate)
+  let to = null, bd = nearFoe(u.x, u.z);
+  for (const t of R) { const d = nearFoe(t.x, t.z); if (d < bd || (d === bd && to && t.d < to.d)) { bd = d; to = t; } }
+  return { tile: to, stuck: true };
 }
 
 /** What a plan means to do, in a few words, for the line under the turn order: 'finishing the Gnawer'. */

@@ -396,8 +396,10 @@ class Game {
       }
     }
   }
+  // how: win | lose | flee | apart (a stalemate on Auto: nobody could get at anybody; see Battle.stalemate)
   endBattle(how, pos, slain, report = {}) {
     const st = this.st;
+    if (how === 'apart') this.auto.noteApart(report.standing || []);
     this.battle = null; this.mode = 'explore';
     this.ui.battleMode(false);
     if (how === 'lose') {
@@ -413,7 +415,7 @@ class Game {
       sfx.gasp();
       setTimeout(() => this.banter.say('lost', { force: true }), 1500);
     } else {
-      this.explore.resume(pos, slain, how === 'flee' ? 6 : 2);
+      this.explore.resume(pos, slain, how === 'win' ? 2 : 6);
       if (how === 'win') setTimeout(() => this.banter.say(report.lords?.length ? 'lord' : report.close ? 'close' : 'won', { chance: report.lords?.length || report.close ? 1 : 0.5, force: true }), 900);
     }
     if (how === 'win') {

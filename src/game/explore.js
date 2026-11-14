@@ -5,6 +5,7 @@ import { DPAD } from '../core/input.js';
 import { makePerson, makeZombie, withOverride, hasModel, wake, sleep, shadowDisc, label, setAnim, animate } from '../gfx/models.js';
 import { setGear } from '../gfx/gear.js';
 import { setDye } from '../gfx/dye.js';
+import { setSide } from '../gfx/outline.js';
 import { lookFor, shieldFor, foeGear } from '../data/gear.js';
 import { CLASSES } from '../data/classes.js';
 import { FOLK, HEROES, ROAD_END, LISANDRA_CHAT } from '../data/cast.js';
@@ -63,7 +64,7 @@ export function heroModel(h) {
   setGear(m, outfit(h));
   setDye(m, h, paletteOf(h));
   m.userData.outfit = outfitSig(h);
-  return m;
+  return setSide(m, 'party');
 }
 
 export class Explore {
@@ -149,6 +150,7 @@ export class Explore {
     const { world, r, st } = this.g, z = ZOMBIES[kind], rival = st.rivals?.[id];
     const model = withOverride(foeKey(z, n), () => makeZombie(z), { asleep: true });
     setGear(model, foeGear(z.id, n));
+    setSide(model, 'foe');
     model.position.set(x, world.y(x, zz), zz);
     model.rotation.y = Math.random() * 6.28;
     model.add(shadowDisc(0.34 * z.scale));

@@ -8,10 +8,16 @@ import { PARTY_MAX, heroStats, partyHeroes, questReady, lead } from './party.js'
 import { ordersOf, DESTS } from './doctrine.js';
 
 export class Auto {
-  constructor(g) { this.g = g; this.path = []; this.goal = null; this.holdT = 0; this.failT = 0; this.lost = []; }
+  constructor(g) { this.g = g; this.path = []; this.goal = null; this.holdT = 0; this.failT = 0; this.lost = []; this.apart = { day: 0, ids: new Set() }; }
   reset() { this.path = []; this.goal = null; }
   // A lost fight: where it started, and the leader's level then.
   noteLoss(x, z) { this.lost.push({ x, z, lvl: lead(this.g.st).lvl }); if (this.lost.length > 8) this.lost.shift(); }
+  // A fight where nobody could get at anybody: leave those ones be for the rest of the day, or it starts over.
+  noteApart(ids) {
+    const day = this.g.st.day;
+    if (this.apart.day !== day) this.apart = { day, ids: new Set() };
+    for (const id of ids) this.apart.ids.add(id);
+  }
   hold(secs = 1.2) { this.holdT = secs; this.reset(); }
 
   // What to do next, most pressing first. Each: { why, detail, targets: [{x,z}], act }. The errands are found by
@@ -53,7 +59,8 @@ export class Auto {
     // the dead: where the orders say, the kinds a bounty wants first, and nothing too far above the party's level
     const wantedQ = QUESTS.filter((q) => st.quests[q.id]?.state === 'active' && q.kill && !questReady(st, q));
     const wanted = new Set(wantedQ.map((q) => q.kill));
-    const fair = ex.foes.filter((f) => danger(f.x, f.zz) <= lvl + nerve && !shy(f.x, f.zz));
+    const apart = (f) => this.apart.day === st.day && this.apart.ids.has(f.id);
+    const fair = ex.foes.filter((f) => danger(f.x, f.zz) <= lvl + nerve && !shy(f.x, f.zz) && !apart(f));
     let pool = fair, detail = 'whatever is nearest and fair';
     if (o.dest === 'lords') {
       const lords = fair.filter((f) => f.z.lord || f.z.boss);

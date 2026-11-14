@@ -13,6 +13,7 @@ import { makeItem, tierForLevel, itemName } from '../data/items.js';
 import { foeGear } from '../data/gear.js';
 import { makePerson, makeZombie, withOverride, shadowDisc, setAnim, sleep } from '../gfx/models.js';
 import { setGear } from '../gfx/gear.js';
+import { setSide } from '../gfx/outline.js';
 import { foeKey } from './explore.js';
 import { lead, addToBag } from './party.js';
 import { note } from './chronicle.js';
@@ -36,6 +37,7 @@ export function spawnFoe(b, kind, level, x, z) {
   const zd = ZOMBIES[kind], n = (b.extraN = (b.extraN || 0) + 1);
   const model = withOverride(foeKey(zd, n), () => makeZombie(zd));
   setGear(model, foeGear(zd.id, n));
+  setSide(model, 'foe');
   model.add(shadowDisc(0.34 * zd.scale));
   b.r.units.add(model);
   const u = b.addFoe({ id: `x${n}`, kind, z: zd, level, x, zz: z, model, extra: true });
@@ -70,7 +72,7 @@ export function setup(b) {
     // between the party and the dead, nearer the party
     const spot = b.flood(L.x, L.z, 5).filter((t) => t.d >= 3 && !b.unitAt(t.x, t.z)).sort((a, c2) => Math.hypot(a.x - cx, a.z - cz) - Math.hypot(c2.x - cx, c2.z - cz))[0] || freeNear(b, L.x, L.z)[0];
     if (!spot) { o.kind = 'rout'; o.title = ''; return; }
-    const model = withOverride('folk_' + d.id, () => makePerson(d.look));
+    const model = setSide(withOverride('folk_' + d.id, () => makePerson(d.look)), 'party');
     model.add(shadowDisc()); b.r.units.add(model);
     const hp = 46 + 14 * lvl;
     const u = { id: 'ward', side: 'party', ward: true, flee: true, stray: d, name: d.name, lvl, x: spot.x, z: spot.z, hp, mp: 0, maxhp: hp, maxmp: 0,

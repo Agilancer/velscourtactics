@@ -22,6 +22,8 @@ function classSubject(cls, g) {
 }
 
 const TREES = ['pine', 'oak', 'snowpine', 'dead_tree', 'char_tree', 'palm'];
+// ruins, standing stones and the crypt's pieces: out in the wild or underground, nothing of the village about them
+const WILD = ['ruin_waste', 'ruin_badlands', 'ruin_fen', 'ruin_ash', 'spire_ice', 'spire_hoodoo', 'spire_basalt', 'sarcophagus'];
 
 export function subject(key, tier) {
   const m = /^(.+)_([mf])$/.exec(key);
@@ -35,7 +37,7 @@ export function subject(key, tier) {
   if (P.summons[key]) return { text: P.summons[key], style: key === 'squire' ? 'character' : ['skeleton', 'ghoul'].includes(key) ? 'monster' : 'creature' };
   if (P.weapons[key]) return { text: P.weapons[key], style: 'weapon' };
   // a tree takes the plainer style: the village block puts ironwork and stone round its foot
-  if (P.scenery[key]) return { text: P.scenery[key], style: TREES.includes(key) ? 'tree' : 'scenery' };
+  if (P.scenery[key]) return { text: P.scenery[key], style: TREES.includes(key) ? 'tree' : WILD.includes(key) ? 'wild' : 'scenery' };
   return null;
 }
 
@@ -43,7 +45,7 @@ export function prompt(key, { image = false, tier = 0 } = {}) {
   const s = subject(key, tier);
   if (!s) return null;
   // weapons and scenery are one block with the subject inside it, and already say how they're seen
-  if (s.style === 'weapon' || s.style === 'scenery' || s.style === 'tree') return P.style[s.style].replace('{subject}', s.text);
+  if (['weapon', 'scenery', 'tree', 'wild'].includes(s.style)) return P.style[s.style].replace('{subject}', s.text);
   const body = `${s.text}. ${P.style[s.style]}`;
   // a creature isn't asked for an A-pose: it stands square on its own legs
   return image ? `${body} ${s.style === 'creature' ? P.style.creature_image : P.style.image}` : body;
