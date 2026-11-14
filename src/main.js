@@ -8,17 +8,24 @@ import { UI } from './ui/ui.js';
 import { Explore } from './game/explore.js';
 import { Battle } from './game/battle.js';
 import { Auto } from './game/auto.js';
+import { Banter } from './game/banter.js';
+import { pickKind } from './game/encounter.js';
+import { ordersOf, offerBoons } from './game/doctrine.js';
 import { loadManifest } from './gfx/models.js';
 import { HEROES, OPENING, WELL_LINES, CHEST_LINE, CRYPT } from './data/cast.js';
-import { QUESTS } from './data/enemies.js';
+import { QUESTS, ZOMBIES, KIND, RIVAL_NAMES } from './data/enemies.js';
 import { CLASSES } from './data/classes.js';
-import { WEAPONS, makeItem, itemStats, itemName, tierForLevel, RARITY } from './data/items.js';
-import { PARTY_MAX, SLOTS, newState, load, save, recruit, restAll, startQuest, questReady, heroStats, canEquip, slotsFor, gainXp, lead, partyHeroes } from './game/party.js';
+import { WEAPONS, CONSUMABLES, makeItem, itemName, itemValue, enhanceCost, tierForLevel, RARITY } from './data/items.js';
+import { PARTY_MAX, SLOTS, newState, load, save, recruit, restAll, startQuest, questReady, heroStats, gainXp, lead, partyHeroes, upgradeSlot, itemWorth, addToBag, setBoons } from './game/party.js';
+import { note, fresh, unread } from './game/chronicle.js';
 import { sound, sfx } from './core/audio.js';
 import { music } from './core/music.js';
 import { ambience } from './core/ambience.js';
 import { title } from './ui/title.js';
 import { pick } from './core/util.js';
+
+// 'a sword', 'an ash staff'
+const an = (name) => `${/^[aeiou]/i.test(name) ? 'an' : 'a'} ${name}`;
 
 class Game {
   constructor() {
@@ -32,6 +39,7 @@ class Game {
     this.tweens = [];
     this.st = null; this.explore = null; this.battle = null;
     this.auto = new Auto(this);
+    this.banter = new Banter(this);
     this.hudT = 0;
     // the fight's speed button: 2x is the pace the fights were built at, 1x half that (remembered, like Sound)
     this.fightSpeed = 1;
@@ -45,6 +53,7 @@ class Game {
     this.input.on('menu', () => { if (this.mode === 'explore') this.ui.openPanel('party'); else if (this.mode === 'menu') this.ui.close(); });
     this.input.on('auto', () => this.toggleAuto());
     this.input.on('speed', () => { if (this.battle) this.toggleSpeed(); });
+    this.input.on('call', () => { this.battle?.callKey(); });
     this.input.on('dir', (d) => { if (this.mode === 'battle') this.battle.dir(d); });
     // the map under a mouse or a finger: two fingers pinch the view in and out, one taps (src/core/pinch.js)
     this.touches = new Touches(this.canvas, {
@@ -62,6 +71,12 @@ class Game {
       else if (a === 'continue' && load()) { title.hide(); this.continueGame(); }
     };
     title.ready({ continue: !!load() });
+    // back from somewhere else: say how much went on (the chronicle has it all)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden || !this.st) return;
+      const n = unread(this.st);
+      if (n >= 3) this.ui.chat.line('system', '', `While you were away: ${n} things happened. Tap here to read them.`);
+    });
     let last = performance.now();
     const frame = (now) => { const dt = Math.min(0.05, (now - last) / 1000); last = now; this.update(dt); requestAnimationFrame(frame); };
     requestAnimationFrame(frame);
@@ -87,6 +102,7 @@ class Game {
     if (this.mode === 'title') { const t = performance.now() / 9000; this.r.follow(this.world.well.x + Math.cos(t) * 9, 0, this.world.well.z + Math.sin(t) * 7, dt); }
     else if (this.battle) this.battle.update(fdt, dt);
     else if (this.explore) { this.auto.update(dt); this.explore.update(dt); if (this.mode === 'explore') this.cryptWatch(); }
+    if (this.st) this.banter.update(dt);
     this.r.tick(dt);
     this.r.fx.pace = pace;
     this.r.fx.update(real * pace);
@@ -95,6 +111,7 @@ class Game {
     const set = this.place(), fight = this.mode === 'battle' || this.mode === 'alert';
     music.update(dt, { set, fight });
     ambience.update(dt, { on: !!this.explore && !title.up, set, fight, ear: this.r.target, world: this.world });
+    this.ui.tick(dt);
     if ((this.hudT -= dt) <= 0 && this.st) { this.hudT = 0.25; this.ui.refresh(); }
   }
 
@@ -112,7 +129,7 @@ class Game {
   newGame(who) { this.begin(newState(who)); }
   continueGame() { this.begin(load()); }
   begin(st) {
-    this.st = st;
+    this.st = st; setBoons(st);
     this.explore = new Explore(this);
     this.mode = 'explore';
     this.r.setChests(st.opened);
@@ -146,29 +163,24 @@ class Game {
     this.st.auto = !this.st.auto; sfx.ui();
     this.auto.reset();
     this.ui.setAuto(this.st.auto ? 'Thinking' : null);
+    this.ui.chat.line('auto', '', this.st.auto ? 'Auto-play has the party. Its orders are under Orders.' : 'Auto-play stands down.');
     this.ui.refresh(); save(this.st);
     if (this.st.auto) { if (this.mode === 'menu') this.ui.close(); if (this.battle) this.battle.takeOver(); if (this.mode === 'talk') this.ui.onAct?.(); }
+    else this.battle?.drawCall();
   }
   autoPause() { if (this.st?.auto) this.auto.hold(); }
   // Wear whatever in the bag is plainly better.
   autoEquip() {
     const st = this.st;
-    const worth = (h, it) => {
-      if (!it) return 0;
-      const C = CLASSES[h.cls], w = h.equip.weapon, usesMag = (w && WEAPONS[w.kind].stat === 'mag') || C.primary === 'int';
-      const s = itemStats(it), W = { atk: usesMag ? 0.3 : 2, mag: usesMag ? 2 : 0.3, def: 1, res: 1, hp: 0.25, mp: 0.15, spd: 3, crit: 0.5, leech: 0.5 };
-      let v = 0; for (const k in s) v += s[k] * (W[k] || 0); return v;
-    };
     for (const h of partyHeroes(st)) for (const it of [...st.bag]) {
-      if (!canEquip(h, it)) continue;
-      const slot = slotsFor(it).reduce((a, b) => (worth(h, h.equip[a]) <= worth(h, h.equip[b]) ? a : b));
-      if (worth(h, it) > worth(h, h.equip[slot]) + 0.01) {
-        st.bag.splice(st.bag.indexOf(it), 1);
-        if (h.equip[slot]) st.bag.push(h.equip[slot]);
-        h.equip[slot] = it; this.fixHp(h);
-        this.ui.toast(`${h.name.split(' ')[0]} puts on the ${itemName(it)}.`);
-        sfx.equip(it);
-      }
+      const slot = upgradeSlot(h, it);
+      if (!slot) continue;
+      st.bag.splice(st.bag.indexOf(it), 1);
+      if (h.equip[slot]) st.bag.push(h.equip[slot]);
+      h.equip[slot] = it; this.fixHp(h);
+      delete fresh(st).items[it.uid];
+      this.ui.toast(`${h.name.split(' ')[0]} puts on the ${itemName(it)}.`);
+      sfx.equip(it);
     }
   }
   fixHp(h) { const s = heroStats(h); h.hp = Math.min(h.hp, s.hp); if (CLASSES[h.cls].resource !== 'rage') h.mp = Math.min(h.mp, s.mp); }
@@ -187,6 +199,7 @@ class Game {
     if (!music.stinger('found')) sfx.level();
     const where = st.party.includes(npc.hero) ? 'joins the party' : 'will wait at The Last Toll (your party is full)';
     this.ui.banner(d.name, `${CLASSES[d.cls].name} · ${where}`);
+    note(st, 'join', `${d.name} the ${CLASSES[d.cls].name} ${where === 'joins the party' ? 'joined the line' : 'agreed to come, and waits at The Last Toll'}.`);
     this.partyChanged();
     await this.ui.dialog([[d.name, d.join]]);
     save(st);
@@ -194,10 +207,43 @@ class Game {
   rest() {
     const st = this.st;
     st.day++; restAll(st); st.stock = {};
+    this.newDay();
     this.explore.spawnFoes();
     sfx.bell();
     this.ui.banner(`Day ${st.day}`, 'Everyone wakes whole. So does everything in the pines.');
+    this.banter.say('rest', { chance: 0.6 });
     save(st);
+    if (st.dread >= 100) this.gateFight();
+  }
+  // ---- the dead grow bolder (st.dread, 0..100): a little every day for each lord still standing, more for a fight
+  // lost; less for a lord put down, a stray brought home, the gate held. It raises the level of the dead in the pines
+  // (Explore.spawnFoes), and at a hundred they come to the Hollow. ----
+  lordsLeft() { return ['warden', 'dryking', 'abbess', 'stoker'].filter((id) => !this.st.kills[id]).length; }
+  newDay() {
+    const st = this.st, was = st.dread, left = this.lordsLeft();
+    if (lead(st).lvl >= 3) st.dread = Math.min(100, st.dread + left * 1.5);
+    const band = (d) => Math.min(4, Math.floor(d / 25));
+    if (band(st.dread) > band(was)) {
+      const words = ['', 'The dead in the pines are restless. They stand nearer the road.', 'The dead are bolder. The Watch has doubled the gate.', 'The dead are at the treeline every dusk now. The Hollow sleeps in shifts.', 'The dead are coming to the Hollow.'][band(st.dread)];
+      note(st, 'dread', words); this.ui.chat.line('dread', '', words);
+      this.banter.say('dread', { force: true });
+    }
+  }
+  // At a hundred: they come to the gate. A fight on the road out of town, the morning after a night's sleep.
+  gateFight() {
+    const st = this.st, ex = this.explore, w = this.world, lvl = lead(st).lvl, L = ex.leader;
+    const kinds = ['shambler', 'gnawer', 'possessed', 'goblin', 'plague_knight'].slice(0, 2 + Math.min(3, Math.floor(lvl / 3)));
+    const foes = [];
+    for (let i = 0; i < 4; i++) {
+      const spot = ex.nearestFree(L.x + 4 + (i % 2) * 2, L.z + 5 + Math.floor(i / 2) * 2);
+      const f = ex.addFoe(`gate${st.day}_${i}`, KIND[pick(kinds)], Math.max(1, lvl - 1 + (i === 0 ? 1 : 0)), spot[0], spot[1]);
+      foes.push(f);
+    }
+    note(st, 'dread', 'The dead came to the gate of the Hollow at first light.');
+    this.ui.banner('The dead at the gate', 'They have come to the Hollow', true);
+    sfx.alert(true);
+    ex.busy = true; this.mode = 'alert';
+    setTimeout(() => this.startBattle(foes, foes[0], { kind: 'gate' }), 1400);
   }
   useOutside(k) {
     const st = this.st, heroes = partyHeroes(st);
@@ -215,16 +261,20 @@ class Game {
     if (!questReady(st, q)) return;
     st.quests[q.id].state = 'done';
     st.gold += q.gold;
-    for (const h of partyHeroes(st)) if (gainXp(h, q.xp)) this.ui.toast(`${h.name.split(' ')[0]} reaches level ${h.lvl}.`);
+    for (const h of partyHeroes(st)) if (gainXp(h, q.xp)) { this.ui.toast(`${h.name.split(' ')[0]} reaches level ${h.lvl}.`); note(st, 'level', `${h.name} reached level ${h.lvl}.`); }
     if (q.reward === 'potion3') st.consum.potion += 3;
-    if (q.reward === 'rare') { const it = makeItem(CLASSES[lead(st).cls].weapon[0], tierForLevel(lead(st).lvl), 2); if (st.bag.length < st.bagSize) st.bag.push(it); this.ui.toast(`The Watch hands over a ${itemName(it)}.`); }
+    if (q.reward === 'rare') { const it = makeItem(CLASSES[lead(st).cls].weapon[0], tierForLevel(lead(st).lvl), 2); addToBag(st, it); this.ui.toast(`The Watch hands over a ${itemName(it)}.`); }
     sfx.coin(); if (!music.stinger('triumph')) sfx.level();
     this.ui.banner('Done: ' + q.name, `${q.gold} gold · ${q.xp} experience`);
+    note(st, 'quest', `Done: ${q.name}. ${q.gold} gold.`);
     save(st);
   }
+  takeQuest(q) { startQuest(this.st, q.id); delete fresh(this.st).quests[q.id]; note(this.st, 'quest', `Took the Watch’s paper: ${q.name}.`); }
   boardAuto() {
     const st = this.st;
-    for (const q of QUESTS) if (q.from === 'board') { if (!st.quests[q.id]) startQuest(st, q.id); if (questReady(st, q)) this.claimQuest(q); }
+    let took = 0;
+    for (const q of QUESTS) if (q.from === 'board') { if (!st.quests[q.id]) { startQuest(st, q.id); delete fresh(st).quests[q.id]; took++; } if (questReady(st, q)) this.claimQuest(q); }
+    if (took) note(st, 'quest', `Read the bounty board and took ${took === 1 ? 'the one paper' : 'all ' + took + ' papers'} the Watch had up.`);
     this.ui.toast('You read the bounty board.');
   }
   // Lisandra's own errands close themselves, wherever you are standing.
@@ -264,7 +314,7 @@ class Game {
   async interact(t) {
     const st = this.st;
     sfx.ui();
-    if (t.kind === 'board') return this.ui.questPanel(true);
+    if (t.kind === 'board') return this.ui.questPanel();
     if (t.kind === 'well') { sfx.well(); return this.ui.dialog([['', pick(WELL_LINES)]]); }
     if (t.kind === 'chest') {
       const c = t.chest;
@@ -273,12 +323,14 @@ class Game {
       // the crypt's chest was somebody's grave goods: more gold, and better than the knolls give
       const gold = c.crypt ? 180 + Math.floor(Math.random() * 120) : 40 + Math.floor(Math.random() * 60);
       const it = makeItem(pick(Object.keys(WEAPONS)), tierForLevel(lead(st).lvl), c.crypt ? 2 + (Math.random() < 0.35 ? 1 : 0) : 1 + (Math.random() < 0.4 ? 1 : 0));
-      st.gold += gold; if (st.bag.length < st.bagSize) st.bag.push(it);
+      st.gold += gold; addToBag(st, it);
       this.r.openChest(c.id);
       sfx.chest();
+      note(st, 'find', `Opened a chest${c.crypt ? ' in the old crypt' : ''}: ${gold} gold and ${an(itemName(it))}.`);
       save(st);
       await this.ui.dialog([['', `${c.crypt ? CRYPT.chest : CHEST_LINE} Inside: ${gold} gold and a ${itemName(it)}.`]]);
       sfx.chestShut();
+      this.banter.say('chest', { chance: 0.5 });
       this.explore.updatePrompt();
       return;
     }
@@ -295,12 +347,13 @@ class Game {
   }
 
   // ---- fighting ----
-  startBattle(foes, alerted) {
+  startBattle(foes, alerted, opts = {}) {
     this.ui.close();
     this.ui.setPrompt(null); this.ui.battleMode(true);
     this.mode = 'battle';
     this.bringRound(foes);
-    this.battle = new Battle(this, foes, alerted);
+    this.battle = new Battle(this, foes, alerted, { kind: pickKind(this.st, foes), ...opts });
+    this.ui.setAuto(null);
   }
   // The dead see through trees and walls, but a fight is held on a square round the leader, and one with no way
   // across it never ends. Whoever can't walk to the leader inside that square comes round first, to the nearest open
@@ -344,27 +397,132 @@ class Game {
     }
   }
   // how: win | lose | flee | apart (a stalemate on Auto: nobody could get at anybody; see Battle.stalemate)
-  endBattle(how, pos, slain, standing = []) {
+  endBattle(how, pos, slain, report = {}) {
     const st = this.st;
-    if (how === 'apart') this.auto.noteApart(standing);
+    if (how === 'apart') this.auto.noteApart(report.standing || []);
     this.battle = null; this.mode = 'explore';
     this.ui.battleMode(false);
     if (how === 'lose') {
       this.auto.noteLoss(pos.x, pos.z);
       restAll(st); st.day++;
+      st.dread = Math.min(100, st.dread + 5);
+      if (report.killer) this.makeRival(report.killer, report.where);
+      this.newDay();
       const inn = this.world.buildings.find((b) => b.id === 'inn');
       this.explore.spawnFoes();
       this.explore.resume({ x: inn.front.x + 1, z: inn.front.z + 1 }, [], 2);
       this.ui.banner('Herrington Hollow', `Day ${st.day}`);
       sfx.gasp();
-    } else this.explore.resume(pos, slain, how === 'win' ? 2 : 6);
+      setTimeout(() => this.banter.say('lost', { force: true }), 1500);
+    } else {
+      this.explore.resume(pos, slain, how === 'win' ? 2 : 6);
+      if (how === 'win') setTimeout(() => this.banter.say(report.lords?.length ? 'lord' : report.close ? 'close' : 'won', { chance: report.lords?.length || report.close ? 1 : 0.5, force: true }), 900);
+    }
+    if (how === 'win') {
+      for (const id of report.rivals || []) this.rivalDown(id);
+      if (report.kind === 'gate') { st.dread = 40; note(st, 'dread', 'The gate held. The dead went back into the pines to think about it.'); }
+      for (const id of report.lords || []) {
+        st.dread = Math.max(0, st.dread - 30);
+        st.boonDue = (st.boonDue || 0) + 1;
+        if (!music.stinger('triumph')) sfx.level();
+        void id;
+      }
+    }
     this.auto.reset();
     if (st.auto) this.autoEquip();
     const L = this.explore.leader;
     this.r.follow(L.x, this.world.y(L.x, L.z), L.z, 0, true);
     this.ui.refresh();
     save(st);
-    this.checkStory();
+    this.checkStory().then(() => this.offerBoon());
+  }
+  // A lord's fall leaves a boon: three are offered, one is kept. Under auto-play the first is taken when the clock runs out.
+  async offerBoon() {
+    const st = this.st;
+    while (st.boonDue > 0 && this.mode === 'explore') {
+      const pickd = await this.ui.choose('A lord is down', 'What it was holding on to comes loose. Take one thing from it.', offerBoons(st).map((b) => ({ name: b.name, desc: b.desc, value: b })), 14);
+      st.boonDue--;
+      if (!pickd) continue;
+      if (pickd.add) { st.boons.push(pickd.id); setBoons(st); this.fixAll(); }
+      if (pickd.gold) st.gold += pickd.gold;
+      if (pickd.consum) for (const k in pickd.consum) st.consum[k] = (st.consum[k] || 0) + pickd.consum[k];
+      sfx.chime?.(); if (!music.stinger('found')) sfx.level();
+      this.ui.banner(pickd.name, pickd.desc);
+      note(st, 'boon', `Kept a boon: ${pickd.name}. ${pickd.desc}`);
+      save(st);
+    }
+  }
+  // ---- scores to settle: whichever of the dead did the most to put the party down gets a name, a level and a price ----
+  makeRival(k, where) {
+    const st = this.st;
+    if (k.lord || String(k.id).startsWith('gate')) return;
+    let r = st.rivals[k.id];
+    const z = ZOMBIES[KIND[k.kind]];
+    if (r) { r.wins++; r.lvl = Math.min(r.lvl + 1, k.lvl + 3); r.day = st.day; r.bounty = Math.round(r.bounty * 1.4); }
+    else {
+      const used = new Set(Object.values(st.rivals).map((o) => o.first));
+      const first = pick(RIVAL_NAMES.filter((n) => !used.has(n)).concat(used.size >= RIVAL_NAMES.length ? RIVAL_NAMES : []));
+      r = st.rivals[k.id] = { id: k.id, first, name: `${first}, the ${z.name.replace(/^The /, '')}`, kind: k.kind, lvl: k.lvl + 1, wins: 1, day: st.day, x: k.x, z: k.z, bounty: 120 + 45 * k.lvl, where: where ? `It walks ${where}.` : '' };
+    }
+    delete st.slain[k.id];                                  // it is out there tomorrow, whatever else is
+    fresh(st).rivals[k.id] = 1;
+    note(st, 'rival', `${r.name} has put you down ${r.wins === 1 ? 'once' : r.wins + ' times'}. The Watch has put ${r.bounty} gold on it.`);
+    this.ui.chat.line('dread', '', `The Watch has a name for the one that did it: ${r.name}. ${r.bounty} gold on its head.`);
+  }
+  rivalDown(id) {
+    const st = this.st, r = st.rivals[id];
+    if (!r) return;
+    st.gold += r.bounty; delete st.rivals[id]; delete fresh(st).rivals[id];
+    st.dread = Math.max(0, st.dread - 6);
+    sfx.coin(); if (!music.stinger('triumph')) sfx.level();
+    this.ui.banner('A score settled', `${r.name} · ${r.bounty} gold from the Watch`);
+    note(st, 'rival', `Settled the score with ${r.name}. ${r.bounty} gold from the Watch, paid without a word.`);
+    this.auto.lost = this.auto.lost.filter((l) => Math.hypot(l.x - r.x, l.z - r.z) > 12);
+  }
+
+  // ---- auto-play spends the gold (Orders: what the purse is for). Each returns true if it bought something. ----
+  // What would be bought next, and from whom: { npc, cost, why, buy } or null. Auto.goals asks; the errand's act does it.
+  shopPlan() {
+    const st = this.st, o = ordersOf(st), ex = this.explore, npc = (shop) => ex.npcs.find((n) => n.shop === shop);
+    const keep = 30;                                         // a bed and a draught, always
+    const afford = (c) => st.gold >= c + keep;
+    // draughts first, whatever the purse is for (unless it is being saved)
+    if (o.purse !== 'save') {
+      for (const [k, want] of [['potion', 3], ['ether', 2]]) if ((st.consum[k] || 0) < want && afford(CONSUMABLES[k].price) && npc('inn'))
+        return { npc: npc('inn'), why: `${CONSUMABLES[k].name}s are low`, buy: () => { let n = 0; while ((st.consum[k] || 0) < want && afford(CONSUMABLES[k].price)) { st.gold -= CONSUMABLES[k].price; st.consum[k] = (st.consum[k] || 0) + 1; n++; } return `Bought ${n} ${CONSUMABLES[k].name}${n > 1 ? 's' : ''} at The Last Toll.`; } };
+    }
+    if (o.purse === 'kit') {
+      let best = null;
+      for (const shop of ['weapons', 'armor', 'rings']) {
+        if (!npc(shop)) continue;
+        for (const it of this.ui.stock(shop)) {
+          const cost = itemValue(it);
+          if (!afford(cost) || st.bag.length >= st.bagSize) continue;
+          for (const h of partyHeroes(st)) {
+            const slot = upgradeSlot(h, it);
+            if (!slot) continue;
+            const gain = (itemWorth(h, it) - itemWorth(h, h.equip[slot])) / Math.max(20, cost);
+            if (itemWorth(h, it) - itemWorth(h, h.equip[slot]) >= 3 && (!best || gain > best.gain)) best = { gain, shop, it, h, cost };
+          }
+        }
+      }
+      if (best) return { npc: npc(best.shop), why: `${an(itemName(best.it))} for ${best.h.name.split(' ')[0]}`, buy: () => { const L = this.ui.stock(best.shop); if (!L.includes(best.it) || st.gold < best.cost) return null; L.splice(L.indexOf(best.it), 1); st.gold -= best.cost; addToBag(st, best.it); this.autoEquip(); return `Bought ${an(itemName(best.it))} for ${best.h.name.split(' ')[0]}: ${best.cost} gold.`; } };
+    }
+    if (o.purse === 'forge' && npc('enhance')) {
+      const cand = partyHeroes(st).map((h) => h.equip.weapon).filter((it) => it && it.plus < 10).sort((a, b) => a.plus - b.plus)[0];
+      if (cand && afford(enhanceCost(cand))) return { npc: npc('enhance'), why: `the ${itemName(cand)} hammered`, buy: () => { const c = enhanceCost(cand); if (st.gold < c) return null; st.gold -= c; cand.plus++; this.fixAll(); sfx.forge(); return `Had the ${itemName(cand)} hammered to +${cand.plus}: ${c} gold.`; } };
+    }
+    return null;
+  }
+  autoShop() {
+    const p = this.shopPlan();
+    if (!p) return;
+    const said = p.buy();
+    if (!said) return;
+    sfx.coin();
+    this.ui.chat.line('auto', '', said); note(this.st, 'shop', said);
+    this.banter.say('shop', { chance: 0.4 });
+    save(this.st);
   }
 }
 

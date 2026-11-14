@@ -11,11 +11,14 @@
 // or cost life as well as mana (`hpCost`). A status may be a ward that soaks harm, a doom that falls when it
 // runs out, a riposte, a taunt, or the wyrm.
 import { el, esc, manhattan, clamp } from '../core/util.js';
-import { CLASSES, STATUS, SUMMONS } from '../data/classes.js';
+import { CLASSES, STATUS, SUMMONS, comboFor } from '../data/classes.js';
 import { CONSUMABLES, rollLoot, itemName, RARITY } from '../data/items.js';
-import { zombieStats } from '../data/enemies.js';
+import { zombieStats, ZOMBIES } from '../data/enemies.js';
 import { HEROES } from '../data/cast.js';
-import { heroStats, heroSkills, basicAttack, gainXp, noteKill, partyHeroes } from './party.js';
+import { heroStats, heroSkills, basicAttack, gainXp, noteKill, partyHeroes, addToBag } from './party.js';
+import { plan as tacPlan, intent, threat } from './tactics.js';
+import * as enc from './encounter.js';
+import { note } from './chronicle.js';
 import { heroModel, ground, clinks } from './explore.js';
 import { withOverride, sleep, shadowDisc, setAnim, setRest, animate } from '../gfx/models.js';
 import { palOf } from '../gfx/fx.js';
@@ -33,10 +36,12 @@ const ITEM_SKILLS = {
   ether: { id: 'item_ether', item: 'ether', name: CONSUMABLES.ether.name, cost: 0, r: [0, 1], aoe: 0, at: 'ally', kind: 'item' },
   tonic: { id: 'item_tonic', item: 'tonic', name: CONSUMABLES.tonic.name, cost: 0, r: [1, 1], aoe: 0, at: 'fallen', kind: 'item' },
 };
+const tally = () => ({ dealt: 0, taken: 0, healed: 0, kills: 0, low: 1 });
 const lifeCost = (u, sk) => (sk.hpCost ? Math.max(1, Math.round(u.maxhp * sk.hpCost)) : 0);
 
 export class Battle {
-  constructor(g, foes, alerted) {
+  constructor(g, foes, alerted, opts = {}) {
+    this.opts = opts; this.hazards = []; this.call = { cd: 0, left: 0, mode: null, focus: null };
     this.g = g; this.st = g.st; this.w = g.world; this.r = g.r;
     this.units = []; this.over = false; this.lock = false; this.xp = 0; this.slain = [];
     this.sel = { mode: 'place' }; this.active = null; this.cursor = null; this.hover = null;
@@ -58,9 +63,12 @@ export class Battle {
     this.setOut(partyHeroes(this.st).map((h) => this.addHero(h, L.x, L.z)), L);
     for (const u of this.units) if (u.side === 'party') this.faceTo(u, alerted.x, alerted.zz);
 
+    enc.setup(this);
+    this.threat = threat(this.units.filter((u) => u.hero).map((u) => u.s), this.units.filter((u) => u.side === 'foe').map((u) => u.s));
     this.buildHud();
+    enc.begin(this);
     this.cursor = { x: L.x, z: L.z };
-    if (this.st.auto) this.begin(); else this.showPlacement();
+    if (this.st.auto || this.goal.kind === 'ambush') this.begin(); else this.showPlacement();
   }
 
   // ---- units ----
@@ -68,13 +76,13 @@ export class Battle {
     const s = heroStats(h), C = CLASSES[h.cls], rage = C.resource === 'rage';
     const model = heroModel(h); model.add(shadowDisc()); this.r.units.add(model);
     const u = { id: h.id, side: 'party', hero: h, name: h.name, lvl: h.lvl, x, z, s, hp: Math.max(1, Math.min(h.hp, s.hp)), mp: rage ? 0 : Math.min(h.mp, s.mp), maxhp: s.hp, maxmp: s.mp,
-      skills: heroSkills(h), basic: basicAttack(h), ct: Math.random() * 30, st: [], model, alive: true, ai: false, rage, color: C.color, face: [0, -1] };
+      skills: heroSkills(h), basic: basicAttack(h), ct: Math.random() * 30, st: [], tally: tally(), model, alive: true, ai: false, rage, color: C.color, face: [0, -1] };
     this.place(u); this.units.push(u); return u;
   }
   addFoe(f) {
     const s = zombieStats(f.kind, f.level);
     const u = { id: f.id, side: 'foe', foe: f, zdef: f.z, name: f.z.name, lvl: f.level, x: f.x, z: f.zz, s, hp: s.hp, mp: 0, maxhp: s.hp, maxmp: 0,
-      skills: f.z.skills, basic: null, ct: f.z.ambush ? 100 : Math.random() * 25, st: [], model: f.model, alive: true, ai: true, undead: !f.z.living, color: '#9aa88a', face: [0, 1] };
+      skills: f.z.skills, basic: null, rival: !!f.rival, ct: f.z.ambush ? 100 : Math.random() * 25, st: [], tally: tally(), model: f.model, alive: true, ai: true, undead: !f.z.living, color: '#9aa88a', face: [0, 1] };
     this.place(u); this.units.push(u); return u;
   }
   addSummon(caster, kind, x, z) {
@@ -85,7 +93,7 @@ export class Battle {
     const model = setSide(withOverride(d.model), caster.side); model.add(shadowDisc(0.3)); this.r.units.add(model);
     const basic = { id: 'attack', name: d.kind === 'heal' ? 'Mend' : 'Attack', cost: 0, r: d.r, aoe: 0, at: d.kind === 'heal' ? 'ally' : 'enemy', kind: d.kind, pow: 1, basic: true, el: d.el, chain: d.chain };
     const u = { id: caster.id + '_' + kind, side: caster.side, owner: caster.id, kind, summon: true, name: d.name, lvl: caster.lvl, x, z, s, hp: s.hp, mp: 0, maxhp: s.hp, maxmp: 0,
-      skills: [], basic, ct: 40, st: [], model, alive: true, ai: true, undead: kind === 'skeleton' || kind === 'ghoul', color: caster.color, face: caster.face };
+      skills: [], basic, ct: 40, st: [], tally: tally(), model, alive: true, ai: true, undead: kind === 'skeleton' || kind === 'ghoul', color: caster.color, face: caster.face };
     this.place(u); this.units.push(u); this.addBar(u); return u;
   }
   // for the sounds: what a unit strikes with (its weapon, or the dead's own claws, teeth and chains),
@@ -218,6 +226,8 @@ export class Battle {
     if (this.has(t, 'curse')) v *= 1.3;
     if (sk.el === 'holy' && t.undead) v *= 1.5;
     if (sk.execute && t.hp <= t.maxhp * sk.execute) v *= 2;
+    const combo = comboFor(sk, (id) => this.has(t, id));
+    if (combo) v *= combo.mult;
     const dx = from.x - t.x, dz = from.z - t.z, dot = Math.sign(dx) * t.face[0] + Math.sign(dz) * t.face[1];
     let side = '';
     if (!sk.aoe && !sk.shape) { if (dot < 0) { v *= 1.25; side = 'back'; } else if (dot === 0) { v *= 1.1; side = 'side'; } }
@@ -225,7 +235,7 @@ export class Battle {
     if (dh >= 2) v *= 1.15; else if (dh <= -2) v *= 0.9;
     let crit = false;
     if (!sure) { v *= 0.92 + Math.random() * 0.16; if (Math.random() * 100 < (a.s.crit || 0)) { v *= 1.5; crit = true; } }
-    return { n: Math.max(1, Math.round(v)), crit, side };
+    return { n: Math.max(1, Math.round(v)), crit, side, combo };
   }
   healing(a, sk) { return Math.round(a.s.mag * sk.pow + 4 + a.lvl); }
 
@@ -262,6 +272,11 @@ export class Battle {
       if (n <= 0) return 0;
     }
     t.hp = Math.max(0, t.hp - n);
+    t.tally.taken += n; if (by?.tally) by.tally.dealt += n;
+    if (t.hp > 0) t.tally.low = Math.min(t.tally.low, t.hp / t.maxhp);
+    if (cls === 'crit' || cls === 'wall') this.direct(t.model.position, 0.8, 560);
+    if (t.hero && t.hp > 0 && t.hp < t.maxhp * 0.25 && !t.saidLow) { t.saidLow = true; this.g.banter.say('low', { who: t.hero, chance: 0.7 }); }
+    else if (cls === 'crit' && by?.hero) this.g.banter.say('crit', { who: by.hero, chance: 0.3 });
     this.show.num(t, n, cls === 'crit' ? 'crit' : cls === 'dot' ? 'dot' : 'dmg', ['back', 'side', 'wall'].includes(cls) ? cls : '', h);
     if (cls === 'dot') this.show.dot(t);
     if (!this.batch) this.say(`${this.nm(t)} takes <b class="dmg">${n}</b>${cls === 'crit' ? ' <i>critical</i>' : cls === 'back' ? ' <i>from behind</i>' : ''}${note ? ` <i>${esc(note)}</i>` : ''}`, cls === 'dot' ? 'dot' : 'hit');
@@ -270,10 +285,12 @@ export class Battle {
     if (t.hp <= 0) this.kill(t, by);
     return n;
   }
-  mend(t, n, L = null) {
+  mend(t, n, L = null, by = null) {
     if (!t.alive) return 0;
     const v = Math.max(0, Math.min(n, t.maxhp - t.hp));
     t.hp += v;
+    if (by?.tally) by.tally.healed += v;
+    if (t.hp > t.maxhp * 0.4) t.saidLow = false;
     this.show.heal(t, v, L);
     if (v && !this.batch) this.say(`${this.nm(t)} recovers <b class="heal">${v}</b>`, 'heal');
     return v;
@@ -300,6 +317,7 @@ export class Battle {
     t.hp = Math.max(1, Math.round(t.maxhp * frac)); if (t.hero) t.hero.hp = t.hp;
     setAnim(t.model, 'revive');
     this.show.revive(t); this.float(t, 'Up!', 'good');
+    this.direct(t.model.position, 0.8, 700);
     sfx.revive(t.model.position);
     this.say(`${this.nm(t)} gets back up.`, 'heal');
   }
@@ -307,11 +325,21 @@ export class Battle {
     if (!u.alive) return;
     u.alive = false; u.hp = 0; u.st = [];
     setAnim(u.model, 'dead');
+    if (by?.tally && by !== u) by.tally.kills++;
+    if (u.wind) { u.wind = null; enc.clearMarks(this); }
+    if (!quiet && !u.summon) {
+      const last = u.side === 'foe' && !this.units.some((o) => o.alive && o.side === 'foe');
+      this.direct(u.model.position, last ? 0.66 : 0.78, last ? 1200 : 620);
+      if (last) this.r.fx.slow(0.22, 0.9);
+      if (u.hero) this.g.banter.say('down', { t: u.name.split(' ')[0], not: u.hero, force: true });
+      else if (u.ward) this.g.banter.say('down', { t: u.name, force: true });
+      else if (u.side === 'foe' && by?.hero) this.g.banter.say(u.rival ? 'rivalDown' : 'kill', { who: by.hero, t: u.name, chance: u.rival || u.lord ? 1 : 0.3, force: !!u.rival });
+    }
     if (!quiet) { sfx.die(u.side === 'foe' ? 'foe' : u.summon ? 'summon' : 'hero', u.model.position, this.clinks(u)); this.show.death(u); this.say(`${this.nm(u)} ${u.side === 'foe' ? 'goes down and stays down.' : u.summon ? 'is gone.' : 'has fallen.'}`, 'kill'); }
     if (u.summon) this.later(() => { sleep(u.model); this.r.units.remove(u.model); }, 700);
     if (u.side === 'foe' && by && by.hero && by.alive) this.later(() => { if (by.alive && !this.over) setAnim(by.model, 'taunt'); }, 520);
     if (u.side === 'foe') {
-      this.xp += u.s.xp; this.slain.push(u); this.st.slain[u.id] = this.st.day; noteKill(this.st, u.zdef.id);
+      this.xp += u.s.xp; this.slain.push(u); if (!u.foe.extra) this.st.slain[u.id] = this.st.day; noteKill(this.st, u.zdef.id);
       if (u.zdef.burst) {
         const what = u.zdef.burst === true ? 'poison' : u.zdef.burst;
         this.say(`${this.nm(u)} bursts.`, 'kill');
@@ -431,7 +459,7 @@ export class Battle {
           const t = targets[i], mult = this.falloff(targets, i);
           if (!t.alive && sk.at !== 'fallen') continue;
           if (i >= targets.links) { this.show.hop(targets[i - 1], t, L); await this.wait(110); }
-          if (sk.kind === 'heal') this.mend(t, Math.round(this.healing(u, sk) * mult), L);
+          if (sk.kind === 'heal') { const was = t.hp; this.mend(t, Math.round(this.healing(u, sk) * mult), L, u); if (t.hero && t !== u && was < t.maxhp * 0.4) this.g.banter.say('healed', { who: t.hero, chance: 0.5 }); }
           else if (sk.kind === 'buff') { this.addStatus(t, sk.st, u); this.addStatus(t, sk.st2, u); }
           else if (sk.kind === 'debuff') { this.addStatus(t, sk.st, u, true); this.addStatus(t, sk.st2, u, true); if (sk.delay) this.tempo(t, -sk.delay); }
           else if (sk.kind === 'cleanse') { const n = this.cleanse(t); if (sk.pow) this.mend(t, Math.round(this.healing(u, sk) * mult), L); else if (!n) this.float(t, 'Clear', 'good'); }
@@ -449,6 +477,8 @@ export class Battle {
             this.addStatus(t, sk.st, u);
             this.addStatus(t, sk.st2, u);
             if (sk.delay && t.alive) this.tempo(t, -sk.delay);
+            if (d.combo) this.comboLands(u, t, d.combo);
+            else if (sk.el === 'cold' && t.alive) this.addStatus(t, ['rime', 2, 0.7], u);
           }
         }
         if (targets.length && (sk.kind === 'phys' || sk.kind === 'magic')) {
@@ -475,6 +505,59 @@ export class Battle {
     await this.wait(220);
     this.checkOver();
   }
+  // A combo set off (data/classes.js COMBOS): the mark is spent, and what it leaves is left.
+  comboLands(u, t, c) {
+    this.show.word(t, c.name + '!', 'combo', c.color);
+    this.say(`<b style="color:${c.color}">${esc(c.name)}!</b> ${this.nm(u)} sets it off on ${this.nm(t)}.`, 'hit');
+    this.r.fx.flash(c.color, 0.22); this.r.fx.shake(0.2);
+    this.direct(t.model.position, 0.8, 620);
+    if (c.eats) t.st = t.st.filter((s) => s.id !== c.need);
+    if (c.st && t.alive) this.addStatus(t, c.st, u);
+    if (c.spread) for (const o of this.units) if (o.alive && o !== t && o.side === t.side && manhattan(o.x, o.z, t.x, t.z) <= 1) this.addStatus(o, c.spread, u);
+    this.combos = (this.combos || 0) + 1;
+    if (u.hero) this.g.banter.say('combo', { chance: 0.6 });
+  }
+  // The camera leans in on something worth seeing (a crit, a kill, a body through a wall), then lets go. Under
+  // auto-play by default; `opts.director` in the save says always or never.
+  direct(pos, zoom = 0.78, ms = 650) {
+    const o = this.st.opts.director || 'auto';
+    if (o === 'off' || (o === 'auto' && !this.st.auto) || this.over) return;
+    this.camAt = { x: pos.x, y: pos.y, z: pos.z }; this.r.fx.zoom(zoom, 9);
+    clearTimeout(this.dirT);
+    this.dirT = this.later(() => { if (!this.over) { this.r.fx.zoom(1, 4); this.camAt = null; } }, ms);
+  }
+  badTiles(u) { return enc.badTiles(this, u); }
+  // what whoever is up means to do, under the turn order
+  setIntent(u, text) { this.intentEl.innerHTML = text ? `<b style="color:${u.color}">${esc(u.hero ? u.name.split(' ')[0] : u.name)}</b> · ${esc(text)}` : ''; }
+
+  // ---- the player's one call under auto-play: focus one of the dead, go all out, or hold the line ----
+  drawCall() {
+    const c = this.call, e = this.callEl;
+    e.innerHTML = '';
+    if (!this.st.auto || this.over || this.sel.mode === 'place') return;
+    const btn = (label, fn, cls = '') => { const x = el('button', 'btn ' + cls, label); x.onclick = () => { sfx.ui(); fn(); }; e.append(x); return x; };
+    if (c.open) {
+      btn('Focus one', () => { c.open = false; c.picking = true; this.drawCall(); });
+      btn('All out', () => this.makeCall('allout'));
+      btn('Hold the line', () => this.makeCall('hold'));
+      btn('✕', () => { c.open = false; this.drawCall(); });
+    } else if (c.picking) { e.append(el('small', '', 'Tap one of the dead')); btn('✕', () => { c.picking = false; this.drawCall(); }); }
+    else if (c.left > 0) btn(`${c.mode === 'focus' ? 'Focus: ' + esc(c.focus?.name || '') : c.mode === 'allout' ? 'All out' : 'Holding'} · ${c.left}`, () => {}, 'spent');
+    else if (c.cd > 0) btn(`Call it · ${c.cd}`, () => {}, 'spent').title = 'Comes back after a few of your turns';
+    else btn('Call it', () => { c.open = true; this.drawCall(); }, 'main').title = 'Your one call (C)';
+  }
+  makeCall(mode, focus = null) {
+    const c = this.call, n = Math.max(2, this.units.filter((u) => u.hero && u.alive).length);
+    Object.assign(c, { open: false, picking: false, mode, focus, left: n, cd: n + 5 });
+    const words = mode === 'focus' ? `Everyone on ${focus.name}!` : mode === 'allout' ? 'All out! Spend it!' : 'Hold the line! Close up!';
+    this.say(`<b>You call it:</b> ${esc(words)}`, 'sys');
+    this.g.ui.banner(mode === 'focus' ? 'Focus' : mode === 'allout' ? 'All out' : 'Hold the line', words);
+    if (focus) this.show.word(focus, 'Marked', 'bad');
+    this.g.banter.say('call', { chance: 0.8, force: true });
+    this.drawCall();
+  }
+  callKey() { const c = this.call; if (!this.st.auto || this.over || c.left > 0 || c.cd > 0) return; c.open = !c.open; c.picking = false; this.drawCall(); }
+
   // a riposte: struck in the open by someone standing close, they strike back
   async counterBlow(t, u) {
     const sk = { id: 'riposte', name: 'Riposte', kind: 'phys', pow: 0.9, r: [1, 1], aoe: 0 };
@@ -594,9 +677,11 @@ export class Battle {
     this.sel = { mode: 'wait' };
     this.r.clearHighlights();
     this.menuEl.innerHTML = '';
-    const n = this.foesOf({ side: 'party' }).length;
-    this.show.splash('Battle', `${n} of the dead`, 'start');
-    this.say(`<b>The fight begins.</b> ${n} of the dead.`, 'sys');
+    const n = this.foesOf({ side: 'party' }).length, T = this.threat, G = this.goal;
+    this.show.splash(G.title || 'Battle', `${n} of the dead · ${T.word}`, 'start');
+    this.say(`<b>The fight begins.</b> ${n} of the dead. It looks: <span class="threat t${T.i}">${T.word}</span>${G.title ? ` <b>${esc(G.title)}.</b> ${esc(G.text)}` : ''}`, 'sys');
+    this.g.banter.say(T.i >= 4 ? 'grave' : T.i <= 0 ? 'easy' : 'seen', { chance: T.i >= 4 ? 1 : 0.6 });
+    this.drawCall();
     this.run();
   }
   async run() {
@@ -619,9 +704,15 @@ export class Battle {
       this.checkOver();
       if (this.over) break;
       if (!u.alive) continue;
+      if (await enc.turnStart(this, u)) break;
+      if (!u.alive) continue;
       if (skip) { this.float(u, 'Stunned', 'bad'); this.say(`${this.nm(u)} is too stunned to move.`, 'st'); u.ct -= 100; await this.wait(500); continue; }
-      if (u.ai || this.st.auto) await this.aiTurn(u); else await this.playerTurn(u);
+      if (u.flee) await enc.fleeTurn(this, u);
+      else if (u.kit && await enc.lordTurn(this, u)) { /* its turn went on its own business */ }
+      else if (u.ai || this.st.auto) await this.aiTurn(u); else await this.playerTurn(u);
+      this.setIntent(u, '');
       u.ct -= u.moved && u.acted ? 100 : u.moved || u.acted ? 80 : 60;
+      if (u.hero) { const c = this.call; if (c.left > 0 && --c.left === 0) { c.mode = null; c.focus = null; } if (c.cd > 0) c.cd--; this.drawCall(); }
       this.r.clearHighlights(); this.menuEl.innerHTML = '';
       if (this.stalemate()) this.finish('apart');
     }
@@ -641,6 +732,7 @@ export class Battle {
   checkOver() {
     if (this.over) return;
     const foes = this.units.some((u) => u.alive && u.side === 'foe'), us = this.units.some((u) => u.alive && u.hero);
+    if (this.call.focus && !this.call.focus.alive) { this.call.focus = null; if (this.call.mode === 'focus') this.call.left = 0; }
     if (!foes) this.finish('win'); else if (!us) this.finish('lose');
   }
 
@@ -655,6 +747,7 @@ export class Battle {
   }
   // Auto was switched on while the menu was up: let the AI finish this turn.
   async takeOver() {
+    this.drawCall();
     if (this.sel.mode === 'place') { this.begin(); return; }
     if (!this.turnDone || this.lock) return;
     this.lock = true; this.menuEl.innerHTML = ''; this.r.clearHighlights();
@@ -733,6 +826,7 @@ export class Battle {
   async tile(x, z) {
     if (this.lock || this.over) return;
     const s = this.sel, u = this.active;
+    if (this.call.picking) { const o = this.unitAt(x, z); if (o && o.side === 'foe') this.makeCall('focus', o); else sfx.deny(); return; }
     if (s.mode === 'place') return this.placeAt(x, z);
     if (s.mode === 'menu') { const o = this.unitAt(x, z); if (o) this.inspect(o); return; }
     if (s.mode === 'move') {
@@ -780,7 +874,7 @@ export class Battle {
   }
   fitsAt(u, x, z) { return !this.fits?.has(u) || this.fits.get(u).has(K(x, z)); }
   showPlacement() {
-    this.sel = { mode: 'place', pick: this.units.find((u) => u.side === 'party') };
+    this.sel = { mode: 'place', pick: this.units.find((u) => u.hero) };
     setAnim(this.sel.pick.model, 'point');            // the leader sets the line
     this.drawPlacement();
     this.g.ui.banner('Place your party', 'Tap one of yours, then a green tile');
@@ -790,7 +884,7 @@ export class Battle {
     this.r.clearHighlights(); this.r.highlight(this.spots.filter((t) => !s.pick || this.fitsAt(s.pick, t.x, t.z)), 'place');
     m.innerHTML = '';
     m.append(el('div', 'bt-hint', 'The dead have seen you. Set your line: choose one of yours, then a green tile.'));
-    for (const u of this.units.filter((u) => u.side === 'party')) {
+    for (const u of this.units.filter((u) => u.hero)) {
       const b = el('button', 'bt-btn' + (s.pick === u ? ' sel' : ''), `${esc(u.name)}<small>${esc(CLASSES[u.hero.cls].name)}</small>`);
       b.onclick = () => { s.pick = u; this.cursor = { x: u.x, z: u.z }; this.drawPlacement(); };
       m.append(b);
@@ -800,12 +894,12 @@ export class Battle {
   }
   placeAt(x, z) {
     const s = this.sel, o = this.unitAt(x, z);
-    if (o && o.side === 'party' && o !== s.pick && !this.spots.some((t) => t.x === x && t.z === z && s.pick)) { s.pick = o; return this.drawPlacement(); }
-    if (!this.spots.some((t) => t.x === x && t.z === z)) { if (o && o.side === 'party') { s.pick = o; this.drawPlacement(); } return; }
+    if (o && o.hero && o !== s.pick && !this.spots.some((t) => t.x === x && t.z === z && s.pick)) { s.pick = o; return this.drawPlacement(); }
+    if (!this.spots.some((t) => t.x === x && t.z === z)) { if (o && o.hero) { s.pick = o; this.drawPlacement(); } return; }
     if (!s.pick) return;
     // not into a hollow they couldn't get out of (nor, swapping, the other one)
-    if (!this.fitsAt(s.pick, x, z) || (o && o.side === 'party' && o !== s.pick && !this.fitsAt(o, s.pick.x, s.pick.z))) return sfx.deny();
-    if (o && o.side === 'party' && o !== s.pick) { o.x = s.pick.x; o.z = s.pick.z; this.place(o); }
+    if (!this.fitsAt(s.pick, x, z) || (o && o.hero && o !== s.pick && !this.fitsAt(o, s.pick.x, s.pick.z))) return sfx.deny();
+    if (o && o.hero && o !== s.pick) { o.x = s.pick.x; o.z = s.pick.z; this.place(o); }
     else if (o && o !== s.pick) return sfx.deny();
     s.pick.x = x; s.pick.z = z; this.place(s.pick);
     sfx.ui(); this.drawPlacement();
@@ -815,83 +909,8 @@ export class Battle {
   // what u could use now (the party's skills cost mana or rage, some life too; the plain blow costs nothing)
   usable(u) { return [u.basic, ...u.skills].filter((sk) => sk && (u.side === 'foe' || u.summon || sk.basic || (sk.cost <= u.mp && (!sk.hpCost || u.hp > lifeCost(u, sk))))); }
   // Every skill from every tile in reach, at every target it could take, scored; the best is done.
-  plan(u) {
-    const foes = this.foesOf(u), friends = this.friendsOf(u);
-    const usable = this.usable(u), skills = u.acted ? [] : usable;
-    // how far it is, walking, to somewhere it could strike from (see strikeSteps); and while there is a way, never a
-    // tile with none, whatever it would do there (a hollow it couldn't climb out of, to guard the friends in it)
-    const steps = this.strikeSteps(u, usable, foes), here = steps.get(K(u.x, u.z));
-    const R = (u.moved ? [{ x: u.x, z: u.z, d: 0, prev: null }] : [...this.reach(u).values()].filter((t) => !t.pass || (t.x === u.x && t.z === u.z)))
-      .filter((t) => here === undefined || steps.has(K(t.x, t.z)));
-    const nearFoe = (x, z) => foes.reduce((m, f) => Math.min(m, manhattan(x, z, f.x, f.z)), 99);
-    const inRange = (sk, t, x, z) => { const d = manhattan(t.x, t.z, x, z); return d >= sk.r[0] && d <= sk.r[1]; };
-    const freeTile = (c) => this.open(c.x, c.z) && !this.unitAt(c.x, c.z) && !this.trapAt(c.x, c.z);
-    let best = { score: 0 };
-    const real = { x: u.x, z: u.z };
-    for (const t of R) {
-      const gap = nearFoe(t.x, t.z);
-      for (const sk of skills) {
-        let centres;
-        if (sk.at === 'self') centres = [t];
-        else if (sk.kind === 'summon') {
-          if (this.units.some((o) => o.alive && o.owner === u.id && o.kind === sk.summon) || !foes.length) continue;
-          const c = this.rangeTiles(sk, t.x, t.z).filter((c) => freeTile(c) && !(c.x === t.x && c.z === t.z)).sort((a, b) => nearFoe(a.x, a.z) - nearFoe(b.x, b.z))[0];
-          if (c && 14 - t.d * 0.05 > best.score) best = { score: 14 - t.d * 0.05, tile: t, sk, x: c.x, z: c.z };
-          continue;
-        } else if (sk.kind === 'trap') {
-          // in the way: the free tile in reach nearest one of them, but not one they're already beside
-          if (!foes.length) continue;
-          const mine = this.traps.filter((p) => p.owner === u.id).length;
-          const c = this.rangeTiles(sk, t.x, t.z).filter((c) => freeTile(c) && !(c.x === t.x && c.z === t.z) && nearFoe(c.x, c.z) >= 1).sort((a, b) => nearFoe(a.x, a.z) - nearFoe(b.x, b.z))[0];
-          const score = c ? 8 - mine * 3 - nearFoe(c.x, c.z) * 0.4 - t.d * 0.05 : 0;
-          if (score > best.score) best = { score, tile: t, sk, x: c.x, z: c.z };
-          continue;
-        } else if (sk.blink) centres = this.rangeTiles(sk, t.x, t.z).filter(freeTile);
-        else if (sk.shape === 'line' || sk.shape === 'cone') { const n = Math.max(1, sk.r[0]); centres = DIRS.map(([dx, dz]) => ({ x: t.x + dx * n, z: t.z + dz * n })).filter((c) => this.inBounds(c.x, c.z)); }
-        else if (sk.at === 'fallen') centres = this.units.filter((o) => !o.alive && o.hero && o.side === u.side && !this.unitAt(o.x, o.z) && inRange(sk, t, o.x, o.z));
-        else centres = (sk.at === 'ally' ? friends : foes).filter((o) => !(o === u && sk.kind === 'tempo') && inRange(sk, t, o === u ? t.x : o.x, o === u ? t.z : o.z)).map((o) => (o === u ? t : o));
-        for (const c of centres) {
-          u.x = t.x; u.z = t.z;                             // judge it as if already standing there
-          let score = 0;
-          const hit = this.affected(u, sk, c.x, c.z);
-          hit.forEach((o, i) => {
-            if (sk.kind === 'phys' || sk.kind === 'magic') {
-              const n = this.damage(u, o, sk, true, u, this.falloff(hit, i)).n * (sk.hits || 1);
-              score += Math.min(n, o.hp) + (n >= o.hp ? this.killWorth(u, sk, o, foes) : 0) + (sk.st ? 2 : 0) + (sk.st2 ? 3 : 0) + (sk.push || sk.pull ? 3 : 0) + (sk.delay ? 3 : 0) + (this.has(o, 'taunt') ? 10 : 0);
-            } else if (sk.kind === 'heal') { const miss = o.maxhp - o.hp; if (miss > o.maxhp * 0.25) score += Math.min(miss, this.healing(u, sk)) * 1.1; }
-            else if (sk.kind === 'cleanse') {
-              score += o.st.filter((s) => STATUS[s.id]?.bad).length * 5;
-              if (sk.pow) { const miss = o.maxhp - o.hp; if (miss > o.maxhp * 0.25) score += Math.min(miss, this.healing(u, sk)) * 0.8; }
-            } else if (sk.kind === 'revive') score += 40;
-            else if (sk.kind === 'tempo') { if (o.ct < 90 && foes.length) score += 8 + (90 - o.ct) * 0.04; }
-            else {
-              if (sk.st && !this.has(o, sk.st[0])) score += (sk.st[0] === 'stun' || sk.st[0] === 'root' ? 9 : STATUS[sk.st[0]]?.doom ? 10 : 6) * (foes.length ? 1 : 0);
-              if (sk.st2 && !this.has(o, sk.st2[0]) && foes.length) score += 3;
-              if (sk.delay && foes.length) score += 5;
-            }
-          });
-          if (sk.allyHeal) for (const a of this.aoeTiles(sk, c.x, c.z)) { const o = this.unitAt(a.x, a.z); if (o && o.side === u.side && o.hp < o.maxhp * 0.7) score += 4; }
-          if (sk.self && !this.has(u, sk.self[0]) && score > 0) score += 3;
-          u.x = real.x; u.z = real.z;
-          if (score <= 0) continue;
-          score += (sk.r[1] > 1 ? Math.min(gap, 4) * 0.4 : 0) - t.d * 0.05 - (sk.cost || 0) * 0.05 - (sk.hpCost ? u.maxhp * sk.hpCost * 0.3 : 0);
-          if (score > best.score) best = { score, tile: t, sk, x: c.x, z: c.z };
-        }
-      }
-    }
-    if (best.sk) return best;
-    // Nothing worth doing from anywhere in reach: close in. Not as the crow flies (with a stand of trunks or a rise
-    // between them, that leaves both sides standing still for good) but along the walk to where it could strike.
-    if (here !== undefined) {
-      let to = null;
-      for (const t of R) { const n = steps.get(K(t.x, t.z)); if (n !== undefined && n < here && (!to || n < to.n || (n === to.n && t.d < to.t.d))) to = { t, n }; }
-      return { tile: to?.t || null };
-    }
-    // nowhere it could ever strike from: edge toward them anyway, and say it's stuck (see stalemate)
-    let to = null, bd = nearFoe(u.x, u.z);
-    for (const t of R) { const d = nearFoe(t.x, t.z); if (d < bd || (d === bd && to && t.d < to.d)) { bd = d; to = t; } }
-    return { tile: to, stuck: true };
-  }
+  // (the scoring is game/tactics.js: stances, the player's call, bad ground, combos, shoves)
+  plan(u) { return tacPlan(this, u); }
   // How many steps each tile of the field is from the nearest place u could strike one of them from with one of
   // `skills`, walking as u walks (up no more than its jump, past friends but never through foes). Map key -> steps;
   // a tile that isn't in it has no way there. One that can't move only counts where it already stands.
@@ -942,6 +961,7 @@ export class Battle {
     this.r.setTurnRing(u.x, u.z);
     await this.wait(240);
     let p = this.plan(u);
+    this.setIntent(u, intent(this, u, p));
     u.stuck = !!p.stuck;                                  // (forgotten as soon as anything changes: see stalemate)
     if (p.tile && (p.tile.x !== u.x || p.tile.z !== u.z) && !u.moved) {
       this.r.setTurnRing(null);
@@ -960,9 +980,16 @@ export class Battle {
     if (this.over) return;
     this.over = true; this.sel = { mode: 'over' };
     this.r.clearHighlights(); this.r.setCursor(null); this.r.setTurnRing(null);
-    this.menuEl.innerHTML = ''; this.infoEl.innerHTML = '';
+    this.menuEl.innerHTML = ''; this.infoEl.innerHTML = ''; this.callEl.innerHTML = ''; this.setIntent(null, '');
+    clearTimeout(this.dirT);
     const st = this.st, lines = [];
     const heroes = this.units.filter((u) => u.hero);
+    const where = this.w.inTown(this.origin.x, this.origin.z, 6) ? 'at the edge of the Hollow' : 'in ' + this.w.regionAt(this.origin.x, this.origin.z).name;
+    const names = (list) => { const m = new Map(); for (const u of list) m.set(u.zdef.name, (m.get(u.zdef.name) || 0) + 1); return [...m].map(([k, n]) => (n > 1 ? `${n} ${ZOMBIES.find((z) => z.name === k)?.plural || k}` : /^The |,/.test(k) ? k : `a ${k}`)).join(', '); };
+    const mvp = [...heroes].sort((a, b) => (b.tally.dealt + b.tally.healed) - (a.tally.dealt + a.tally.healed))[0];
+    const fell = heroes.filter((u) => !u.alive), closest = [...heroes].filter((u) => u.alive).sort((a, b) => a.tally.low - b.tally.low)[0];
+    st.stats.fights++;
+    this.report = { how, kind: this.goal.kind, lords: this.slain.filter((u) => u.lord).map((u) => u.zdef.id), rivals: this.slain.filter((u) => u.rival).map((u) => u.id), where };
     for (const u of heroes) { u.hero.hp = u.alive ? u.hp : 0; if (!u.rage) u.hero.mp = u.mp; }
     let title, sub, hold = 0;
     if (how === 'win' || how === 'apart') {
@@ -979,15 +1006,27 @@ export class Battle {
       let gold = 0; const got = [];
       for (const f of this.slain) {
         const loot = rollLoot(f.lvl); gold += loot.gold;
-        for (const it of loot.items) { if (st.bag.length < st.bagSize) { st.bag.push(it); got.push(`<span style="color:${RARITY[it.rarity].color}">${esc(itemName(it))}</span>`); } else got.push('<i>a find you had no room for</i>'); }
+        for (const it of loot.items) { if (addToBag(st, it)) { got.push(`<span style="color:${RARITY[it.rarity].color}">${esc(itemName(it))}</span>`); } else got.push('<i>a find you had no room for</i>'); }
         for (const gm of loot.gems) { st.gems[gm] = (st.gems[gm] || 0) + 1; got.push('a gem'); }
       }
-      st.gold += gold;
+      st.gold += gold; if (how === 'win') st.stats.won++;
       if (this.slain.length) lines.push(`Each of you earns <b>${this.xp}</b> experience. You find <b>${gold}</b> gold.`);
       if (got.length) lines.push('Found: ' + got.join(', '));
+      if (how === 'win') {
+        lines.push(...enc.spoils(this));
+        // who did the work, and how near it came
+        const chips = [];
+        if (mvp && mvp.tally.dealt + mvp.tally.healed > 0) chips.push(`<span>Did the most: <b style="color:${mvp.color}">${esc(mvp.name.split(' ')[0])}</b> ${mvp.tally.dealt ? mvp.tally.dealt + ' dealt' : ''}${mvp.tally.healed ? ' ' + mvp.tally.healed + ' mended' : ''}</span>`);
+        if (closest && closest.tally.low < 0.35) chips.push(`<span>Closest call: <b style="color:${closest.color}">${esc(closest.name.split(' ')[0])}</b> at ${Math.max(1, Math.round(closest.tally.low * closest.maxhp))} life</span>`);
+        if (this.combos) chips.push(`<span>Combos: <b>${this.combos}</b></span>`);
+        if (chips.length) lines.push(`<span class="mvp">${chips.join('')}</span>`);
+        note(st, this.slain.some((u) => u.lord) ? 'lord' : 'fight', `${this.slain.some((u) => u.lord) ? 'Brought down' : 'Put down'} ${names(this.slain) || 'nothing, but held the ground'} ${where}.${fell.length ? ` ${fell.map((u) => u.name.split(' ')[0]).join(' and ')} fell and ${fell.length > 1 ? 'were' : 'was'} carried.` : ''}${mvp ? ` ${mvp.name.split(' ')[0]} did the most of it.` : ''}${closest && closest.tally.low < 0.2 ? ` ${closest.name.split(' ')[0]} finished on ${Math.max(1, Math.round(closest.tally.low * closest.maxhp))} life.` : ''}`);
+        if (got.length) note(st, 'find', `Found on them: ${got.map((g) => g.replace(/<[^>]+>/g, '')).join(', ')}.`);
+        this.report.close = !!fell.length || (closest && closest.tally.low < 0.2);
+      } else note(st, 'fight', `Neither side could get at the other ${where}. Left them standing.`);
       for (const u of heroes) {
         const ups = this.xp ? gainXp(u.hero, u.alive ? this.xp : Math.round(this.xp / 2)) : 0;
-        if (ups) { lines.push(`<b style="color:${u.color}">${esc(u.name)}</b> reaches level ${u.hero.lvl}.`); sfx.level(); setTimeout(() => this.show.levelUp(u), 700); }
+        if (ups) { lines.push(`<b style="color:${u.color}">${esc(u.name)}</b> reaches level ${u.hero.lvl}.`); note(st, 'level', `${u.name} reached level ${u.hero.lvl}.`); sfx.level(); setTimeout(() => this.show.levelUp(u), 700); }
         if (how === 'win' && u.hero.hp <= 0) u.hero.hp = Math.max(1, Math.round(heroStats(u.hero).hp * 0.25));
       }
       const who = how === 'win' && heroes.find((u) => u.alive && HEROES[u.hero.heroId]);
@@ -996,9 +1035,13 @@ export class Battle {
     } else if (how === 'lose') {
       sfx.lose(); music.stinger('fell'); title = 'The pines keep what they take'; sub = 'You wake at The Last Toll';
       this.show.end();
-      const lost = Math.round(st.gold * 0.2); st.gold -= lost;
+      const lost = Math.round(st.gold * 0.2); st.gold -= lost; st.stats.lost++;
+      // whichever of them did the most of it has a score with the party now (main.js makes it a rival)
+      const killer = this.units.filter((u) => u.side === 'foe' && !u.foe.extra && !u.gone).sort((a, b) => (b.alive - a.alive) || b.tally.dealt - a.tally.dealt)[0];
+      if (killer) this.report.killer = { id: killer.id, kind: killer.zdef.id, lvl: killer.lvl, x: killer.foe.hx ?? killer.x, z: killer.foe.hz ?? killer.z, rival: killer.rival, lord: !!killer.lord };
+      note(st, 'loss', `Lost to ${names(this.units.filter((u) => u.side === 'foe' && u.alive)) || 'the dead'} ${where}. Carried back to The Last Toll, ${lost} gold the lighter.`);
       lines.push(`Somebody carried you back to the Hollow. It cost you <b>${lost}</b> gold and most of your pride.`);
-    } else { sfx.sheath(); this.show.end(); title = 'You run'; sub = 'The dead do not hurry'; lines.push('You get clear. They are still standing where you left them.'); }
+    } else { sfx.sheath(); this.show.end(); note(st, 'fight', `Ran from a fight ${where}.`); title = 'You run'; sub = 'The dead do not hurry'; lines.push('You get clear. They are still standing where you left them.'); }
     this.resultEl.innerHTML = `<h2>${title}</h2><p class="sub">${sub}</p>${lines.map((l) => `<p>${l}</p>`).join('')}`;
     const b = el('button', 'btn', 'Continue');
     const done = () => { if (this.closed) return; this.closed = true; this.close(how); };
@@ -1010,11 +1053,12 @@ export class Battle {
     this.show.clear();
     for (const u of this.units) if (u.model.userData.wyrmBase) u.model.scale.setScalar(u.model.userData.wyrmBase);
     for (const u of this.units) if (u.side === 'party') { sleep(u.model); this.r.units.remove(u.model); }
+    enc.cleanup(this);
     this.chron.remove();
     this.hud.remove();
     const L = this.units.find((u) => u.id === this.st.party[0]);
     const standing = this.units.filter((u) => u.side === 'foe' && u.alive && u.foe).map((u) => u.id);
-    this.g.endBattle(how, how === 'win' ? { x: L.x, z: L.z } : this.origin, this.slain.map((f) => f.id), standing);
+    this.g.endBattle(how, how === 'win' ? { x: L.x, z: L.z } : this.origin, this.slain.map((f) => f.id), { ...this.report, standing });
   }
 
   // ---- HUD ----
@@ -1024,7 +1068,8 @@ export class Battle {
     this.bars = el('div', 'bt-bars'); this.floats = el('div', 'bt-floats'); this.resultEl = el('div', 'bt-result panel');
     this.hud.append(this.bars, this.floats, this.orderEl);
     this.chron = new CombatLog(this.hud);
-    this.hud.append(this.infoEl, this.menuEl, this.resultEl);
+    this.intentEl = el('div', 'bt-intent'); this.goalEl = el('div', 'bt-goal'); this.callEl = el('div', 'bt-call');
+    this.hud.append(this.intentEl, this.goalEl, this.infoEl, this.menuEl, this.callEl, this.resultEl);
     document.getElementById('ui').append(this.hud);
     for (const u of this.units) this.addBar(u);
     this.show = new Show(this);

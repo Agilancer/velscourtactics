@@ -328,7 +328,21 @@ export const STATUS = {
   counter: { name: 'Riposte', color: '#ffb040' },
   taunt: { name: 'Taunting', color: '#ff4a3a' },
   wyrm: { name: 'Wyrm Form', color: '#ff7a3a' },
+  // left by any blow of cold: the next plain blow shatters it (COMBOS)
+  rime: { name: 'Rimed', bad: true, color: '#bfe8ff' },
 };
+
+// Combos: a mark one blow leaves, and the kind of blow that sets it off. Whoever strikes someone carrying `need` with a
+// blow that fits `when` does `mult` as much; the mark is spent (`eats`), and it may leave something behind (`st` on the
+// one struck, `spread` on those of theirs standing next to them). It cuts both ways: the dead may do it to you.
+// Battle.damage reads these; tactics.js scores both halves (setting one up for a friend, and setting one off).
+export const COMBOS = [
+  { id: 'shatter', name: 'Shatter', need: 'rime', when: (sk) => sk.kind === 'phys', mult: 1.45, eats: true, color: '#bfe8ff' },
+  { id: 'flashfire', name: 'Flashfire', need: 'poison', when: (sk) => sk.el === 'fire', mult: 1.4, eats: true, spread: ['burn', 2, 1], color: '#ffb040' },
+  { id: 'rebuke', name: 'Rebuke', need: 'curse', when: (sk) => sk.el === 'holy', mult: 1.4, eats: true, color: '#fff0b0' },
+  { id: 'conduct', name: 'Conduct', need: 'slow', when: (sk) => sk.el === 'storm', mult: 1.3, st: ['stun', 1, 0.5], color: '#b8d8ff' },
+];
+export const comboFor = (sk, has) => (sk.kind === 'phys' || sk.kind === 'magic' ? COMBOS.find((c) => c.when(sk) && has(c.need)) : null);
 
 // What a class's summons are. Stats are a share of the caster's.
 export const SUMMONS = {

@@ -181,6 +181,27 @@ export const ZOMBIES = [
 ];
 export const KIND = Object.fromEntries(ZOMBIES.map((z, i) => [z.id, i]));
 
+// What a lord (or the crypt's keeper) does beyond its own two skills (game/encounter.js): `big` is the blow it winds
+// up for a turn before it lands, on the tiles it marks; `adds` are who answers when it is down to two thirds;
+// `hazard` is what the ground does where it has been (a status on whoever stands there when their turn comes);
+// `cry` is what the log says as each of the three happens.
+export const LORD_KIT = {
+  warden: { big: S('whiteout', 'Whiteout', 0, [0, 5], 2, 'tile', 'magic', 2.1, { el: 'cold', st: ['slow', 2, 1] }), adds: ['rimewalker', 'driftling'], hazard: 'rime',
+    cry: ['The Warden raises the glaive and the air goes white.', 'The Warden sounds the post’s horn. Something answers.', 'Frost runs out along the flags.'] },
+  dryking: { big: S('audience', 'Audience', 0, [0, 5], 2, 'tile', 'magic', 2, { st: ['weaken', 3, 1] }), adds: ['husk', 'slinger'], hazard: 'weaken',
+    cry: ['The Dry King lifts a hand. The court holds its breath, having none.', 'The Dry King calls his court to order.', 'Dust comes up off the floor and hangs.'] },
+  abbess: { big: S('evensong', 'Evensong', 0, [0, 5], 2, 'tile', 'magic', 2, { el: 'shadow', st: ['curse', 3, 1] }), adds: ['drowner', 'drowner'], hazard: 'root',
+    cry: ['The Abbess draws breath for the long note.', 'The Abbess rings for her sisters.', 'Black water comes up between the stones.'] },
+  stoker: { big: S('blowback', 'Blowback', 0, [0, 5], 2, 'tile', 'magic', 2.2, { el: 'fire', st: ['burn', 2, 1] }), adds: ['cinder', 'cinder'], hazard: 'burn',
+    cry: ['The Stoker throws the firebox door wide.', 'The Stoker bangs the shovel on the rail. The ash gets up.', 'Coals skitter out across the floor.'] },
+  bone_golem: { big: S('avalanche', 'Avalanche of Bone', 0, [0, 5], 2, 'tile', 'phys', 2.2, { st: ['stun', 1, 0.5] }), adds: ['goblin', 'goblin'], hazard: 'bleed',
+    cry: ['The Keeper rears up, every bone of it.', 'The Keeper shakes, and pieces of it walk off on their own.', 'Splinters stand up out of the floor.'] },
+};
+
+// A name for one of the dead that has put the party down (a score to settle: main.js makeRival). First a name the
+// Hollow would give it, then what it is.
+export const RIVAL_NAMES = ['Old Mourn', 'Tallow', 'The Widower', 'Gristle', 'Nine-Fingers', 'Mother Rook', 'The Verger', 'Sexton', 'Pall', 'Candlewick', 'The Beadle', 'Lichgate', 'Dregs', 'Hobnail', 'The Last Guest', 'Churchyard Tom'];
+
 // Who stands in the woods, by tier (0 by the Hollow, 4 where the pines go black). A pack takes one of its tier's
 // kinds for its own and sometimes a neighbour; map.js goes round each list so every kind is out there somewhere.
 // The Bone Golem is not in any of them: it keeps the crypt (CRYPT_PACK). Goblins also camp in the woods round the crypt.

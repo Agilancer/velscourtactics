@@ -651,6 +651,8 @@ export class Renderer {
       aoe: new THREE.MeshBasicMaterial({ color: 0xff9a2a, transparent: true, opacity: 0.6, depthWrite: false }),
       heal: new THREE.MeshBasicMaterial({ color: 0x4fd6a0, transparent: true, opacity: 0.42, depthWrite: false }),
       bounds: new THREE.MeshBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: 0.1, depthWrite: false }),
+      danger: new THREE.MeshBasicMaterial({ color: 0xff2a1a, transparent: true, opacity: 0.62, depthWrite: false }),
+      hazard: new THREE.MeshBasicMaterial({ color: 0xb04aff, transparent: true, opacity: 0.4, depthWrite: false }),
     };
     this.hlGeo = new THREE.PlaneGeometry(0.92, 0.92).rotateX(-Math.PI / 2);
     const ring = new THREE.RingGeometry(0.4, 0.5, 4, 1, Math.PI / 4).rotateX(-Math.PI / 2);
@@ -662,13 +664,14 @@ export class Renderer {
     this.scene.add(this.turnRing);
   }
   clearHighlights(layer) {
-    this.hl = this.hl.filter((h) => { if (layer && h.layer !== layer) return true; this.hlGroup.remove(h.mesh); return false; });
+    // (a layer whose name starts with '!' stays until it is cleared by name: a lord's marked ground, a hazard)
+    this.hl = this.hl.filter((h) => { if (layer ? h.layer !== layer : h.layer[0] === '!') return true; this.hlGroup.remove(h.mesh); return false; });
   }
   highlight(tiles, kind, layer = 'main') {
     for (const t of tiles) {
       const m = new THREE.Mesh(this.hlGeo, this.hlMats[kind]);
       m.position.set(t.x, this.world.y(t.x, t.z) + (kind === 'aoe' ? 0.06 : 0.04), t.z);
-      m.renderOrder = kind === 'aoe' ? 3 : 2;
+      m.renderOrder = kind === 'aoe' || kind === 'danger' ? 3 : 2;
       this.hlGroup.add(m);
       this.hl.push({ mesh: m, layer });
     }

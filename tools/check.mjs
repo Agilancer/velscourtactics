@@ -1,9 +1,11 @@
 // Sanity checks that need no browser: the world builds, every class and item is well formed.
 import { buildWorld, recruitSpots, REGIONS, TOWN, N } from '../src/world/map.js';
-import { CLASSES, CLASS_IDS, SPELLS, SUMMONS, STATUS, SKILL_LEVELS } from '../src/data/classes.js';
+import { CLASSES, CLASS_IDS, SPELLS, SUMMONS, STATUS, SKILL_LEVELS, COMBOS } from '../src/data/classes.js';
 import { WEAPONS, ARMORS, makeItem, itemName, itemStats } from '../src/data/items.js';
-import { ZOMBIES, QUESTS, zombieStats } from '../src/data/enemies.js';
-import { FOLK, HEROES } from '../src/data/cast.js';
+import { ZOMBIES, QUESTS, zombieStats, LORD_KIT, KIND, RIVAL_NAMES } from '../src/data/enemies.js';
+import * as CAST from '../src/data/cast.js';
+import { STANCES, ERRANDS, ERRAND_ORDER, DESTS, PURSES, BOONS, GOALS, ordersOf } from '../src/game/doctrine.js';
+const { FOLK, HEROES, BANTER, STRAYS } = CAST;
 import { newState, heroStats, recruit, heroSkills } from '../src/game/party.js';
 import { readFileSync } from 'fs';
 let bad = 0; const ok = (c, m) => { if (!c) { bad++; console.error('FAIL', m); } };
@@ -91,4 +93,28 @@ for (const h in HEROES) recruit(st, h);
 for (const h of Object.values(st.heroes)) { const s = heroStats(h); ok(s.hp > 0 && s.atk > 0 && heroSkills(h).length >= 1, h.name + ' stats'); }
 console.log('paladin L1', heroStats(st.heroes.lead), 'shambler L1', zombieStats(0, 1), 'brute L9', zombieStats(4, 9), 'bone golem L11', zombieStats(ZOMBIES.findIndex((z) => z.boss), 11));
 console.log(itemName(makeItem('sword', 2, 3)), itemStats(makeItem('plate', 1, 1)));
+// ---- what auto-play and the fights are told by: combos, lords' kits, stances, orders, boons, banter ----
+for (const c of COMBOS) ok(STATUS[c.need] && c.mult > 1 && typeof c.when === 'function' && (!c.st || STATUS[c.st[0]]) && (!c.spread || STATUS[c.spread[0]]), 'combo ' + c.id);
+for (const z of ZOMBIES) if (z.lord || z.boss) ok(LORD_KIT[z.id], z.id + ' has a lord\'s kit');
+for (const id in LORD_KIT) {
+  const k = LORD_KIT[id];
+  ok(KIND[id] != null && k.big.pow > 1 && k.big.aoe >= 1 && k.cry.length === 3 && STATUS[k.hazard] && (!k.big.st || STATUS[k.big.st[0]]), 'lord kit ' + id);
+  for (const a of k.adds) ok(KIND[a] != null && !ZOMBIES[KIND[a]].lord, `${id} calls ${a}`);
+}
+ok(new Set(RIVAL_NAMES).size === RIVAL_NAMES.length && RIVAL_NAMES.length >= 12, 'rival names');
+for (const id in STANCES) ok(['dmg', 'kill', 'heal', 'safe', 'ward', 'thrift'].every((k) => typeof STANCES[id][k] === 'number') && STANCES[id].desc, 'stance ' + id);
+ok(ERRAND_ORDER.length === Object.keys(ERRANDS).length && ERRAND_ORDER.every((k) => ERRANDS[k]), 'every errand has its place in the order');
+ok(DESTS.length === REGIONS.length + 2 && PURSES.length >= 3, 'somewhere to go and something to spend on');
+{ const o = ordersOf({ orders: { prio: ['hunt', 'nonsense'], dest: 'nowhere' } }); ok(o.prio.length === ERRAND_ORDER.length && o.prio[0] === 'hunt' && o.dest === 'fair', 'orders mend themselves'); }
+ok(new Set(BOONS.map((b) => b.id)).size === BOONS.length && BOONS.every((b) => b.add || b.gold || b.consum), 'boons');
+for (const k of ['rout', 'ambush', 'courier', 'rescue', 'holdout', 'gate']) ok(GOALS[k], 'fight kind ' + k);
+for (const ev of ['walk', 'seen', 'grave', 'easy', 'kill', 'crit', 'low', 'down', 'healed', 'combo', 'windup', 'call', 'won', 'close', 'lost', 'rival', 'rivalDown', 'chest', 'rest', 'shop', 'dread', 'lord', ...REGIONS.map((R) => R.id)])
+  ok(BANTER[ev] && (Array.isArray(BANTER[ev]) ? BANTER[ev].length : BANTER[ev].any?.length), 'banter for ' + ev);
+for (const k in BANTER.walk) ok(k === 'any' || HEROES[k] || CLASSES[k], 'banter.walk.' + k + ' is somebody');
+ok(STRAYS.length >= 3 && STRAYS.every((d) => d.name && d.cry && d.thanks && CLASSES[d.look.cls]), 'strays');
+// the V and T rule: nothing said anywhere names both of them
+(function both(v, where) {
+  if (typeof v === 'string') ok(!(/velscour/i.test(v) && /tessariel/i.test(v)), 'a line names both V and T: ' + where);
+  else if (v && typeof v === 'object') for (const k in v) both(v[k], where + '.' + k);
+})({ ...CAST, QUESTS, LORD_KIT }, 'data');
 console.log(bad ? bad + ' FAILED' : 'all good'); process.exit(bad ? 1 : 0);

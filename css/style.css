@@ -27,7 +27,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 html, body { cursor: var(--cur), auto;
   cursor: -webkit-image-set(url(../assets/ui/title/cursor.png) 1x, url(../assets/ui/title/cursor@2x.png) 2x) 1 1, auto;
   cursor: image-set(url(../assets/ui/title/cursor.png) 1x, url(../assets/ui/title/cursor@2x.png) 2x) 1 1, auto; }
-button, .hrow, #cards { cursor: var(--cur-on), pointer;
+button, #cards { cursor: var(--cur-on), pointer;
   cursor: -webkit-image-set(url(../assets/ui/title/cursor_hover.png) 1x, url(../assets/ui/title/cursor_hover@2x.png) 2x) 1 1, pointer;
   cursor: image-set(url(../assets/ui/title/cursor_hover.png) 1x, url(../assets/ui/title/cursor_hover@2x.png) 2x) 1 1, pointer; }
 input { cursor: text; }
@@ -55,12 +55,12 @@ kbd { font: 700 .8em var(--font-head); border: 1px solid var(--gold-dk); border-
 button .ic-gold { width: 1.15em; height: 1.15em; margin: 0 .12em 0 .2em; vertical-align: -.25em; }
 
 /* ---- buttons, on the kit's plate (button / button_on); tabs on its tabs ---- */
-.btn, #bar button, .bt-btn, .cls, .mini button {
+.btn, .bt-btn, .cls {
   background: none; border: solid transparent; border-width: 7px 14px; border-radius: 0;
   border-image: var(--k-btn) 24 44 fill / 8px 15px / 0 stretch;
   color: #f3e6c4; padding: 2px 2px; font-family: var(--font-head); font-weight: 700; font-size: .85rem; letter-spacing: .04em; text-shadow: 0 1px 2px #000;
 }
-.btn:hover, #bar button:hover, .bt-btn:hover, .cls:hover, .mini button:hover, .btn:active, .bt-btn:active { border-image-source: var(--k-btn-on); color: var(--gold-lt); }
+.btn:hover, .bt-btn:hover, .cls:hover, .btn:active, .bt-btn:active { border-image-source: var(--k-btn-on); color: var(--gold-lt); }
 .btn.big { font-size: 1.1rem; border-width: 9px 18px; border-image-width: 11px 20px; padding: 4px 12px; min-width: 220px; }
 .btn.sm { border-width: 5px 10px; border-image-width: 6px 11px; padding: 1px 2px; font-size: .75rem; white-space: nowrap; }
 .seg button {
@@ -75,42 +75,16 @@ button .ic-gold { width: 1.15em; height: 1.15em; margin: 0 .12em 0 .2em; vertica
 /* ---- panels, on the kit's dark frame (panel) ---- */
 .panel { background: none; border: var(--pb) solid transparent; border-radius: 0; border-image: var(--k-panel) 72 fill / var(--pw) / 4px round; box-shadow: none; }
 /* the small plates: a thinner frame of the same */
-.pm, #tracker div, #prompt, #autostat, .toast, .bt-who, .bt-hint, .bt-info {
+#tracker div, #prompt, .toast, .bt-who, .bt-hint, .bt-info {
   background: none; border: 5px solid transparent; border-radius: 0; border-image: var(--k-panel) 72 fill / 14px / 0 round; }
 
 /* ---- HUD ---- */
-#party { position: absolute; left: 10px; top: 10px; display: flex; flex-direction: column; gap: 3px; pointer-events: none; }
-.pm { padding: 3px 8px 5px; width: 158px; line-height: 1.1; }
-.pm.lead { box-shadow: 0 0 10px -3px var(--gold-lt); }
-.pm.down { opacity: .5; }
-.pm b { font: 700 .82rem var(--font-head); display: block; text-shadow: 0 1px 2px #000; }
-.pm small { display: block; font-size: .68rem; margin-bottom: 1px; }
 /* the bars: life and mana (or rage) in the kit's bar frame */
-.pm .bars { display: block; border: solid transparent; border-width: 3px 7px; border-image: var(--k-barframe) 22 56 fill / 4px 9px / 0 stretch; padding: 0 1px; }
-.pm i { display: block; height: 5px; background: rgba(0, 0, 0, .65); overflow: hidden; }
-.pm i + i { margin-top: 1px; height: 4px; }
-.pm i u { display: block; height: 100%; background: var(--k-life) 0 50% / auto 100% repeat-x; }
-.pm i.mp u { background-image: var(--k-mana); } .pm i.rage u { background-image: var(--k-stam); filter: hue-rotate(-16deg) saturate(1.4); }
-#topright { position: absolute; right: 10px; top: 10px; text-align: right; pointer-events: none; }
-#gold { font: 700 1.05rem var(--font-head); color: var(--gold-lt); text-shadow: 0 1px 3px #000, 0 0 8px #000; }
 #gold .ic { width: 1.6em; height: 1.6em; vertical-align: -.45em; filter: drop-shadow(0 1px 2px #000); }
 #tracker div { font-size: .82rem; padding: 1px 8px 2px 5px; margin-top: 4px; display: inline-block; clear: both; float: right; }
 #tracker div .ic { width: 1.15em; height: 1.15em; margin-right: .3em; vertical-align: -.22em; }
 #tracker .ready { color: var(--gold-lt); }
-#bar { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); display: flex; gap: 4px; }
-#bar button { border-width: 6px 12px; border-image-width: 7px 13px; padding: 0 2px; font-size: .76rem; white-space: nowrap; }
-#bar button .ic { width: 1.35em; height: 1.35em; margin: -2px .25em -2px -2px; vertical-align: -.36em; }
-#bar button.on { border-image-source: var(--k-btn-on); color: var(--gold-lt); }
-#hud:not(.fight) #b-pace { display: none; }   /* the fight's speed: only in a fight */
-#b-pace { min-width: 3.4em; }
-#b-mute.muted { text-decoration: line-through; color: var(--dim); border-image-source: var(--k-btn); }
-#hud.fight #bar [data-open], #hud.fight #pad, #hud.fight #btns .bj small { opacity: .0; pointer-events: none; }
 #hud.fight #pad { opacity: 1; pointer-events: auto; }
-#hud.fight #tracker { display: none; }   /* the field needs the room; the bounties are back when it's over */
-/* a phone's drawer (the button that opens it, and its copy of the quests): on a big screen the bar stands on its own */
-#b-menu, #dtrack { display: none; }
-#drawer { display: contents; }
-#autostat { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); font-size: .8rem; color: var(--gold-lt); padding: 0 12px 1px; pointer-events: none; white-space: nowrap; }
 #prompt { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); padding: 4px 14px; pointer-events: none; }
 /* the d-pad: the kit's round buttons on its stick ring */
 #pad { position: absolute; left: 22px; bottom: 22px; width: 150px; height: 150px; }
@@ -138,13 +112,6 @@ button .ic-gold { width: 1.15em; height: 1.15em; margin: 0 .12em 0 .2em; vertica
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
 
 /* ---- talk: on the kit's paper ---- */
-#dialog { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); width: min(720px, 94vw); z-index: 30;
-  border: 14px solid transparent; border-image: var(--k-paper) 56 fill / 24px / 0 stretch; padding: 4px 12px 2px; color: var(--ink);
-  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .8)); }
-#dialog .who { font: 700 1rem var(--font-head); color: #6a3c10; margin-bottom: 2px; }
-#dialog .who::after { content: ''; display: block; height: 7px; width: min(260px, 60%); margin-top: 2px; background: var(--k-rule) left center / 100% 100% no-repeat; opacity: .7; }
-#dialog .say { font-size: 1.12rem; min-height: 3.2em; font-weight: 500; }
-#dialog .opts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; flex-wrap: wrap; }
 
 /* ---- panels ---- */
 #modal, #screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(5, 3, 3, .6); z-index: 20; }
@@ -196,14 +163,6 @@ button .ic-gold { width: 1.15em; height: 1.15em; margin: 0 .12em 0 .2em; vertica
 .seg { display: flex; gap: 3px; margin: 8px 0; flex-wrap: wrap; }
 .seg button.on, .seg button:active { border-image-source: var(--k-tab-on); color: #fff4d2; }
 .cls.on, .bt-btn.sel { border-image-source: var(--k-btn-on); color: var(--gold-lt); }
-.body.pp { display: grid; grid-template-columns: 270px 1fr; gap: 16px; }
-.pp-res { max-height: 46vh; overflow-y: auto; padding-right: 4px; scrollbar-color: var(--gold-dk) transparent; scrollbar-width: thin; }
-.hrow { padding: 5px 8px; border: 1px solid #2a1c10; border-radius: 3px; margin-bottom: 4px; position: relative; background: rgba(0, 0, 0, .25); }
-.hrow.on { border-color: var(--gold-dk); background: linear-gradient(90deg, rgba(106, 74, 20, .35), rgba(28, 18, 10, .6)); box-shadow: inset 2px 0 0 var(--gold); }
-.hrow b { font: 700 .86rem var(--font-head); display: block; } .hrow small { display: block; }
-.mini { position: absolute; right: 4px; top: 3px; display: flex; gap: 1px; }
-.mini button { border-width: 3px 7px; border-image-width: 4px 8px; padding: 0 1px; font-size: .62rem; line-height: 1.3; }
-.sheethead { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; }
 .socks { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 4px 6px 66px; }
 .sock { display: inline-flex; align-items: center; gap: 5px; background: rgba(0, 0, 0, .35); border: 1px solid #3a2814; border-radius: 16px; padding: 1px 10px 1px 1px; font-size: .76rem; color: var(--dim); }
 .sock .pic { width: 26px; height: 26px; }
@@ -467,46 +426,12 @@ i.role.big { width: 44px; height: 44px; padding: 10px; background: var(--k-medal
   :root { --pb: 9px; --pw: 22px;
     --sl: max(6px, env(safe-area-inset-left)); --sr: max(6px, env(safe-area-inset-right));
     --st: max(6px, env(safe-area-inset-top)); --sb: max(6px, env(safe-area-inset-bottom)); }
-  #party { left: var(--sl); top: var(--st); gap: 2px; pointer-events: auto; }
-  .pm { width: 92px; padding: 0 4px 2px; border-width: 3px; border-image-width: 9px; }
-  .pm b { font-size: .64rem; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .pm small { display: none; }
-  .pm .bars { border-width: 2px 5px; border-image-width: 3px 6px; }
-  .pm i { height: 4px; } .pm i + i { height: 3px; }
-  #hud.fight #party, #hud.fight #topright { display: none; }
-  #topright { right: calc(var(--sr) + 46px); top: calc(var(--st) + 7px); }
-  #gold { font-size: .9rem; }
-  #tracker { display: none; }
 
   /* the drawer's button: the kit's round button with three gilt bars; a pip when a quest can be claimed,
      and AUTO under it while auto-play has the party */
-  #b-menu { display: block; position: absolute; right: var(--sr); top: var(--st); z-index: 11; width: 40px; height: 40px; border: 0; padding: 0;
-            border-radius: 50%; background: var(--k-round) center / 100% 100% no-repeat; }
-  #hud.drawer #b-menu { background-image: var(--k-round-on); }
-  #b-menu i { position: absolute; left: 12px; right: 12px; top: 50%; height: 2px; margin-top: -1px; border-radius: 1px; background: var(--gold-lt);
-              box-shadow: 0 -6px 0 var(--gold-lt), 0 6px 0 var(--gold-lt), 0 0 3px #000; }
-  #b-menu.ready::after { content: ''; position: absolute; right: 0; top: 0; width: 11px; height: 11px; border-radius: 50%;
-                         background: radial-gradient(circle at 40% 35%, #fff4c0, #e8a020 60%, #8a5010); box-shadow: 0 0 7px rgba(255, 200, 90, .9), 0 0 0 1px #000; }
-  #b-menu.auto::before { content: 'Auto'; position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: -1px;
-                         font: 700 9px var(--font-head); letter-spacing: .14em; text-transform: uppercase; color: var(--gold-lt); text-shadow: 0 1px 2px #000, 0 0 4px #000; }
   /* the drawer: the bar's buttons two by two, the quests under them (a tap opens the Quests screen) */
-  #drawer { display: none; position: absolute; right: var(--sr); top: calc(var(--st) + 48px); z-index: 11; width: 218px; max-height: calc(100% - var(--st) - 54px);
-            overflow-y: auto; scrollbar-width: none; flex-direction: column; gap: 6px; padding: 5px 4px 6px;
-            border: 5px solid transparent; border-image: var(--k-panel) 72 fill / 14px / 0 round; animation: rise .18s ease-out; }
-  #hud.drawer #drawer { display: flex; }
-  #bar { position: static; transform: none; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-  #bar button { font-size: .74rem; padding: 3px 1px; }
-  #hud.fight #bar [data-open], #hud.fight #b-dpad { display: none; }
-  #dtrack { display: block; font-size: .78rem; line-height: 1.2; }
-  #dtrack:empty, #hud.fight #dtrack { display: none; }
-  #dtrack h4 { color: var(--gold); font-size: .72rem; padding: 0 2px 5px; margin-bottom: 3px; background: var(--k-rule) left bottom / 100% 5px no-repeat; }
-  #dtrack div { padding: 3px 2px; border-bottom: 1px solid #1c120a; }
-  #dtrack div:last-child { border-bottom: 0; }
-  #dtrack .ic { width: 1.15em; height: 1.15em; margin-right: .3em; vertical-align: -.22em; }
-  #dtrack .ready { color: var(--gold-lt); }
 
   /* the walk */
-  #autostat { top: calc(var(--st) + 8px); max-width: calc(100% - 236px); overflow: hidden; text-overflow: ellipsis; font-size: .7rem; padding: 0 8px 1px; }
   #hud.fight #autostat { display: none; }
   #toasts { width: min(440px, calc(100% - 220px)); top: calc(var(--st) + 30px); gap: 3px; }
   .toast { font-size: .8rem; padding: 2px 10px 3px; }
@@ -523,10 +448,6 @@ i.role.big { width: 44px; height: 44px; padding: 10px; background: var(--k-medal
   #btns button small { font-size: .56rem; }
   #btns .bj { margin-bottom: 20px; }
   #hud.fight #pad, #hud.fight #btns { display: none; }   /* in a fight a tap on the tile does what they did */
-  #dialog { border-width: 11px; border-image-width: 18px; bottom: var(--sb); width: min(680px, calc(100% - 12px)); padding: 2px 8px 0; }
-  #dialog .who { font-size: .9rem; }
-  #dialog .say { font-size: 1rem; min-height: 2.6em; }
-  #dialog .opts { margin-top: 3px; }
 
   /* the panels take the whole screen */
   #modal .panel, #screen .panel, #screen .panel.wide { width: calc(100% - 8px); max-height: calc(100% - 8px); }
@@ -572,12 +493,9 @@ i.role.big { width: 44px; height: 44px; padding: 10px; background: var(--k-medal
 /* on its side: the menu down the right from under the top row, the log no wider than half the screen */
 @media (max-height: 520px) and (orientation: landscape) {
   .cr { grid-template-columns: 1fr 1fr; }
-  .body.pp { grid-template-columns: 220px 1fr; }
   .bt-menu { width: 176px; top: calc(var(--st) + 46px); transform: none; max-height: calc(100% - var(--st) - var(--sb) - 46px); }
   .bt-log { right: auto; width: min(420px, 50vw); }
   .bt-info { max-width: min(340px, calc(100% - 200px)); }
   .sk-ban { top: 18%; }
-  #dialog { width: min(620px, 78vw); }
-  #dialog .say { min-height: 2.4em; }
   #prompt { bottom: calc(var(--sb) + 8px); max-width: calc(100% - 300px); }
 }

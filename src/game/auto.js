@@ -1,9 +1,11 @@
 // Auto-play for the walking half of the game (the fighting half is Battle.plan).
-// It rests when hurt, reads the bounty board, gathers a full party, then goes looking for the dead.
+// It rests when hurt, reads the bounty board, gathers a full party, spends the gold, settles scores, opens chests
+// and goes looking for the dead: in the order, and to the places, the player's marching orders say (doctrine.js).
 // Teach it anything new you add to the world: a new kind of errand is one more entry in goals().
 import { N, TOWN } from '../world/map.js';
 import { QUESTS } from '../data/enemies.js';
 import { PARTY_MAX, heroStats, partyHeroes, questReady, lead } from './party.js';
+import { ordersOf, DESTS } from './doctrine.js';
 
 export class Auto {
   constructor(g) { this.g = g; this.path = []; this.goal = null; this.holdT = 0; this.failT = 0; this.lost = []; this.apart = { day: 0, ids: new Set() }; }
@@ -18,38 +20,62 @@ export class Auto {
   }
   hold(secs = 1.2) { this.holdT = secs; this.reset(); }
 
-  // What to do next, most pressing first. Each: { why, targets: [{x,z}], act }.
+  // What to do next, most pressing first. Each: { why, detail, targets: [{x,z}], act }. The errands are found by
+  // key, then put in the order the player's marching orders give (game/doctrine.js: st.orders), leaving out any
+  // the player has switched off.
   goals() {
-    const g = this.g, st = g.st, ex = g.explore, w = g.world, out = [];
-    const heroes = partyHeroes(st);
-    const hurt = heroes.some((h) => h.hp <= 0) || heroes.reduce((a, h) => a + h.hp / heroStats(h).hp, 0) / heroes.length < 0.5;
+    const g = this.g, st = g.st, ex = g.explore, w = g.world, o = ordersOf(st), found = {};
+    const heroes = partyHeroes(st), L = ex.leader;
+    const share = heroes.reduce((a, h) => a + Math.max(0, h.hp) / heroStats(h).hp, 0) / heroes.length;
+    const hurt = heroes.some((h) => h.hp <= 0) || share < o.retreat;
     const npc = (id) => ex.npcs.find((n) => n.id === id);
-    if (hurt && npc('aggie')) out.push({ why: 'Heading to The Last Toll to rest', targets: [npc('aggie')], act: () => g.rest() });
+    if (hurt && npc('aggie')) found.rest = { why: 'Heading to The Last Toll to rest', detail: heroes.some((h) => h.hp <= 0) ? 'somebody is down' : `the party is at ${Math.round(share * 100)}% of its life`, targets: [npc('aggie')], act: () => g.rest() };
     const board = QUESTS.filter((q) => q.from === 'board');
-    if (board.some((q) => !st.quests[q.id] || questReady(st, q))) out.push({ why: 'Reading the bounty board', targets: [w.board], act: () => g.boardAuto() });
+    const due = board.filter((q) => questReady(st, q));
+    if (board.some((q) => !st.quests[q.id]) || due.length) found.board = { why: 'Reading the bounty board', detail: due.length ? `${due[0].name} is done` : 'the Watch has new paper up', targets: [w.board], act: () => g.boardAuto() };
     if (st.party.length < PARTY_MAX) {
       const free = ex.npcs.filter((n) => n.hero);
-      if (free.length) out.push({ why: 'Looking for someone to walk with', targets: free, act: (t) => g.recruitNpc(t, true) });
+      if (free.length) found.recruit = { why: 'Looking for someone to walk with', detail: `${st.party.length} of ${PARTY_MAX} in the line`, targets: free, act: (t) => g.recruitNpc(t, true) };
+    }
+    // the gold: only when the Hollow is not half the map away
+    if (Math.hypot(L.x - TOWN.cx, L.z - TOWN.cz) < 60) {
+      const p = g.shopPlan();
+      if (p?.npc) found.shop = { why: 'Spending the gold', detail: p.why, targets: [p.npc], act: () => g.autoShop() };
     }
     // A fight takes in everything standing near the one that sees you, so the danger at a spot is the highest level
     // within a pack's reach of it (the crypt's keeper stands among goblins). Where a fight was lost, keep away until
-    // the leader has a level more than they had then.
-    const lvl = lead(st).lvl;
+    // the leader has a level more than they had then. `nerve` is how far above the party's level is still fair.
+    const lvl = lead(st).lvl, nerve = o.nerve;
     const danger = (x, z, r = 7.5) => ex.foes.reduce((m, f) => (Math.hypot(f.x - x, f.zz - z) <= r ? Math.max(m, f.level) : m), 0);
     const shy = (x, z) => this.lost.some((l) => lvl <= l.lvl && Math.hypot(l.x - x, l.z - z) < 12);
+    // a score to settle: whichever named one the party is now a match for
+    const rivals = ex.foes.filter((f) => f.rival && f.level <= lvl + Math.max(1, nerve - 1) && danger(f.x, f.zz) <= lvl + nerve + 1);
+    if (rivals.length) found.rival = { why: 'Settling a score', detail: rivals[0].z.name, targets: rivals.map((f) => ({ x: f.x, z: f.zz })), act: null, near: 3 };
     // chests: the knolls' and the crypt's, once whatever stands guard over them is a fair fight and the woods
     // round them are of the party's level
     const zone = (x, z) => 1 + 2 * Math.max(0, Math.min(4, Math.floor((Math.hypot(x - TOWN.cx, z - TOWN.cz) - 22) / 9)));
-    const shut = w.chests.filter((c) => !st.opened[c.id] && zone(c.x, c.z) <= lvl + 1 && danger(c.x, c.z, 10) <= lvl + 1 && !shy(c.x, c.z));
-    if (shut.length) out.push({ why: 'Going for a chest', targets: shut, act: (c) => { if (!st.opened[c.id]) g.interact({ kind: 'chest', chest: c }); } });
-    // the dead: the kinds a bounty wants first, and nothing far above the party's level
-    const wanted = new Set(QUESTS.filter((q) => st.quests[q.id]?.state === 'active' && q.kill && !questReady(st, q)).map((q) => q.kill));
+    const shut = w.chests.filter((c) => !st.opened[c.id] && zone(c.x, c.z) <= lvl + 1 && danger(c.x, c.z, 10) <= lvl + Math.max(0, nerve - 1) && !shy(c.x, c.z));
+    if (shut.length) found.chests = { why: 'Going for a chest', detail: 'what guards it is a fair fight', targets: shut, act: (c) => { if (!st.opened[c.id]) g.interact({ kind: 'chest', chest: c }); } };
+    // the dead: where the orders say, the kinds a bounty wants first, and nothing too far above the party's level
+    const wantedQ = QUESTS.filter((q) => st.quests[q.id]?.state === 'active' && q.kill && !questReady(st, q));
+    const wanted = new Set(wantedQ.map((q) => q.kill));
     const apart = (f) => this.apart.day === st.day && this.apart.ids.has(f.id);
-    const fair = ex.foes.filter((f) => danger(f.x, f.zz) <= lvl + 2 && !shy(f.x, f.zz) && !apart(f));
-    const pool = fair.filter((f) => wanted.has('any') || wanted.has(f.z.id));
+    const fair = ex.foes.filter((f) => danger(f.x, f.zz) <= lvl + nerve && !shy(f.x, f.zz) && !apart(f));
+    let pool = fair, detail = 'whatever is nearest and fair';
+    if (o.dest === 'lords') {
+      const lords = fair.filter((f) => f.z.lord || f.z.boss);
+      if (lords.length) { pool = lords; detail = lords[0].z.name; } else detail = 'no lord is a fair fight yet: thinning the rest';
+    } else if (o.dest !== 'fair') {
+      const here = fair.filter((f) => !w.inTown(f.x, f.zz) && w.regionAt(f.x, f.zz).id === o.dest);
+      const name = DESTS.find((d) => d.id === o.dest).name;
+      if (here.length) { pool = here; detail = name; } else detail = `nothing fair in ${name} yet`;
+    }
+    const bounty = pool.filter((f) => wanted.has('any') || wanted.has(f.z.id));
+    if (bounty.length) { pool = bounty; const q = wantedQ.find((q) => q.kill === bounty[0].z.id) || wantedQ[0]; detail = `${q.name.replace(/^(Bounty|Writ): /, '')}, for ${q.from === 'board' ? 'the Watch' : 'Lisandra'}`; }
     const foes = (pool.length ? pool : fair.length ? fair : ex.foes).map((f) => ({ x: f.x, z: f.zz }));
-    if (foes.length) out.push({ why: 'Hunting the dead', targets: foes, act: null, near: 3 });
-    return out;
+    if (!fair.length && ex.foes.length) detail = 'nothing out there is a fair fight: taking the least bad';
+    if (foes.length) found.hunt = { why: 'Hunting the dead', detail, targets: foes, act: null, near: 3 };
+    return o.prio.filter((k) => found[k] && !o.off?.[k]).map((k) => found[k]);
   }
 
   // Breadth-first from the leader to the nearest tile beside (or within `near` of) any target.
@@ -90,7 +116,8 @@ export class Auto {
         break;
       }
       if (!this.goal) { g.ui.setAuto('Nothing left to do'); this.failT = 3; return null; }
-      g.ui.setAuto(this.goal.why);
+      g.ui.setAuto(this.goal.why, this.goal.detail);
+      if (this.said !== this.goal.why + this.goal.detail) { this.said = this.goal.why + this.goal.detail; g.ui.chat.line('auto', '', `${this.goal.why}${this.goal.detail ? ': ' + this.goal.detail : ''}.`); }
       g.autoEquip();
     }
     if (!this.path.length) {
