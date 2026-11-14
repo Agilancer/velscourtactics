@@ -17,7 +17,7 @@ import { zombieStats } from '../data/enemies.js';
 import { HEROES } from '../data/cast.js';
 import { heroStats, heroSkills, basicAttack, gainXp, noteKill, partyHeroes } from './party.js';
 import { heroModel, ground, clinks } from './explore.js';
-import { makeSummon, withOverride, shadowDisc, setAnim, setRest, animate } from '../gfx/models.js';
+import { withOverride, sleep, shadowDisc, setAnim, setRest, animate } from '../gfx/models.js';
 import { palOf } from '../gfx/fx.js';
 import { DPAD } from '../core/input.js';
 import { sfx } from '../core/audio.js';
@@ -82,7 +82,7 @@ export class Battle {
     for (const o of this.units) if (o.alive && o.owner === caster.id && o.kind === kind) this.kill(o, null, true);   // one of each at a time
     const pow = Math.max(caster.s.atk, caster.s.mag);
     const s = { hp: Math.round(caster.maxhp * d.hp), mp: 0, atk: Math.round(pow * d.atk), mag: Math.round(pow * d.atk), def: Math.round(caster.s.def * 0.7), res: Math.round(caster.s.res * 0.7), spd: caster.s.spd, move: d.move, jump: d.jump, crit: 3, leech: 0 };
-    const model = withOverride(d.model, makeSummon(d.model)); model.add(shadowDisc(0.3)); this.r.units.add(model);   // a real model where the manifest has one
+    const model = withOverride(d.model); model.add(shadowDisc(0.3)); this.r.units.add(model);
     const basic = { id: 'attack', name: d.kind === 'heal' ? 'Mend' : 'Attack', cost: 0, r: d.r, aoe: 0, at: d.kind === 'heal' ? 'ally' : 'enemy', kind: d.kind, pow: 1, basic: true, el: d.el, chain: d.chain };
     const u = { id: caster.id + '_' + kind, side: caster.side, owner: caster.id, kind, summon: true, name: d.name, lvl: caster.lvl, x, z, s, hp: s.hp, mp: 0, maxhp: s.hp, maxmp: 0,
       skills: [], basic, ct: 40, st: [], model, alive: true, ai: true, undead: kind === 'skeleton' || kind === 'ghoul', color: caster.color, face: caster.face };
@@ -305,7 +305,7 @@ export class Battle {
     u.alive = false; u.hp = 0; u.st = [];
     setAnim(u.model, 'dead');
     if (!quiet) { sfx.die(u.side === 'foe' ? 'foe' : u.summon ? 'summon' : 'hero', u.model.position, this.clinks(u)); this.show.death(u); this.say(`${this.nm(u)} ${u.side === 'foe' ? 'goes down and stays down.' : u.summon ? 'is gone.' : 'has fallen.'}`, 'kill'); }
-    if (u.summon) setTimeout(() => { this.r.units.remove(u.model); }, 700);
+    if (u.summon) setTimeout(() => { sleep(u.model); this.r.units.remove(u.model); }, 700);
     if (u.side === 'foe' && by && by.hero && by.alive) setTimeout(() => { if (by.alive && !this.over) setAnim(by.model, 'taunt'); }, 520);
     if (u.side === 'foe') {
       this.xp += u.s.xp; this.slain.push(u); this.st.slain[u.id] = this.st.day; noteKill(this.st, u.zdef.id);
@@ -901,7 +901,7 @@ export class Battle {
   close(how) {
     this.show.clear();
     for (const u of this.units) if (u.model.userData.wyrmBase) u.model.scale.setScalar(u.model.userData.wyrmBase);
-    for (const u of this.units) if (u.side === 'party') this.r.units.remove(u.model);
+    for (const u of this.units) if (u.side === 'party') { sleep(u.model); this.r.units.remove(u.model); }
     this.chron.remove();
     this.hud.remove();
     const L = this.units.find((u) => u.id === this.st.party[0]);

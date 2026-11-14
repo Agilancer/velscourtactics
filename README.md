@@ -4,8 +4,10 @@ An isometric open-world tactics game in the VELSCOUR universe. You walk Herringt
 round it and the four lands past the pines with a party of up to six in a chain behind you; when one of the dead sees you, the walk stops
 and it becomes a turn-based fight on the spot, Final Fantasy Tactics style.
 
-This is the first playable build. Lisandra has her real model; every other figure is a stand-in made of boxes until the Meshy models arrive
-(`docs/MODELS.md` has the prompts, the animation list and the order to make them in).
+Every class, the townsfolk, the summons and the dead of the pines wear their real models. The dead of the four lands and
+their lords, and whoever minds a recruit's shop once they've joined, are still box stand-ins until theirs are made
+(`docs/MODELS.md` has the prompts, the animation list and the order to make them in). A figure with a model is never
+shown as boxes, and only those near the party have their bodies loaded: the rest are freed, so a phone can hold the world.
 
 ## Run it
 
@@ -114,7 +116,7 @@ and the gear sets the letter size, how dark the window is and its size. Those se
 |---|---|
 | `src/world/map.js` | the world as data: tiles, heights, trees, buildings, packs |
 | `src/world/render.js` | the isometric view, textures, see-through trees, tile highlights |
-| `src/gfx/models.js` | stand-in models, their animation, and the loader for real ones |
+| `src/gfx/models.js` | the loader for real models (loaded near the party, freed far from it), and the stand-ins for kinds with none yet |
 | `src/game/explore.js` | walking, the follow chain, townsfolk, the dead spotting you |
 | `src/game/battle.js` | the fight: placement, the turn clock, skills, statuses, the AI |
 | `src/game/show.js` | how a fight looks: each skill's staging, the numbers, the banners and cut-ins |

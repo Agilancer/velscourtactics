@@ -1,8 +1,8 @@
-// Stand-in 3D models, built from boxes and cones until the Meshy ones arrive.
-// Every model is a Group whose userData.parts names the limbs, so one animator drives them all.
-//
-// To swap in a real model: put the .glb in assets/models/ and name it in assets/models/manifest.json
-// under the same key the stand-in uses (see docs/MODELS.md). Nothing else changes.
+// The figures: real models by key from assets/models/manifest.json (docs/MODELS.md), and box stand-ins for the few
+// that have none yet (the dead of the four lands, and whoever minds a recruit's shop once they've joined).
+// A stand-in is a Group whose userData.parts names the limbs, so one animator drives them all; it is only ever
+// built for a key the manifest lacks. To swap in a real model: put the .glb in assets/models/ and name it in the
+// manifest under the same key. Nothing else changes.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
@@ -99,7 +99,7 @@ function hat(kind, kit, g) {
   return o;
 }
 
-// A person. look: { cls, g: 'm'|'f', tint?, skin?, small? }
+// A person with no model yet. look: { cls, g: 'm'|'f', tint?, skin?, small? }
 export function makePerson(look) {
   const kit = { ...(KIT[look.cls] || KIT.ranger) };
   if (look.tint != null) { kit.body = look.tint; kit.plain = true; }
@@ -136,7 +136,7 @@ export function makePerson(look) {
   return root;
 }
 
-// The dead. v is the zombie's definition from data/enemies.js.
+// The dead that have no model yet. v is the zombie's definition from data/enemies.js.
 export function makeZombie(v) {
   const c = v.color, dark = new THREE.Color(c).multiplyScalar(0.55).getHex();
   const root = new THREE.Group(), body = new THREE.Group();
@@ -144,8 +144,6 @@ export function makeZombie(v) {
   const legL = grp(-0.12, 0.45, 0, part(box(0.16, 0.45, 0.18), dark, 0, -0.225, 0));
   const legR = grp(0.12, 0.45, 0, part(box(0.16, 0.45, 0.18), dark, 0, -0.225, 0));
   const torso = grp(0, 0, 0, part(box(0.46, 0.5, 0.3), dark, 0, 0.7, 0));
-  if (v.id === 'bonesack') torso.add(part(sph(0.36, 10), 0x9aa85a, 0, 0.66, 0.1), part(sph(0.1, 6), 0xc8d07a, 0.16, 0.8, 0.36), part(sph(0.08, 6), 0xc8d07a, -0.12, 0.56, 0.4));
-  if (v.id === 'brute') torso.add(part(box(0.7, 0.3, 0.4), dark, 0, 0.9, 0), part(G('chain', () => new THREE.TorusGeometry(0.32, 0.04, 6, 12)), 0x3a3a3a, 0, 0.78, 0).rotateX(Math.PI / 2));
   const head = grp(0, 1.16, 0.06, part(sph(0.22, 8), c, 0, 0, 0), part(box(0.06, 0.05, 0.02), 0xe8e0a0, -0.08, 0.02, 0.21, { emissive: 0x6a6020 }), part(box(0.06, 0.05, 0.02), 0xe8e0a0, 0.08, 0.02, 0.21, { emissive: 0x6a6020 }), part(box(0.16, 0.05, 0.02), DARK, 0, -0.1, 0.2));
   const armL = grp(-0.31, 0.9, 0, part(box(0.11, 0.46, 0.11), c, 0, -0.22, 0));
   const armR = grp(0.31, 0.9, 0, part(box(0.11, 0.46, 0.11), c, 0, -0.22, 0));
@@ -167,50 +165,13 @@ export function makeZombie(v) {
     case 'stoker': torso.add(part(box(0.56, 0.5, 0.08), 0x3a3a3e, 0, 0.72, 0.16), part(box(0.2, 0.14, 0.03), 0xff7a20, 0, 0.7, 0.21, HOT), part(box(0.74, 0.3, 0.4), dark, 0, 0.9, 0)); head.add(part(cyl(0.2, 0.24, 0.1, 8), 0x1a1a1a, 0, 0.2, 0)); armR.add(part(cyl(0.03, 0.03, 1.2, 5), WOOD, 0, -0.3, 0.3).rotateX(Math.PI / 2 - 0.4), part(box(0.3, 0.04, 0.34), 0x3a3a3e, 0, -0.06, 0.92)); break;
   }
   body.add(legL, legR, torso, head, armL, armR);
-  body.rotation.x = v.id === 'gnawer' || v.id === 'husk' ? 0.5 : v.id === 'slagback' ? 0.4 : 0.16;
+  body.rotation.x = v.id === 'husk' ? 0.5 : v.id === 'slagback' ? 0.4 : 0.16;
   root.scale.setScalar(v.scale);
   root.userData.parts = { body, legL, legR, armL, armR, head, torso };
   root.userData.zombie = true;
   root.userData.lean = body.rotation.x;
   root.userData.height = 1.5 * v.scale;
   return root;
-}
-
-// What the classes call up.
-export function makeCreature(kind) {
-  const root = new THREE.Group(), body = new THREE.Group();
-  root.add(body);
-  let parts = { body }, height = 0.9;
-  const legs = (c, y, sx, sz) => {
-    const mk = (x, z) => grp(x, y, z, part(box(0.1, y, 0.1), c, 0, -y / 2, 0));
-    const a = mk(-sx, sz), b = mk(sx, sz), d = mk(-sx, -sz), e = mk(sx, -sz);
-    body.add(a, b, d, e);
-    parts.legL = a; parts.legR = b; parts.armL = e; parts.armR = d;
-  };
-  if (kind === 'wolf') {
-    body.add(part(box(0.34, 0.3, 0.8), 0x6a6a72, 0, 0.5, 0), part(box(0.26, 0.26, 0.3), 0x7a7a84, 0, 0.66, 0.48), part(box(0.12, 0.1, 0.2), 0x4a4a52, 0, 0.6, 0.7), part(box(0.08, 0.08, 0.4), 0x5a5a62, 0, 0.56, -0.56));
-    legs(0x5a5a62, 0.36, 0.13, 0.28);
-  } else if (kind === 'slime') {
-    const s = part(sph(0.4, 12), 0x4a8ae8, 0, 0.3, 0, { transparent: true, opacity: 0.85 }); s.scale.y = 0.75;
-    body.add(s, part(sph(0.05, 6), DARK, -0.12, 0.38, 0.33), part(sph(0.05, 6), DARK, 0.12, 0.38, 0.33)); height = 0.7;
-  } else if (kind === 'whelp') {
-    body.add(part(sph(0.26, 8), 0xc8482a, 0, 0.8, 0), part(sph(0.17, 8), 0xd85a3a, 0, 1.0, 0.24), part(box(0.5, 0.04, 0.3), 0x8a2a1a, -0.4, 0.9, 0).rotateZ(0.4), part(box(0.5, 0.04, 0.3), 0x8a2a1a, 0.4, 0.9, 0).rotateZ(-0.4), part(cone(0.07, 0.4, 5), 0xc8482a, 0, 0.66, -0.36).rotateX(-1.3));
-    parts.fly = true; height = 1.3;
-  } else if (kind === 'turret') {
-    body.add(part(cyl(0.05, 0.3, 0.5, 3), 0x5a4a3a, 0, 0.25, 0), part(box(0.34, 0.26, 0.34), 0xb08a4a, 0, 0.62, 0), part(cyl(0.05, 0.05, 0.5, 6), 0x3a3a3a, 0, 0.64, 0.38).rotateX(Math.PI / 2)); height = 0.9;
-  } else if (kind === 'totem') {
-    body.add(part(cyl(0.2, 0.24, 0.5, 8), 0x7a4a2a, 0, 0.25, 0), part(cyl(0.2, 0.2, 0.45, 8), 0x2e8a6a, 0, 0.72, 0), part(cyl(0.16, 0.2, 0.4, 8), 0xb04a2a, 0, 1.14, 0), part(box(0.6, 0.06, 0.08), 0x7a4a2a, 0, 1.05, 0), part(sph(0.06, 6), 0xffe2a0, 0, 0.74, 0.2, { emissive: 0x806020 })); height = 1.4;
-  }
-  root.userData.parts = parts;
-  root.userData.height = height;
-  return root;
-}
-
-export function makeSummon(model) {
-  if (model === 'skeleton') return makePerson({ cls: 'necromancer', g: 'm', tint: 0xd8d0b8, skin: 0xe8e0c8, scale: 0.9 });
-  if (model === 'ghoul') return makeZombie({ id: 'gnawer', color: 0x7a6a8a, scale: 0.95 });
-  if (model === 'squire') return makePerson({ cls: 'lancer', g: 'm', scale: 0.85 });
-  return makeCreature(model);
 }
 
 // ---- animation: one state machine for every stand-in ----
@@ -262,7 +223,6 @@ export function animate(model, dt) {
     case 'dead': { const k = Math.min(1, t / 0.5); brx = -Math.PI / 2 * k; by = 0.1 * k; break; }
     default: by = Math.sin(t * 2) * 0.012; if (!zomb) { ax = Math.sin(t * 2) * 0.05; bx = -ax; } else brz = Math.sin(t * 1.3) * 0.05;
   }
-  if (p.fly) by += 0.1 * Math.sin(t * 5);
   if (p.legL) p.legL.rotation.x = lx;
   if (p.legR) p.legR.rotation.x = rx;
   if (p.armL) p.armL.rotation.x = ax;
@@ -307,7 +267,6 @@ function inPlace(clip, home) {
   }
   return home;
 }
-// Wraps a stand-in: if the manifest names a .glb for this key, the stand-in is replaced once it loads.
 // Manifest entry: { file, height, turn, anims: {state: clipName}, speed: {state: n}, inPlace, matte, lift,
 //   trim: {state: [from, to]}        seconds of the clip to keep for that state
 //   bones: {boneNameEnding: scale}   proportions, nearer the compact tactics look (legs shorter, head bigger)
@@ -319,16 +278,66 @@ function inPlace(clip, home) {
 //   bank: 'heroes' | 'folk'          the clips come from one of bm's clip banks (gfx/clipbank.js), named in anims by its names
 //   skin: { map, normal }            pictures for a file that comes without (bm's townsfolk), under assets/models/
 //   dye: palette                     a bm body always worn in these colours where nothing covers it (gfx/dye.js PALETTES) }
-const glb = (file) => {
-  if (!loaded.has(file)) loaded.set(file, new Promise((res, rej) => new GLTFLoader().load('assets/models/' + file, res, undefined, rej)));
-  return loaded.get(file);
-};
-export function withOverride(key, standIn) {
+// Files are counted: a body that goes to sleep (far from the party) gives its file back, and a file nobody wears is
+// kept only while it is one of the last few, then freed. A phone hasn't the memory for every body in the world at once.
+const KEEP = 6, idle = [], sets = new Map();
+function take(file) {
+  let e = loaded.get(file);
+  if (!e) {
+    e = { n: 0, p: new Promise((res, rej) => new GLTFLoader().load('assets/models/' + file, res, undefined, rej)) };
+    loaded.set(file, e);
+    e.p.catch(() => { if (loaded.get(file) === e) loaded.delete(file); });   // so the next one to ask tries again
+  }
+  e.n++;
+  const i = idle.indexOf(file); if (i >= 0) idle.splice(i, 1);
+  return e.p;
+}
+function drop(file) {
+  const e = loaded.get(file);
+  if (!e || --e.n > 0) return;
+  idle.push(file);
+  while (idle.length > KEEP) scrap(idle.shift());
+}
+function scrap(file) {
+  const e = loaded.get(file);
+  if (!e || e.n > 0) return;
+  loaded.delete(file);
+  for (const [k, c] of sets) if (c.file === file) sets.delete(k);
+  e.p.then((g) => g.scene.traverse((o) => {
+    if (!o.isMesh) return;
+    o.geometry.dispose();
+    for (const m of [].concat(o.material)) { for (const v of Object.values(m)) if (v && v.isTexture) v.dispose(); m.dispose(); }
+  })).catch(() => {});
+}
+// A key's clips, cut and kept on the spot once, and shared by every body that wears that key.
+function clipsFor(key, def, g) {
+  if (!sets.has(key)) sets.set(key, { file: def.file, p: (async () => {
+    const anims = def.bank ? await bankClips(def.bank, g, Object.values(def.anims || {})) : g.animations;
+    const clips = {};
+    let home = null;
+    const prep = (c) => { if (def.inPlace) { const k = c.clone(); home = inPlace(k, home); return k; } return c; };
+    const order = Object.entries(def.anims || {}).sort((a, b) => (a[0] === 'idle' ? -1 : b[0] === 'idle' ? 1 : 0));
+    for (const [state, name] of order) {
+      let c = anims.find((c) => c.name === name);
+      if (!c) { console.warn('model', key, 'has no clip named', name); continue; }
+      const cut = def.trim && def.trim[state];             // [from, to] in seconds: library clips come with long wind-ups
+      if (cut) c = THREE.AnimationUtils.subclip(c, name + ':' + state, Math.round(cut[0] * 30), Math.round(cut[1] * 30), 30);
+      clips[state] = prep(c);
+    }
+    if (!clips.idle && anims[0]) clips.idle = anims[0];
+    return clips;
+  })() });
+  return sets.get(key).p;
+}
+// The figure for a key. Where the manifest names a .glb it is that model and nothing else: the holder comes back empty
+// and the body is put in it once loaded. Only a key the manifest lacks gets `standIn()` (the boxes above).
+// asleep: don't load yet; wake(model) loads the body, sleep(model) frees it (game/explore.js does both by distance).
+export function withOverride(key, standIn, { asleep = false } = {}) {
   const def = manifest && manifest[key];
-  if (!def) return standIn;
-  const holder = new THREE.Group();
-  holder.add(standIn);
-  holder.userData = { ...standIn.userData };
+  if (!def) return standIn ? standIn() : new THREE.Group();
+  const holder = new THREE.Group(), u = holder.userData;
+  u.height = def.height || 1.6;
+  let body = null, glow = null, held = false, token = 0, tries = 0;
   const paint = (obj) => obj.traverse((o) => {
     if (!o.isMesh) return;
     o.frustumCulled = false;                             // a skinned mesh's bounds are its rest pose's
@@ -340,11 +349,11 @@ export function withOverride(key, standIn) {
     // lift: how much of the model's own colour glows back, so dark costumes still read at this distance
     if (def.lift) { o.material.emissive = new THREE.Color(0xffffff); o.material.emissiveMap = o.material.map; o.material.emissiveIntensity = def.lift; }
   });
-  const use = (gltf, anims = gltf.animations) => {
+  const use = (gltf, clips) => {
     const obj = cloneSkinned(gltf.scene);
     obj.updateMatrixWorld(true);
     const bb = new THREE.Box3().setFromObject(obj), h = bb.max.y - bb.min.y || 1;
-    const want = def.height || standIn.userData.height || 1.6;
+    const want = u.height;
     obj.scale.setScalar(want / h); obj.position.y = -bb.min.y * (want / h);
     obj.rotation.y = def.turn || 0;
     paint(obj);
@@ -355,7 +364,8 @@ export function withOverride(key, standIn) {
     for (const pr of def.props || []) {                  // held models, each on its bone (added after the height is measured)
       const b = find(pr.bone)[0];
       if (!b) { console.warn('model', key, 'has no bone', pr.bone, 'for', pr.file); continue; }
-      glb(pr.file).then((g) => {
+      take(pr.file).then((g) => {
+        if (body !== obj) return;
         const m = g.scene.clone(true);
         m.position.fromArray(pr.at); m.quaternion.fromArray(pr.rot); m.scale.setScalar(pr.scale || 1);
         paint(m); b.add(m);
@@ -378,7 +388,6 @@ export function withOverride(key, standIn) {
         o.parent.add(hull);
       }
     });
-    let glow = null;
     if (def.glow) {
       const g = def.glow, c = document.createElement('canvas'); c.width = c.height = 64;
       const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
@@ -391,57 +400,72 @@ export function withOverride(key, standIn) {
       holder.add(glow);
       glow.userData = { home: find(g.bone || 'Hips')[0], at: new THREE.Vector3(...(g.at || [0, 0, 0])), held: Object.fromEntries(Object.entries(g.held || {}).map(([st, b]) => [st, find(b)[0]])), size: g.size || 0.5, opacity: g.opacity ?? 0.55, lamp, light: g.light || 0 };
     }
-    const v = new THREE.Vector3();
-    holder.userData.post = (state) => {
+    const v = new THREE.Vector3(), lit = glow;
+    u.post = (state) => {
       for (const [b, k] of scaled) { if (k.length) b.scale.set(k[0], k[1], k[2]); else b.scale.setScalar(k); }
-      if (!glow) return;
-      const u = glow.userData, hand = u.held[state], b = hand || u.home;
+      if (!lit) return;
+      const gu = lit.userData, hand = gu.held[state], b = hand || gu.home;
       if (!b) return;
       b.updateWorldMatrix(true, false);
-      v.copy(hand ? v.set(0, 0, 0) : u.at); b.localToWorld(v); holder.worldToLocal(v);
-      glow.position.lerp(v, hand || glow.userData.was ? 0.35 : 1); glow.userData.was = !!hand;
-      const want = u.size * (hand ? 2.2 : 1) * (1 + 0.06 * Math.sin(performance.now() / 130));
-      glow.scale.setScalar(glow.scale.x + (want - glow.scale.x) * 0.2);
-      const lit = state === 'dead' ? 0.2 : 1;                      // the lantern gutters when she falls
-      glow.material.opacity += (u.opacity * lit - glow.material.opacity) * 0.1;
-      if (u.lamp) u.lamp.intensity += (u.light * lit - u.lamp.intensity) * 0.1;
+      v.copy(hand ? v.set(0, 0, 0) : gu.at); b.localToWorld(v); holder.worldToLocal(v);
+      lit.position.lerp(v, hand || gu.was ? 0.35 : 1); gu.was = !!hand;
+      const want = gu.size * (hand ? 2.2 : 1) * (1 + 0.06 * Math.sin(performance.now() / 130));
+      lit.scale.setScalar(lit.scale.x + (want - lit.scale.x) * 0.2);
+      const on = state === 'dead' ? 0.2 : 1;                       // the lantern gutters when she falls
+      lit.material.opacity += (gu.opacity * on - lit.material.opacity) * 0.1;
+      if (gu.lamp) gu.lamp.intensity += (gu.light * on - gu.lamp.intensity) * 0.1;
     };
-    holder.remove(standIn); holder.add(obj);
-    holder.userData.parts = null;
-    holder.userData.height = want;
-    holder.userData.mixer = new THREE.AnimationMixer(obj);
-    holder.userData.speed = def.speed || {};
-    const clips = {};
-    let home = null;
-    const prep = (c) => { if (def.inPlace) { const k = c.clone(); home = inPlace(k, home); return k; } return c; };
-    const order = Object.entries(def.anims || {}).sort((a, b) => (a[0] === 'idle' ? -1 : b[0] === 'idle' ? 1 : 0));
-    for (const [state, name] of order) {
-      let c = anims.find((c) => c.name === name);
-      if (!c) { console.warn('model', key, 'has no clip named', name); continue; }
-      const cut = def.trim && def.trim[state];             // [from, to] in seconds: library clips come with long wind-ups
-      if (cut) c = THREE.AnimationUtils.subclip(c, name + ':' + state, Math.round(cut[0] * 30), Math.round(cut[1] * 30), 30);
-      clips[state] = prep(c);
-    }
-    if (!clips.idle && anims[0]) clips.idle = anims[0];
-    holder.userData.clips = clips;
+    holder.add(obj); body = obj;
+    u.mixer = new THREE.AnimationMixer(obj);
+    u.speed = def.speed || {};
+    u.clips = clips;
     fitGear(holder, obj, def, clips.idle);               // weapons and shields onto the hands, placed in the idle's first frame
-    holder.userData.mixer.addEventListener('finished', () => {
-      const a = holder.userData.anim;
+    u.mixer.addEventListener('finished', () => {
+      const a = u.anim;
       if (a && a.state !== 'dead' && !LOOPS.has(a.state)) { a.state = ''; setAnim(holder, 'idle'); }
     });
     // start whatever it was doing (idle if nothing has animated it yet: setAnim would take that for already playing)
-    const a = (holder.userData.anim ||= { state: 'idle', t: 0, hold: 0 }), st = a.state || 'idle';
+    const a = (u.anim ||= { state: 'idle', t: 0, hold: 0 }), st = a.state || 'idle';
     a.state = '';
     setAnim(holder, st);
-    holder.userData.mixer.update(0);                     // posed now, not in the file's A-pose until something animates it
+    if (st === 'dead' && u.playing) u.playing.time = u.playing.getClip().duration;   // already down, not falling again
+    u.mixer.update(0);                                   // posed now, not in the file's A-pose until something animates it
   };
-  glb(def.file).then(async (g) => {
-    const anims = def.bank ? await bankClips(def.bank, g, Object.values(def.anims || {})) : g.animations;
-    if (def.skin) dress(g, def.skin);                    // a bare file gets its pictures just before it's cloned
-    use(g, anims);
-  }).catch((e) => console.warn('model', key, 'failed to load; keeping the stand-in', e));
+  u.wake = () => {
+    if (held) return;
+    held = true;
+    const t = ++token;
+    take(def.file).then(async (g) => {
+      if (def.skin) dress(g, def.skin);                  // a bare file gets its pictures just before it's cloned
+      const clips = await clipsFor(key, def, g);
+      if (t === token) { tries = 0; use(g, clips); }
+    }).catch((e) => {
+      console.warn('model', key, 'failed to load', e);
+      if (t !== token) return;
+      held = false;                                      // nothing of it was taken; ask again in a while, a few times
+      if (++tries <= 3) setTimeout(() => { if (t === token) u.wake(); }, 1500 * tries);
+    });
+  };
+  u.sleep = () => {
+    token++;
+    if (!held) return;
+    held = false;
+    drop(def.file);
+    if (!body) return;
+    u.mixer.stopAllAction();
+    for (const o of u.gearObjs || []) o.removeFromParent();   // the gear's own models are shared: off, not freed
+    u.gearObjs = []; u.gearToken = (u.gearToken || 0) + 1;
+    holder.remove(body);
+    body.traverse((o) => { if (o.isMesh) { o.material.dispose(); if (o.isSkinnedMesh) o.skeleton.dispose(); } });
+    if (glow) { holder.remove(glow); glow.material.map.dispose(); glow.material.dispose(); glow = null; }
+    body = u.mixer = u.clips = u.post = u.rig = u.dyeMats = u.playing = null;
+  };
+  if (!asleep) u.wake();
   return holder;
 }
+// Loads a figure's body, or frees it (and its file, once nobody else wears it). Neither does anything to a stand-in.
+export const wake = (model) => model?.userData.wake?.();
+export const sleep = (model) => model?.userData.sleep?.();
 
 // One blob of dark under each unit, instead of real shadows.
 export function shadowDisc(r = 0.34) {

@@ -22,7 +22,8 @@ After changing data or the map run `node tools/check.mjs`. To try the game, serv
 (`python -m http.server 8417`) and open it. In the Claude browser pane `requestAnimationFrame` does not
 fire, so step it by hand: `game.update(1/60)` in a loop (battle waits are real `setTimeout`s).
 
-Real models replace stand-ins by key through `assets/models/manifest.json`; `docs/MODELS.md` lists the keys,
+Real models replace stand-ins by key through `assets/models/manifest.json` (a key with an entry never shows its
+stand-in; bodies load near the party and are freed far from it, so call `sleep(model)` on any figure you remove); `docs/MODELS.md` lists the keys,
 the manifest's fields and the animation states. Lisandra is the worked example. To see a model in the
 running game, serve with `python tools/serve.py 8417` (it saves screenshots the page posts) and tile
 them with `python tools/sheet.py <tag>`.

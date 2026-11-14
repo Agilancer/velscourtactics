@@ -121,8 +121,7 @@ function buildList() {
 function show(keys) {
   for (const s of shown) row.remove(s.root);
   shown = keys.filter((k) => manifest[k]).map((key) => {
-    const stand = new THREE.Group(); stand.userData.height = manifest[key].height || 1.7;
-    const model = withOverride(key, stand);
+    const model = withOverride(key);
     // a class body carries its class's weapon and shield at its armour tier (<class>_<g>_t<n>; the class's own model, tier 1)
     const cm = /^(.+)_[mf](?:_t(\d))?$/.exec(key), C = cm && CLASSES[cm[1]];
     if (C && !C.hidden) {

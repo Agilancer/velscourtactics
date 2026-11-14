@@ -122,7 +122,6 @@ class Game {
     startQuest(st, 'first');
     this.partyChanged();
     this.ui.banner('What Walks in the Pines', 'Put down two of the dead, south of the road');
-    this.ui.toast('Remember: the stand-in figures are placeholders until the Meshy models arrive.');
     save(st);
   }
 
