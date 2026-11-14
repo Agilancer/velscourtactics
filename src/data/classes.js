@@ -101,13 +101,13 @@ export const CLASSES = {
   },
   arcane_sorcerer: {
     name: 'Astronomer', color: '#4aa8ff', primary: 'int', attrs: [12, 16, 16, 34], life: [44, 5], mana: [65, 4.5],
-    weapon: ['wand', 'staff'], armor: 'cloth', move: 3, jump: 1, role: 'Star-fire and gravity',
+    weapon: ['wand', 'staff'], armor: 'cloth', move: 3, jump: 1, role: 'Star-fire and gravity', basicAnim: 'bolt',
     desc: 'A stargazer who wields the heavens. Swarms of star missiles, meteors, falling suns and black holes.',
     skills: [
-      S('star_missiles', 'Star Missiles', 1, 6, [1, 5], 0, 'enemy', 'magic', 0.55, { el: 'arcane', hits: 3 }, 'Three small stars, each with somewhere to be.'),
-      S('moonbeam', 'Moonbeam', 3, 9, [1, 5], 0, 'enemy', 'magic', 1.3, { el: 'arcane', st: ['curse', 3, 1] }, 'Cold light that finds the gaps in their guard.'),
-      S('falling_star', 'Falling Star', 6, 13, [2, 6], 1, 'enemy', 'magic', 1.4, { el: 'arcane' }, 'She points. It falls.'),
-      S('black_hole', 'Black Hole', 10, 22, [2, 5], 2, 'enemy', 'magic', 1.5, { el: 'arcane', st: ['root', 2, 1] }, 'A hole in the night that will not let go.'),
+      S('star_missiles', 'Star Missiles', 1, 6, [1, 5], 0, 'enemy', 'magic', 0.55, { el: 'arcane', hits: 3, anim: 'bolt' }, 'Three small stars, each with somewhere to be.'),
+      S('moonbeam', 'Moonbeam', 3, 9, [1, 5], 0, 'enemy', 'magic', 1.3, { el: 'arcane', st: ['curse', 3, 1], anim: 'bless' }, 'Cold light that finds the gaps in their guard.'),
+      S('falling_star', 'Falling Star', 6, 13, [2, 6], 1, 'enemy', 'magic', 1.4, { el: 'arcane', anim: 'meteor' }, 'She points. It falls.'),
+      S('black_hole', 'Black Hole', 10, 22, [2, 5], 2, 'enemy', 'magic', 1.5, { el: 'arcane', st: ['root', 2, 1], anim: 'wave' }, 'A hole in the night that will not let go.'),
     ],
   },
   carrion_witch: {
@@ -145,13 +145,13 @@ export const CLASSES = {
   },
   boomerang_knight: {
     name: 'Boomerang Knight', color: '#3ac8a8', primary: 'dex', attrs: [20, 28, 20, 12], life: [60, 7], mana: [30, 2],
-    weapon: ['boomerang'], armor: 'leather', move: 4, jump: 2, role: 'Mid range, always comes back',
+    weapon: ['boomerang'], armor: 'leather', move: 4, jump: 2, role: 'Mid range, always comes back', basicAnim: 'throw',
     desc: 'A dashing knight whose blades always come back. Ricochets, swirling sword storms and gale cyclones.',
     skills: [
-      S('boomerang', 'Boomerang', 1, 4, [1, 4], 0, 'enemy', 'phys', 1.25, {}, 'Out, through them, and home.'),
-      S('twin_rang', 'Twin Rang', 3, 7, [1, 4], 0, 'enemy', 'phys', 0.8, { hits: 2 }, 'Two blades, one after the other.'),
-      S('swirling_blades', 'Swirling Blades', 6, 11, [0, 0], 1, 'self', 'phys', 1.2, { st: ['bleed', 2, 0.8] }, 'A ring of steel round him.'),
-      S('typhoon', 'Typhoon', 10, 18, [1, 4], 2, 'enemy', 'phys', 1.4, {}, 'A gale with edges in it.'),
+      S('boomerang', 'Boomerang', 1, 4, [1, 4], 0, 'enemy', 'phys', 1.25, { anim: 'throw' }, 'Out, through them, and home.'),
+      S('twin_rang', 'Twin Rang', 3, 7, [1, 4], 0, 'enemy', 'phys', 0.8, { hits: 2, anim: 'twin' }, 'Two blades, one after the other.'),
+      S('swirling_blades', 'Swirling Blades', 6, 11, [0, 0], 1, 'self', 'phys', 1.2, { st: ['bleed', 2, 0.8], anim: 'whirl' }, 'A ring of steel round him.'),
+      S('typhoon', 'Typhoon', 10, 18, [1, 4], 2, 'enemy', 'phys', 1.4, { anim: 'typhoon' }, 'A gale with edges in it.'),
     ],
   },
   lancer: {

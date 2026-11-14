@@ -11,11 +11,13 @@ const P = JSON.parse(readFileSync(fileURLToPath(new URL('./prompts.json', import
 // A class key is <class>_m or <class>_f; the subject lines describe one sex, so swap the word for the other.
 function classSubject(cls, g) {
   let s = P.classes[cls];
-  const has = / (man|woman)\b/.exec(s);
-  if (has) s = s.replace(/ (man|woman)\b/, g === 'f' ? ' woman' : ' man');
-  else s = s.replace(/^(An? [^,]+)/, `$1, a ${g === 'f' ? 'woman' : 'man'}`);
-  if (g === 'f') s = s.replace('bearded ', '');
-  return s + (g === 'f' ? ', the female cut of the uniform with a shorter coat or tabard' : ', the male cut of the uniform with broader shoulders');
+  // each line names one sex ("a tall man", "an old woman"); swap the word, and the pronouns that follow it
+  const want = g === 'f' ? 'woman' : 'man';
+  if (/\b(man|woman)\b/.test(s)) s = s.replace(/\b(man|woman)\b/, want);
+  else s = s.replace(/^(An? [^,;]+)/, `$1, a ${want}`);
+  if (g === 'f') s = s.replace('bearded ', '').replace(/\bhis\b/g, 'her').replace(/\bhandsome\b/, 'striking');
+  else s = s.replace(/\bher\b/g, 'his').replace(/\bhuntress\b/g, 'hunter');
+  return s + `; the ${g === 'f' ? 'female' : 'male'} cut of this class costume, same colours`;
 }
 
 export function subject(key, tier) {

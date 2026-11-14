@@ -376,8 +376,8 @@ Change a prompt there, not here.
 1. **Picture** (9 credits): `meshy_text_to_image`, `nano-banana-pro`, `pose_mode: a-pose`, with the
    `image` prompt. Look at it: right class, right palette, and no letters or marks anywhere (the V and T
    rule). The pictures are kept in `art/concepts/<key>.png`.
-2. **3D** (15): `meshy_image_to_3d` from that picture, `meshy-t2.5` smart topology at 15,000 triangles,
-   texture `meshy-n1`, `pose_mode: a-pose`.
+2. **3D** (15): `meshy_image_to_3d` from that picture, `meshy-t2.5` smart topology at 30,000 triangles
+   (15,000 before the ornate restyle), texture `meshy-n1`, `pose_mode: a-pose`.
 3. **Rig** (5): `meshy_rig`. Download `Animation_Walking_withSkin.glb` from its result: the model, its
    skeleton and the walk the next step calibrates on.
 4. **Animations** (no credits): in Blender, open the motion library `LISANDRA OLD - tactics.blend`, then
@@ -417,8 +417,28 @@ been through the critics.
 
 **Still stand-ins:** the other sex of necromancer, dragoon, death knight, carrion witch and bard; both sexes
 of totem master, astronomer, slime lord, boomerang knight, lancer, dragon knight and gunner; the summons; the
-townsfolk. Finished files for Homunculus, Lily Belle and Jamie are in the CHARACTERS folder beside Lisandra's
-and Stevie's sources, on the library's own rig, and are not in the game yet.
+townsfolk.
+
+### The ornate restyle
+
+All eighteen humans (the five of the party and the thirteen class models) were then made again from new
+pictures in the ornate grimdark look of `prompts.json`, the same route at 30,000 triangles, and replaced the
+first models under the same keys. The Blender working file holding all eighteen is
+`v2 ornate (eighteen) - tactics.blend` in the meshy folder. What changed in the recipe:
+
+- **No stylising.** The restyled entries have no `bones`, `outline`, `lift` or `normal`: the figures keep the
+  proportions and the shading they were drawn with.
+- **Height by the head.** Meshy places `HeadTop_End` wherever a hat ends, so stature is measured from the
+  `Head` bone as 0.87 of the body, and `height` = wanted head height in tiles x whole height / stature.
+- **New class branches** in `retarget.py`: `lancer` (Stevie: `Thrust`, `Guard_Up`, `Rally`, `Charge`,
+  `Shield_Bash`), `arcane_sorcerer` (Lily: `Bolt`, `Bless`, `Meteor`, `Wave`), `boomerang_knight` (Jamie:
+  `Throw`, `Twin`, `Whirl`, `Typhoon`), and `doorkeeper`, which carries Lisandra's seventeen library clips
+  across whole. `T.retarget(src, name=...)` writes a clip under any name.
+- **Look at the picture for marks.** The necromancer's coffin lids came back with crosses; they were painted
+  out of the picture before the 3D step and the prompt now asks for plain lids.
+
+`viewer.html` (same server) shows any set of models side by side with every clip, the game's lights and
+camera, and frame stepping: `viewer.html?m=lily,jamie` opens those two.
 
 **Things learnt.** Look at every picture before the 3D step: the first death knight came back with a chest
 emblem made of V-shaped chevrons and was redrawn (its prompt now says "no emblem"). The two sexes of a class
