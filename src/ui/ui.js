@@ -1,19 +1,39 @@
-// Everything drawn in HTML over the 3D view: title, character creation, the HUD, talk, and the panels.
+// Everything drawn in HTML over the 3D view: character creation, the HUD, talk, the book (Party, Journal, Orders,
+// Settings) and the shops. The title is title.js's; the fight's own HUD is battle.js's.
+//
+// The shape of it: the party down the top left (tap one for their sheet), the purse and the quests top right, a row of
+// buttons (a rail down the right edge on a phone) that open the book at each of its leaves, and under them a line
+// saying what auto-play is about. Words are said in bubbles over heads (speech.js) and kept in the chat log
+// (chatlog.js); anything new since the player last looked wears a red dot (game/chronicle.js).
 import * as THREE from 'three';
 import { el, esc, $ } from '../core/util.js';
-import { CLASSES, CLASS_IDS, SPELLS, SKILL_LEVELS } from '../data/classes.js';
-import { DPAD_HINT } from '../core/input.js';
+import { CLASSES, CLASS_IDS, SPELLS } from '../data/classes.js';
 import { RARITY, TIERS, WEAPONS, ARMORS, GEMS, GEM_GRADES, GEM_PRICE, CONSUMABLES, STAT_NAMES, gemInfo, makeItem, addAffix, itemName, itemLines, itemValue, sellValue, enhanceCost, enchantCost, socketCost, maxSockets, tierForLevel } from '../data/items.js';
 import { QUESTS } from '../data/enemies.js';
-import { PARTY_MAX, SLOTS, SLOT_NAMES, heroStats, heroSkills, canEquip, slotsFor, xpNeed, lead, partyHeroes, questProgress, questNeed, questReady, startQuest, save } from '../game/party.js';
+import { SLOTS, heroStats, canEquip, lead, partyHeroes, questProgress, questNeed, questReady, save, upgradeSlot } from '../game/party.js';
+import { dotCounts, heroIsNew } from '../game/chronicle.js';
 import { animate, sleep } from '../gfx/models.js';
 import { heroModel } from '../game/explore.js';
-import { sound, sfx, setMuted } from '../core/audio.js';
-import { itemPic, slotPic, gemPic, consumablePic, goodsPic, skillPic, roleIcons, rolesOf, ROLE_NAMES, ic, goods, watchMissing } from './art.js';
+import { sound, sfx } from '../core/audio.js';
+import { itemPic, gemPic, consumablePic, goodsPic, skillPic, roleIcons, rolesOf, ROLE_NAMES, ic, goods, watchMissing } from './art.js';
+import { Bubbles } from './speech.js';
+import { ChatLog } from './chatlog.js';
+import { drawParty } from './partyui.js';
+import { drawJournal, drawOrders, drawSettings, questRow, dreadWord } from './journal.js';
 
 const itemHtml = (it, extra = '') => `<b style="color:${RARITY[it.rarity].color}">${esc(itemName(it))}</b><small>${TIERS[it.tier].name} ${RARITY[it.rarity].name}${extra}</small><span>${itemLines(it).join(' · ')}</span>`;
 // a sum of gold, with the coins in front of it
 const gp = (n) => `<i class="ic ic-gold"></i>${n}`;
+const dot = (n) => (n ? `<i class="dot">${n > 1 ? (n > 9 ? '9+' : n) : ''}</i>` : '');
+// the buttons the kit has no picture for, drawn in its gilt
+const SVG = {
+  orders: '<svg viewBox="0 0 24 24"><path d="M5 21V3m0 1h11l-2.5 4L16 12H5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  play: '<svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></svg>',
+  pause: '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg>',
+  gear: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1L11 21h4l.4-2.7a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>',
+};
+const LEAVES = [['party', 'Party'], ['journal', 'Journal'], ['orders', 'Orders'], ['settings', 'Settings']];
+const leafIcon = (id) => (id === 'party' ? `<i class="ni" style="background-image:url(${ic('guard')})"></i>` : id === 'journal' ? `<i class="ni" style="background-image:url(${ic('journal')})"></i>` : `<i class="ni svg">${SVG[id === 'orders' ? 'orders' : 'gear']}</i>`);
 
 export class UI {
   constructor(g) {
@@ -21,17 +41,15 @@ export class UI {
     this.root = $('#ui');
     this.root.innerHTML = `
       <div id="hud" class="hide">
-        <div id="party"></div>
-        <div id="topright"><div id="gold" title="Gold"></div><div id="tracker"></div></div>
-        <button id="b-menu" title="Menu" aria-label="Menu"><i></i></button>
-        <div id="drawer">
-          <div id="bar">
-            <button data-open="party"><i class="ic ic-party"></i>Party</button><button data-open="bag"><i class="ic ic-pack"></i>Bag</button><button data-open="quests"><i class="ic ic-journal"></i>Quests</button>
-            <button id="b-auto" title="Auto-play (P)">Auto</button><button id="b-pace" title="Fight speed (F)"></button><button id="b-dpad" title="Which diagonal the d-pad's Left means"></button><button id="b-mute">Sound</button>
-          </div>
-          <div id="dtrack"></div>
-        </div>
-        <div id="autostat" class="hide"></div>
+        <div id="roster"></div>
+        <div id="status"><div id="purse"><span id="day" title="The day"></span><button id="dread" title="How bold the dead have grown"></button><span id="gold" title="Gold"></span></div><div id="tracker"></div></div>
+        <nav id="nav">
+          ${LEAVES.slice(0, 3).map(([id, name]) => `<button data-open="${id}" title="${name}">${leafIcon(id)}<span>${name}</span><b class="dotbox"></b></button>`).join('')}
+          <button id="b-auto" title="Auto-play (P)"><i class="ni svg"></i><span>Auto</span></button>
+          <button id="b-pace" title="Fight speed (F)"><i class="ni txt"></i><span>Speed</span></button>
+          <button data-open="settings" title="Settings">${leafIcon('settings')}<span>Settings</span></button>
+        </nav>
+        <button id="autobar" class="hide" title="What auto-play is about. Tap for its orders."></button>
         <div id="prompt" class="hide"></div>
         <div id="pad">
           <button data-dir="up" class="pu">▲</button><button data-dir="left" class="pl">◀</button>
@@ -40,27 +58,34 @@ export class UI {
         <div id="btns"><button data-btn="act" class="ba">A<small>act</small></button><button data-btn="jump" class="bj">B<small>jump</small></button></div>
       </div>
       <div id="banner"></div><div id="toasts"></div>
-      <div id="dialog" class="hide"><div class="who"></div><div class="say"></div><div class="opts"></div></div>
-      <div id="modal" class="hide"><div class="panel"><header><h2></h2><button class="x" title="Close (Esc)"><i class="ic ic-close"></i></button></header><div class="body"></div></div></div>
+      <div id="reply" class="hide"></div>
+      <div id="choose" class="hide"></div>
+      <div id="modal" class="hide"><div class="panel book"><header><div class="leaves"></div><h2></h2><button class="x" title="Close (Esc)"><i class="ic ic-close"></i></button></header><div class="body"></div></div></div>
       <div id="screen" class="hide"></div>`;
     watchMissing(this.root);
     g.input.bindPad(this.root);
-    for (const b of this.root.querySelectorAll('[data-open]')) b.onclick = () => this.openPanel(b.dataset.open);
+    for (const b of this.root.querySelectorAll('#nav [data-open]')) b.onclick = () => this.openPanel(b.dataset.open);
     $('#b-auto').onclick = () => g.toggleAuto();
     $('#b-pace').onclick = () => g.toggleSpeed();
-    $('#b-dpad').onclick = () => { g.st.dpad = g.st.dpad === 'A' ? 'B' : 'A'; this.toast(`D-pad: ${DPAD_HINT[g.st.dpad]}.`); this.refresh(); };
-    $('#b-mute').onclick = () => { setMuted(!sound.muted); $('#b-mute').classList.toggle('muted', sound.muted); if (!sound.muted) sfx.ui(); };
-    $('#b-mute').classList.toggle('muted', sound.muted);
-    // On a phone (css/style.css) the buttons and the quests fold into a drawer behind one button, out of the way
-    // of the field; it shuts again on a tap on the map, a panel opening, or a fight starting or ending.
-    $('#b-menu').onclick = () => { sfx.ui(); this.drawer(); };
-    $('#view').addEventListener('pointerdown', () => this.drawer(false));
-    $('#dtrack').onclick = () => this.openPanel('quests');
-    $('#party').onclick = () => { if (g.mode === 'explore') this.openPanel('party'); };   // a phone's party bars open the Party screen
+    $('#autobar').onclick = () => this.openPanel('orders');
+    $('#dread').onclick = () => { this.jj = { sub: 'rivals' }; this.openPanel('journal'); };
+    $('#tracker').onclick = () => { this.jj = { sub: 'quests' }; this.openPanel('journal'); };
+    $('#roster').onclick = (e) => { const c = e.target.closest('[data-hero]'); if (c && g.mode === 'explore') { this.sel = c.dataset.hero; this.openPanel('party'); } };
     $('#modal .x').onclick = () => this.close();
     $('#modal').addEventListener('pointerdown', (e) => { if (e.target.id === 'modal') this.close(); });
-    this.sel = null; this.tab = null;
+    // a tap on the world goes on to the next line of a conversation
+    $('#view').addEventListener('pointerdown', () => { if (g.mode === 'talk') this.onTap?.(); });
+    // the chat log (bm's), and over it the speech bubbles (bm's): the log first, so a bubble can keep clear of it
+    this.chat = new ChatLog(this.root, { onOpen: () => { this.jj = { sub: 'chron' }; this.openPanel('journal'); } });
+    this.bubbles = new Bubbles(this.root, {
+      project: (x, y, z) => g.r.project(x, y, z),
+      ppu: () => window.innerHeight / (g.r.cam.top - g.r.cam.bottom),
+      bars: () => [this.narrow() ? 46 : 56, g.mode === 'talk' ? 86 : 10],
+      avoid: () => [this.chat.box()].filter(Boolean),
+    });
+    this.sel = null; this.leaf = 'party';
   }
+  narrow() { return window.matchMedia('(max-width: 760px), (max-height: 520px)').matches; }
 
   // ---------- character creation (the title is title.js's) ----------
   create() {
@@ -108,85 +133,189 @@ export class UI {
   }
 
   // ---------- HUD ----------
-  showHud(on) { $('#hud').classList.toggle('hide', !on); }
-  battleMode(on) { $('#hud').classList.toggle('fight', on); this.drawer(false); }
-  drawer(on = !$('#hud').classList.contains('drawer')) { $('#hud').classList.toggle('drawer', on); }
+  showHud(on) { $('#hud').classList.toggle('hide', !on); if (on) this.bubbles.on = !this.g.st?.opts?.quiet; }
+  battleMode(on) { $('#hud').classList.toggle('fight', on); this.bubbles.clear(); }
   refresh() {
-    const st = this.g.st; if (!st) return;
-    $('#party').innerHTML = partyHeroes(st).map((h, i) => {
+    const g = this.g, st = g.st; if (!st) return;
+    const roster = partyHeroes(st).map((h, i) => {
       const s = heroStats(h), C = CLASSES[h.cls];
-      return `<div class="pm${i === 0 ? ' lead' : ''}${h.hp <= 0 ? ' down' : ''}"><b style="color:${C.color}">${esc(h.name.split(' ')[0])}</b><small>Lv ${h.lvl} ${esc(C.name)}</small>
-        <span class="bars"><i class="hp"><u style="width:${100 * Math.max(0, h.hp) / s.hp}%"></u></i><i class="mp${C.resource === 'rage' ? ' rage' : ''}"><u style="width:${100 * h.mp / s.mp}%"></u></i></span></div>`;
+      const up = st.bag.some((it) => upgradeSlot(h, it));
+      return `<button class="pm${i === 0 ? ' lead' : ''}${h.hp <= 0 ? ' down' : ''}" data-hero="${h.id}"><span class="medal" style="--c:${C.color}">${roleIcons(C)}</span><span class="pmn"><b style="color:${C.color}">${esc(h.name.split(' ')[0])}</b><small>Lv ${h.lvl} ${esc(C.name)}</small>
+        <span class="bars"><i class="hp"><u style="width:${100 * Math.max(0, h.hp) / s.hp}%"></u></i><i class="mp${C.resource === 'rage' ? ' rage' : ''}"><u style="width:${100 * h.mp / s.mp}%"></u></i></span></span>${up ? '<i class="upmark"></i>' : ''}${dot(heroIsNew(st, h) ? 1 : 0)}</button>`;
     }).join('');
-    $('#gold').innerHTML = `${gp('')}<b>${st.gold}</b>`;
-    const act = QUESTS.filter((q) => st.quests[q.id]?.state === 'active');
+    // (refresh runs four times a second: only touch the DOM when something has changed, or a tap can go astray)
+    if (roster !== this.rosterHtml) { this.rosterHtml = roster; $('#roster').innerHTML = roster; }
+    const purse = `${st.day}|${st.gold}|${dreadWord(st.dread)}`;
+    if (purse !== this.purseKey) {
+      this.purseKey = purse;
+      $('#day').textContent = `Day ${st.day}`;
+      $('#gold').innerHTML = `${gp('')}<b>${st.gold}</b>`;
+      const d = $('#dread'); d.innerHTML = `<i></i>${dreadWord(st.dread)}`; d.className = 'd' + Math.min(4, Math.floor(st.dread / 25));
+    }
+    const act = QUESTS.filter((q) => st.quests[q.id]?.state === 'active').sort((a, b) => questReady(st, b) - questReady(st, a)).slice(0, 4);
     const lines = act.map((q) => { const r = questReady(st, q); return `<div class="${r ? 'ready' : ''}"><i class="ic ic-${r ? 'qready' : 'qbusy'}"></i>${esc(q.name)} <b>${questProgress(st, q)}/${questNeed(q)}</b></div>`; }).join('');
-    // (refresh runs four times a second: only touch the DOM when the words change, or a tap on them can go astray)
-    if (lines !== this.lines) { this.lines = lines; $('#tracker').innerHTML = lines; $('#dtrack').innerHTML = lines ? '<h4>Quests</h4>' + lines : ''; }
-    // the drawer's button says when one is ready to claim, and when auto-play has the party
-    $('#b-menu').classList.toggle('ready', act.some((q) => questReady(st, q)));
-    $('#b-menu').classList.toggle('auto', !!st.auto);
-    $('#b-auto').classList.toggle('on', !!st.auto);
-    $('#b-dpad').textContent = `D-pad ${st.dpad}`;
-    $('#b-pace').textContent = `${this.g.fightSpeed}x`;
-    $('#b-pace').classList.toggle('on', this.g.fightSpeed === 2);
+    if (lines !== this.lines) { this.lines = lines; $('#tracker').innerHTML = lines; }
+    // the red dots: what's new behind each button
+    const n = dotCounts(st), dots = { party: n.party, journal: n.journal, orders: n.boon };
+    const key = JSON.stringify(dots) + st.auto + g.fightSpeed;
+    if (key !== this.navKey) {
+      this.navKey = key;
+      for (const b of this.root.querySelectorAll('#nav [data-open]')) { const box = b.querySelector('.dotbox'); if (box) box.innerHTML = dot(dots[b.dataset.open] || 0); }
+      $('#b-auto').classList.toggle('on', !!st.auto);
+      $('#b-auto .ni').innerHTML = st.auto ? SVG.pause : SVG.play;
+      $('#b-pace .ni').textContent = `${g.fightSpeed}x`;
+      $('#b-pace').classList.toggle('on', g.fightSpeed === 2);
+      if (this.isOpen() && this.leafEls) this.drawLeaves();
+    }
   }
   setPrompt(text) { const p = $('#prompt'); p.classList.toggle('hide', !text); if (text) p.innerHTML = `<kbd>A</kbd> ${esc(text)}`; }
-  setAuto(text) { const p = $('#autostat'); p.classList.toggle('hide', !text); if (text) p.textContent = 'Auto: ' + text; }
+  // What auto-play is about: the errand, and (smaller) why. In a fight, whose turn it is and what they mean to do.
+  setAuto(text, why = '') {
+    const p = $('#autobar'), html = text ? `<i>${SVG.play}</i><b>${esc(text)}</b>${why ? `<span>${esc(why)}</span>` : ''}` : '';
+    if (html === this.autoHtml) return;
+    this.autoHtml = html; p.classList.toggle('hide', !text); p.innerHTML = html;
+  }
+  // Where somebody's head is, by name: one of the party (walking or in a fight), or someone standing in the world.
+  headOf(who) {
+    if (!who) return null;
+    const g = this.g, key = who.split(' ')[0];
+    const at = (m, lift = 0) => () => (m.visible !== false && m.parent ? { x: m.position.x, y: m.position.y + (m.userData.height || 1.6) + lift, z: m.position.z } : null);
+    const u = g.battle?.units.find((o) => o.alive && o.name.split(' ')[0] === key);
+    if (u) return at(u.model);
+    if (g.battle) return null;
+    const a = g.explore?.actors.find((o) => o.model.visible && o.hero.name.split(' ')[0] === key);
+    if (a) return at(a.model);
+    const n = g.explore?.npcs.find((o) => o.name === who || o.name.split(' ')[0] === key);
+    return n ? at(n.model, 0.5) : null;
+  }
+  // Somebody says something: a bubble over their head for a while, and a line in the log.
+  speak(who, text, style = {}) {
+    const mine = !!this.g.st && Object.values(this.g.st.heroes).some((h) => h.name === who || h.name.split(' ')[0] === who.split(' ')[0]);
+    this.chat.line(style.channel || (mine ? 'party' : 'say'), who.split(' ')[0], text, style);
+    if (this.isOpen()) return;
+    this.bubbles.say(this.headOf(who), text, who.split(' ')[0], style);
+  }
+  // A notice. With a speaker it's said (speak); without, it goes in the log, and up as a toast if a panel covers the log.
   toast(text, who) {
-    const t = el('div', 'toast', (who ? `<b>${esc(who)}</b> ` : '') + esc(text));
-    $('#toasts').append(t); setTimeout(() => t.classList.add('out'), 5200); setTimeout(() => t.remove(), 5900);
+    if (who) return this.speak(who, text);
+    this.chat.system(text);
+    if (!this.isOpen() && !this.g.battle && $('#screen').classList.contains('hide')) return;
+    const t = el('div', 'toast', esc(text));
+    $('#toasts').append(t); setTimeout(() => t.classList.add('out'), 4200); setTimeout(() => t.remove(), 4900);
     while ($('#toasts').children.length > 3) $('#toasts').firstChild.remove();
   }
   banner(title, sub = '', red = false) {
     const b = $('#banner'); b.innerHTML = `<h2 class="${red ? 'red' : ''}">${esc(title)}</h2><p>${esc(sub)}</p>`;
     b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
   }
+  // each frame: the bubbles follow their heads, the log's lines fade
+  tick(dt) {
+    const g = this.g;
+    this.chat.update(dt, !!g.st && !this.isOpen() && !g.battle && g.mode !== 'talk' && $('#screen').classList.contains('hide'));
+    this.bubbles.update(dt);
+  }
 
   // ---------- talk ----------
   // lines: [[speaker, text], ...]; choices (on the last line): [[label, value], ...]. Resolves with the value chosen.
+  // Each line is a bubble over its speaker's head (the story's own voice, with no speaker, sits low in the middle);
+  // a tap anywhere goes on, and what can be answered is a row of buttons at the foot.
   dialog(lines, choices) {
-    const g = this.g, d = $('#dialog');
+    const g = this.g, bar = $('#reply');
     return new Promise((res) => {
       const prev = g.mode; g.mode = 'talk';
-      let i = 0, timer = null;
-      let spoke = null;
+      let i = 0, timer = null, spoke = null, held = null;
       const voice = (who) => { if (spoke) g.explore?.speak(spoke, false); spoke = who; if (who && prev === 'explore') g.explore?.speak(who, true); };
-      const end = (v) => { voice(null); clearTimeout(timer); d.classList.add('hide'); this.onAct = null; if (g.mode === 'talk') g.mode = prev === 'talk' ? 'explore' : prev; res(v); };
+      const end = (v) => { voice(null); clearTimeout(timer); this.bubbles.drop(held); bar.classList.add('hide'); this.onAct = this.onTap = null; if (g.mode === 'talk') g.mode = prev === 'talk' ? 'explore' : prev; res(v); };
       const show = () => {
-        const [who, text] = lines[i], last = i === lines.length - 1;
+        const [who, raw] = lines[i], last = i === lines.length - 1, text = raw.replace('{name}', g.st?.name || '');
         voice(who);
-        d.classList.remove('hide');
-        d.querySelector('.who').textContent = who; d.querySelector('.who').classList.toggle('hide', !who);
-        d.querySelector('.say').textContent = text.replace('{name}', g.st?.name || '');
-        const o = d.querySelector('.opts'); o.innerHTML = '';
-        const opts = last && choices ? choices : [[last ? 'Close' : 'Next', '__next']];
-        opts.forEach(([label, v], k) => { const b = el('button', 'btn' + (k === 0 ? ' first' : ''), esc(label)); b.onclick = () => { sfx.ui(); v === '__next' ? next() : end(v); }; o.append(b); });
-        this.onAct = () => o.firstChild.click();
+        const opts = last && choices ? choices : null;
+        this.chat.line(who ? 'say' : 'story', who.split(' ')[0], text);
+        this.bubbles.drop(held);
+        held = this.bubbles.hold(this.headOf(who), text, who, { inside: !who, more: !opts, key: 'talk', onTap: opts ? null : () => next() });
+        bar.innerHTML = ''; bar.classList.remove('hide');
+        if (opts) opts.forEach(([label, v], k) => { const b = el('button', 'btn' + (k === 0 ? ' go' : ''), esc(label)); b.onclick = () => { sfx.ui(); end(v); }; bar.append(b); });
+        else { const b = el('button', 'btn next', `${last ? 'Close' : 'Next'} <kbd>A</kbd>`); b.onclick = () => { sfx.ui(); next(); }; bar.append(b); }
+        this.onAct = () => bar.firstChild.click();
+        this.onTap = opts ? null : () => { sfx.ui(); next(); };
         clearTimeout(timer);
-        if (g.st?.auto) timer = setTimeout(() => o.firstChild.click(), 1900 + text.length * 14);
+        if (g.st?.auto) timer = setTimeout(() => bar.firstChild?.click(), 1900 + text.length * 14);
       };
       const next = () => { if (++i >= lines.length) end(null); else show(); };
       show();
     });
   }
+  // A fork: a few cards to choose from. Under auto-play it chooses the first for itself when the time is up
+  // (`secs`), unless the player has chosen by then. Resolves with the option's value.
+  choose(title, sub, options, secs = 12) {
+    const g = this.g, box = $('#choose');
+    return new Promise((res) => {
+      const prev = g.mode; g.mode = 'talk';
+      let timer = null;
+      const end = (v) => { clearTimeout(timer); box.classList.add('hide'); box.innerHTML = ''; this.onAct = null; if (g.mode === 'talk') g.mode = prev === 'talk' ? 'explore' : prev; res(v); };
+      box.innerHTML = `<div class="panel fork"><h2>${esc(title)}</h2><p class="sub">${esc(sub)}</p><div class="forks"></div><i class="clock"><u></u></i></div>`;
+      const row = box.querySelector('.forks');
+      options.forEach((o, k) => {
+        const c = el('button', 'pickcard' + (k === 0 ? ' first' : ''), `${o.pic || `<span class="pic round lit"><img src="${ic('quest')}" alt=""></span>`}<div><b>${esc(o.name)}</b><span>${esc(o.desc)}</span></div>`);
+        c.onclick = () => { sfx.ui(); end(o.value ?? o); };
+        row.append(c);
+      });
+      box.classList.remove('hide');
+      this.onAct = () => row.firstChild.click();
+      const clock = box.querySelector('.clock');
+      if (g.st?.auto) { clock.firstChild.style.animationDuration = secs + 's'; clock.classList.add('run'); timer = setTimeout(() => row.firstChild.click(), secs * 1000); }
+      else clock.remove();
+    });
+  }
 
   // ---------- panels ----------
-  open(title, draw) {
+  // A window: the book's leaves along its top (tabs: true), or a shop's or the board's own name.
+  open(title, draw, tabs = false) {
     const g = this.g;
     if (g.mode !== 'explore' && g.mode !== 'menu') return;
     this.inShop = false;
-    this.drawer(false);
     g.mode = 'menu';
+    this.bubbles.clear();
     $('#modal').classList.remove('hide');
+    $('#modal .panel').classList.toggle('book', tabs);
     $('#modal h2').textContent = title;
+    this.leafEls = tabs;
+    if (tabs) this.drawLeaves();
     $('#modal .body').scrollTop = 0;   // a new panel starts at its top, not where the last one was left
     this.draw = () => { const b = $('#modal .body'), y = b.scrollTop; b.innerHTML = ''; draw(b); b.scrollTop = y; this.refresh(); };
     this.draw();
   }
-  close() { if ($('#modal').classList.contains('hide')) return false; $('#modal').classList.add('hide'); if (this.inShop) { this.inShop = false; sfx.door(false); } this.draw = null; if (this.g.mode === 'menu') this.g.mode = 'explore'; save(this.g.st); return true; }
+  drawLeaves() {
+    const n = dotCounts(this.g.st), dots = { party: n.party, journal: n.journal, orders: n.boon };
+    const box = $('#modal .leaves'); box.innerHTML = '';
+    for (const [id, name] of LEAVES) {
+      const b = el('button', 'leaf' + (this.leaf === id ? ' on' : ''), `${leafIcon(id)}<span>${name}</span>${dot(dots[id] || 0)}`);
+      b.onclick = () => { if (this.leaf !== id) this.openPanel(id); };
+      box.append(b);
+    }
+  }
+  close() {
+    if ($('#modal').classList.contains('hide')) return false;
+    $('#modal').classList.add('hide');
+    if (this.inShop) { this.inShop = false; sfx.door(false); }
+    this.draw = null; this.leafEls = false;
+    if (this.doll) { this.doll.dispose(); this.doll = null; }
+    if (this.pp) this.pp.pick = null;
+    if (this.g.mode === 'menu') this.g.mode = 'explore';
+    save(this.g.st); this.refresh();
+    return true;
+  }
   isOpen() { return !$('#modal').classList.contains('hide'); }
-  openPanel(which) { sfx.ui(); ({ party: () => this.partyPanel(), bag: () => this.bagPanel(), quests: () => this.questPanel() })[which](); }
+  openPanel(which) {
+    if (which === 'bag') { which = 'party'; this.pp = { sub: 'gear', filter: 'all', pick: null }; }
+    if (which === 'quests') { which = 'journal'; this.jj = { sub: 'quests' }; }
+    const draws = { party: drawParty, journal: drawJournal, orders: drawOrders, settings: drawSettings };
+    if (!draws[which]) return;
+    sfx.ui();
+    if (this.doll && which !== 'party') { this.doll.dispose(); this.doll = null; }
+    this.leaf = which;
+    this.open('', (b) => draws[which](this, b), true);
+  }
 
   // One line of a panel: a picture in its slot (pic: markup from art.js), the words, and buttons [label, fn, off].
   row(html, buttons = [], pic = '') {
@@ -203,114 +332,12 @@ export class UI {
     return out;
   }
 
-  partyPanel() {
+  // The bounty board in the square: what the Watch wants, on paper.
+  questPanel() {
     const st = this.g.st;
-    this.sel = this.sel && st.heroes[this.sel] ? this.sel : st.party[0]; this.resY = 0;
-    this.open('Party', (b) => {
-      const left = el('div', 'pp-l'), right = el('div', 'pp-r');
-      left.append(el('h4', '', `Marching order <small>${st.party.length}/${PARTY_MAX}</small>`));
-      st.party.forEach((id, i) => {
-        const h = st.heroes[id], r = el('div', 'hrow' + (this.sel === id ? ' on' : ''), `<b style="color:${CLASSES[h.cls].color}">${i + 1}. ${esc(h.name)}</b><small>Lv ${h.lvl} ${esc(CLASSES[h.cls].name)}${i === 0 ? ' · leads' : ''}</small>`);
-        r.onclick = () => { this.sel = id; this.draw(); };
-        const a = el('span', 'mini');
-        const mk = (t, fn, off) => { const x = el('button', off ? 'off' : '', t); if (!off) x.onclick = (e) => { e.stopPropagation(); fn(); this.g.partyChanged(); this.draw(); }; a.append(x); };
-        mk('▲', () => { [st.party[i - 1], st.party[i]] = [st.party[i], st.party[i - 1]]; }, i <= 1);
-        mk('▼', () => { [st.party[i + 1], st.party[i]] = [st.party[i], st.party[i + 1]]; }, i === 0 || i === st.party.length - 1);
-        mk('rest', () => { st.party.splice(i, 1); st.reserve.push(id); }, i === 0);
-        r.append(a); left.append(r);
-      });
-      // the rest, highest level first, in a list of its own that scrolls (there can be fifty of them)
-      if (st.reserve.length) left.append(el('h4', '', `Waiting at The Last Toll <small>${st.reserve.length}</small>`));
-      const res = el('div', 'pp-res');
-      [...st.reserve].sort((a, b) => st.heroes[b].lvl - st.heroes[a].lvl || st.heroes[a].name.localeCompare(st.heroes[b].name)).forEach((id) => {
-        const h = st.heroes[id], r = el('div', 'hrow' + (this.sel === id ? ' on' : ''), `<b style="color:${CLASSES[h.cls].color}">${esc(h.name)}</b><small>Lv ${h.lvl} ${esc(CLASSES[h.cls].name)}</small>`);
-        r.onclick = () => { this.sel = id; this.draw(); };
-        const a = el('span', 'mini'), x = el('button', st.party.length >= PARTY_MAX ? 'off' : '', 'join');
-        if (st.party.length < PARTY_MAX) x.onclick = (e) => { e.stopPropagation(); st.reserve.splice(st.reserve.indexOf(id), 1); st.party.push(id); this.g.partyChanged(); this.draw(); };
-        a.append(x); r.append(a); res.append(r);
-      });
-      if (st.reserve.length) {
-        left.append(res);
-        res.onscroll = () => { this.resY = res.scrollTop; };
-        queueMicrotask(() => { res.scrollTop = this.resY || 0; });
-      }
-      // the sheet
-      const h = st.heroes[this.sel], C = CLASSES[h.cls], s = heroStats(h);
-      right.innerHTML = `<div class="sheethead"><div><h3 style="color:${C.color}">${esc(h.name)}</h3><p class="role">Level ${h.lvl} ${esc(C.name)} · ${h.xp}/${xpNeed(h.lvl)} xp · ${esc(C.role)}</p></div><div class="roles">${roleIcons(C, true)}</div></div>
-        <div class="stats"><span>Life ${Math.max(0, h.hp)}/${s.hp}</span><span>${C.resource === 'rage' ? 'Rage' : 'Mana'} ${h.mp}/${s.mp}</span><span>Attack ${s.atk}</span><span>Magic ${s.mag}</span><span>Armor ${s.def}</span><span>Ward ${s.res}</span><span>Speed ${s.spd}</span><span>Crit ${s.crit}%</span><span>Move ${s.move}</span><span>Jump ${s.jump}</span></div><h4>Wearing</h4>`;
-      for (const slot of SLOTS) {
-        const it = h.equip[slot];
-        const r = this.row(`<em>${SLOT_NAMES[slot]}</em> ${it ? itemHtml(it) : '<small>nothing</small>'}`, [
-          ['Change', () => { this.picking = this.picking === slot ? null : slot; }],
-          ...(it ? [['Take off', () => { if (this.room()) { st.bag.push(it); h.equip[slot] = null; this.g.fixHp(h); if (slot === 'weapon') sfx.sheath(); else sfx.ui(); } }]] : []),
-        ], it ? itemPic(it, slot) : slotPic(slot));
-        right.append(r);
-        if (it && it.sockets) {
-          const sk = el('div', 'socks');
-          for (let i = 0; i < it.sockets; i++) {
-            const gm = it.gems[i], x = el('button', 'sock' + (gm ? ' full' : ''), gm ? `${gemPic(gm, true)}${esc(gemInfo(gm).full)}` : '<span class="pic round"></span>empty socket');
-            if (gm) x.style.color = gemInfo(gm).color;
-            else x.onclick = () => { this.socketing = this.socketing?.it === it ? null : { it, i }; this.draw(); };
-            sk.append(x);
-          }
-          right.append(sk);
-          if (this.socketing?.it === it) {
-            const have = Object.keys(st.gems).filter((k) => st.gems[k] > 0);
-            if (!have.length) right.append(el('div', 'note', 'You have no gems. Zafir sells them; the dead sometimes carry them.'));
-            for (const k of have) right.append(this.row(`<b style="color:${gemInfo(k).color}">${esc(gemInfo(k).full)}</b><small>x${st.gems[k]}</small><span>+${gemInfo(k).val} ${STAT_NAMES[gemInfo(k).stat]}</span>`, [['Set', () => { it.gems[this.socketing.i] = k; st.gems[k]--; this.socketing = null; this.g.fixHp(h); sfx.forge(true); }]], gemPic(k)));
-          }
-        }
-        if (this.picking === slot) {
-          const fits = st.bag.filter((x) => slotsFor(x).includes(slot) && canEquip(h, x));
-          if (!fits.length) right.append(el('div', 'note', 'Nothing in the bag fits here.'));
-          for (const x of fits) right.append(this.row(itemHtml(x), [['Wear', () => { st.bag.splice(st.bag.indexOf(x), 1); if (it) st.bag.push(it); h.equip[slot] = x; this.picking = null; this.g.fixHp(h); sfx.equip(x); }]], itemPic(x, slot)));
-        }
-      }
-      right.append(el('h4', '', 'Skills'));
-      const ul = el('ul', 'skl');
-      for (const k of C.skills) { const open = h.lvl >= k.lvl; ul.append(el('li', open ? '' : 'locked', `${skillPic(k, open)}<div><b>${esc(k.name)}</b> <small>${open ? k.cost + (C.resource === 'rage' ? ' rage' : ' mp') : '<i class="ic ic-locked"></i>opens at level ' + k.lvl}</small><br>${esc(k.desc)}</div>`)); }
-      for (const id of h.spells) ul.append(el('li', '', `${skillPic(SPELLS[id])}<div><b>${esc(SPELLS[id].name)}</b> <small>scroll · ${SPELLS[id].cost} mp</small><br>${esc(SPELLS[id].desc)}</div>`));
-      right.append(ul);
-      b.className = 'body pp'; b.append(left, right);
-    });
-  }
-
-  bagPanel() {
-    const st = this.g.st;
-    this.open('Bag', (b) => {
-      b.className = 'body';
-      b.append(el('h4', '', `Gear <small>${st.bag.length}/${st.bagSize}</small>`));
-      if (!st.bag.length) b.append(el('div', 'note', 'Empty. The dead carry things, now and then.'));
-      for (const it of st.bag) {
-        const who = partyHeroes(st).filter((h) => canEquip(h, it)).map((h) => h.name.split(' ')[0]).join(', ');
-        b.append(this.row(itemHtml(it, who ? ' · fits ' + esc(who) : ''), [['Drop', () => { st.bag.splice(st.bag.indexOf(it), 1); }]], itemPic(it)));
-      }
-      b.append(el('h4', '', 'Draughts'));
-      for (const k in CONSUMABLES) b.append(this.row(`<b>${CONSUMABLES[k].name}</b><small>x${st.consum[k] || 0}</small><span>${CONSUMABLES[k].desc}</span>`, [['Use', () => this.g.useOutside(k), k === 'tonic' || !(st.consum[k] > 0)]], consumablePic(k)));
-      b.append(el('h4', '', 'Gems'));
-      const have = Object.keys(st.gems).filter((k) => st.gems[k] > 0);
-      if (!have.length) b.append(el('div', 'note', 'None. Set them into sockets from the Party screen.'));
-      for (const k of have) b.append(this.row(`<b style="color:${gemInfo(k).color}">${esc(gemInfo(k).full)}</b><small>x${st.gems[k]}</small><span>+${gemInfo(k).val} ${STAT_NAMES[gemInfo(k).stat]}</span>`, [], gemPic(k)));
-    });
-  }
-
-  questPanel(board = false) {
-    const st = this.g.st;
-    this.open(board ? 'The Bounty Board' : 'Quests', (b) => {
-      b.className = 'body' + (board ? ' board' : '');
-      const list = QUESTS.filter((q) => (board ? q.from === 'board' : st.quests[q.id]));
-      if (!list.length) b.append(el('div', 'note', 'Nothing yet.'));
-      for (const q of list) {
-        const s = st.quests[q.id], ready = questReady(st, q);
-        const state = !s ? 'Posted' : s.state === 'done' ? 'Done' : ready ? 'Ready to claim' : `${questProgress(st, q)}/${questNeed(q)}`;
-        const mark = !s ? 'quest_offer' : s.state === 'done' ? 'quest' : ready ? 'quest_ready' : 'quest_busy';
-        const btns = [];
-        if (board && !s) btns.push(['Take it', () => { startQuest(st, q.id); sfx.ui(); }]);
-        if (ready && (board || q.from !== 'board')) btns.push(['Claim', () => this.g.claimQuest(q)]);
-        b.append(this.row(`<b>${esc(q.name)}</b><small>${state} · ${gp(q.gold)} · ${q.xp} xp${q.reward === 'rare' ? ' · a rare weapon' : ''}</small><span>${esc(s?.state === 'done' ? q.done : q.text)}</span>`, btns, goodsPic(ic(mark), 'mark')));
-        if (s?.state === 'done') b.lastChild.classList.add('done');
-        if (ready && q.from === 'board' && !board) b.lastChild.append(el('div', 'note', 'Claim it at the bounty board in the square.'));
-      }
+    this.open('The Bounty Board', (b) => {
+      b.className = 'body board';
+      for (const q of QUESTS.filter((q) => q.from === 'board')) b.append(questRow(this, q, true));
     });
   }
 

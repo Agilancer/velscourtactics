@@ -262,11 +262,14 @@ export class FX {
 
   // ---- the frame ----
   // How fast the rest of the game should run this frame: a stopped frame on a heavy blow.
-  timeScale() { return this.stopT > 0 ? 0.04 : 1; }
+  timeScale() { return this.stopT > 0 ? 0.04 : this.slowT > 0 ? this.slowK : 1; }
+  // the world at a fraction of its pace for a moment (the last of them going down)
+  slow(k, secs) { this.slowK = k; this.slowT = Math.max(this.slowT || 0, secs); }
   update(dt) {
     const real = dt;
     if (this.stopT > 0) dt *= 0.08;           // a stopped frame holds the sparks in the air too
     this.stopT = Math.max(0, this.stopT - real);
+    this.slowT = Math.max(0, (this.slowT || 0) - real);
     const r = this.r, scale = r.gl.domElement.height / Math.max(0.01, r.cam.top - r.cam.bottom);
     this.add.update(dt, scale); this.mix.update(dt, scale);
     for (const e of this.live) {

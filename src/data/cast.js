@@ -399,3 +399,66 @@ export const CRYPT = {
   lisandra: 'Mind the candles. Nobody living lit them, and I’d rather not meet whoever keeps them in wicks.',
   chest: 'Somebody was buried with this and wanted it kept. They’ve stopped minding.',
 };
+
+// ---- what the party says to itself (game/banter.js): a bubble over a head and a line in the log ----
+// Pools by what has just happened; `any` is anyone's, and a key that is a hero's id or a class is theirs alone.
+// {t} is whoever or whatever it is about, {n} a number. Grim, wry, warm; nobody explains anything.
+export const BANTER = {
+  // the walk
+  walk: {
+    any: ['Anyone else hear that? No? Good. Keep it that way.', 'My feet have opinions about this road.', 'If we die out here, I want it known I was against it.', 'Somebody’s been through here. Somebody with no shoes.', 'I’d trade my left boot for a pie. I’d trade both for a hot one.', 'Quiet. Too quiet. No, wait, that’s just nice.'],
+    paladin: ['The Light walks with us. It would not kill it to walk in front.', 'Keep together. A line is only as strong as whoever wandered off.'],
+    ranger: ['Wind’s behind us. They’ll smell us before we see them.', 'Those tracks are a day old. Those ones aren’t.'],
+    wizard: ['I have a theory about these trees. You won’t like it.', 'Does anyone mind if I set fire to something small? For morale.'],
+    barbarian: ['When do we hit something?', 'I’m not lost. I’m between fights.'],
+    necromancer: ['They’re so much better company once they’ve stopped moving.', 'Don’t look at me like that. I ask first. Usually.'],
+    bard: ['I’ve a song for this bit. It’s mostly swearing.', 'This’ll all scan beautifully once somebody survives it.'],
+    lisandra: ['Slow down! Some of us just lost a cave.', 'I walked this road when it was a cart track. It was better as a cart track.'],
+    homunculus: ['Halt! ...No, carry on. I thought I saw a horse.', 'Gertrude would have liked this road. Firm underfoot.'],
+    stevie: ['Whoever packed this lot packed it wrong. It was Garth. Sorry, Garth.', 'Straps. Check your straps. I’m not doing this twice.'],
+  },
+  // a land, the first steps into it
+  waste: ['Cold enough to keep the dead fresh. That’s the trouble.', 'Nobody say “bracing”.'],
+  badlands: ['Everything here is the colour of old bone. Including the old bones.', 'Drink when you’re told to, not when you’re thirsty.'],
+  fen: ['If the ground looks at you, don’t stand on it.', 'It’s not the smell. It’s that the smell is warm.'],
+  ash: ['Mind your step. Some of this is still thinking about burning.', 'There was a timetable here once. Imagine.'],
+  pines: ['Back under the trees. I never thought I’d be glad of it.', 'The Hollow’s that way. So is everything else, mind.'],
+  // a fight
+  seen: ['Here they come.', 'Backs together. You know the rest.', 'Oh, good. I was getting bored.', 'Count them. Then count them again.'],
+  grave: ['That is too many. I want that written down.', 'We could run. I’m only saying we could.', 'Well. It’s been an honour. Mostly.'],
+  easy: ['This won’t take long.', 'Somebody hold my coat.'],
+  kill: ['Stay down.', 'One less.', 'And that’s for the goat.', 'Next.', 'Go back to sleep.'],
+  crit: ['There!', 'Felt that one.', 'Oh, that was lovely.'],
+  hurt: ['I’m fine. I’m fine! I’m mostly fine.', 'That’s going to need stitching.', 'Somebody want to do something about this one?'],
+  low: ['I can see my own ribs. That’s new.', 'Not like this. Not in a wood.', 'If anybody’s got a draught, now’s the time.'],
+  down: ['{t}! No, no, no. Get up.', 'They’ve got {t}!', '{t}’s down! Close up!'],
+  healed: ['Much obliged.', 'Oh, that’s better. That’s much better.', 'I owe you a drink. Remind me.'],
+  combo: ['That’s how it’s done.', 'Together! Just like we never practised.', 'See? Teamwork. I’ve always said so.'],
+  windup: ['MOVE! Get off that ground!', 'It’s drawing breath. Scatter!', 'Don’t stand there. Do not stand there.'],
+  call: ['You heard. Do it.', 'Finally, somebody’s in charge.', 'Right you are.'],
+  won: ['Anyone hurt? Anyone who’ll admit it?', 'Check their pockets. Respectfully.', 'Is that all of them? Tell me that’s all of them.'],
+  close: ['That was closer than I like.', 'Nobody tell the Hollow how that nearly went.', 'I saw my grandmother. She was waving me off, thank you very much.'],
+  lost: ['...What happened?', 'Somebody carried us. I don’t want to know who.', 'Next time we bring more of everything.'],
+  rival: ['It’s that one again. {t}. I’d know that walk anywhere.', 'There. {t}. We’ve a score.'],
+  rivalDown: ['That’s {t} settled. Somebody tell the Watch.', 'And stay settled.'],
+  // the road's small change
+  level: ['I feel taller. Is that normal?', 'Something’s come back to me. I’d forgotten I knew it.'],
+  loot: ['Ooh. That’s not nothing.', 'Somebody’s going to want that. Me. I want that.', 'Finders keepers. That is the whole law out here.'],
+  chest: ['Buried up high where the dead don’t climb. Clever. Not clever enough.'],
+  rest: ['A bed. An actual bed. I may cry.', 'Wake me when it’s over. All of it.'],
+  shop: ['That’s a lot of gold for a thing that doesn’t stab.', 'Buy the good one. We’re not being buried in the cheap one.'],
+  dread: ['Is it me, or are there more of them every morning?', 'They’re standing closer to the road than they were.', 'The Hollow’s ringing its bells early. That’s never good.'],
+  lord: ['That was a lord. We just did that.', 'One road quieter. Three to go, or thereabouts.'],
+  saved: ['Get behind us. No, further. Further than that.'],
+};
+
+// Folk found out in the pines with the dead all round them (a fight to get them home: game/encounter.js). `look` is
+// the stand-in body; `thanks` is said when it's over and they're still breathing.
+export const STRAYS = [
+  { id: 'hob', name: 'Hob', look: { cls: 'ranger', g: 'm', tint: 0x6a5a3a }, cry: 'Over here! Mind the goat! There isn’t a goat. There was a goat!', thanks: 'I only came out for the goat. Here. It’s not much. It’s what the goat was worth.' },
+  { id: 'jory', name: 'Jory', look: { cls: 'bard', g: 'm', tint: 0x5a6a7a }, cry: 'They’ve got my hat! Never mind the hat! Help!', thanks: 'You never saw me cry. Take this. And if you see a hat...' },
+  { id: 'sabine', name: 'Sabine', look: { cls: 'carrion_witch', g: 'f', tint: 0x7a8a6a }, cry: 'I was picking salve-wort! They do not care about salve-wort!', thanks: 'I had this put by for a bad winter. This will do for one.' },
+  { id: 'tolly', name: 'Tolly', look: { cls: 'gunner', g: 'm', small: true, tint: 0x8a6a4a }, cry: 'I wasn’t lost! I was exploring! HELP!', thanks: 'Don’t tell my mam. Here, I found this. It’s shiny. You have it.' },
+];
+// What the dead's runner drops, and what is said of it.
+export const RUNNER = { caught: 'It was carrying the pack’s takings: rings, mostly. Some still on.', away: 'The runner is into the trees and gone, and whatever it carried with it.' };

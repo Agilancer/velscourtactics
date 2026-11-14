@@ -8,7 +8,9 @@ import { setDye } from '../gfx/dye.js';
 import { lookFor, shieldFor, foeGear } from '../data/gear.js';
 import { CLASSES } from '../data/classes.js';
 import { FOLK, HEROES, ROAD_END, LISANDRA_CHAT } from '../data/cast.js';
-import { ZOMBIES } from '../data/enemies.js';
+import { ZOMBIES, zombieStats } from '../data/enemies.js';
+import { heroStats, partyHeroes } from './party.js';
+import { threat } from './tactics.js';
 import { sfx } from '../core/audio.js';
 import { pick } from '../core/util.js';
 
@@ -133,21 +135,35 @@ export class Explore {
     const { world, r, st } = this.g;
     for (const f of this.foes) { sleep(f.model); r.units.remove(f.model); }
     this.foes = []; this.foeAt.clear();
+    // the bolder the dead (st.dread), the stronger those in the pines: a level for every quarter of it
+    const bold = Math.floor((st.dread || 0) / 25);
     world.packs.forEach((p, pi) => p.members.forEach((m, mi) => {
       const id = `p${pi}m${mi}`;
       if (st.slain[id] != null && st.day <= st.slain[id]) return;
-      const z = ZOMBIES[m.kind];
-      const model = withOverride(foeKey(z, pi * 3 + mi), () => makeZombie(z), { asleep: true });
-      setGear(model, foeGear(z.id, pi + mi));
-      model.position.set(m.x, world.y(m.x, m.z), m.z);
-      model.rotation.y = Math.random() * 6.28;
-      model.add(shadowDisc(0.34 * z.scale));
-      if (z.ambush) setAnim(model, 'dead');             // lurkers lie in the needles
-      r.units.add(model);
-      const foe = { id, kind: m.kind, z, level: m.level, x: m.x, z0: m.z, zt: m.z, hx: m.x, hz: m.z, model, t: 1 + Math.random() * 4, alive: true };
-      foe.zz = m.z;
-      this.foes.push(foe); this.foeAt.set(key(m.x, m.z), foe);
+      this.addFoe(id, m.kind, m.level + (p.lord || p.crypt ? 0 : bold), m.x, m.z, pi * 3 + mi);
     }));
+  }
+  // One of the dead, standing in the world. One with a score to settle (st.rivals) has its name over its head and
+  // the level it has earned.
+  addFoe(id, kind, level, x, zz, n = 0) {
+    const { world, r, st } = this.g, z = ZOMBIES[kind], rival = st.rivals?.[id];
+    const model = withOverride(foeKey(z, n), () => makeZombie(z), { asleep: true });
+    setGear(model, foeGear(z.id, n));
+    model.position.set(x, world.y(x, zz), zz);
+    model.rotation.y = Math.random() * 6.28;
+    model.add(shadowDisc(0.34 * z.scale));
+    if (z.ambush && !rival) setAnim(model, 'dead');             // lurkers lie in the needles
+    if (rival) {
+      const tag = label(rival.first, { size: 36, color: '#ff8a76' });
+      tag.position.y = (model.userData.height || 1.6) / model.scale.y + 0.5;
+      model.add(tag);
+      level = Math.max(level, rival.lvl);
+    }
+    r.units.add(model);
+    const foe = { id, kind, z: rival ? { ...z, ambush: false, name: rival.name } : z, level, x, z0: zz, zt: zz, hx: x, hz: zz, model, t: 1 + Math.random() * 4, alive: true, rival: !!rival };
+    foe.zz = zz;
+    this.foes.push(foe); this.foeAt.set(key(x, zz), foe);
+    return foe;
   }
 
   rebuildParty() {
@@ -274,7 +290,7 @@ export class Explore {
     const town = w.inTown(L.x, L.z);
     const land = w.regionAt(L.x, L.z);
     if (this.inTown !== null && town !== this.inTown) g.ui.banner(town ? 'Herrington Hollow' : land.name, town ? 'Forty roofs, one well' : land.sub);
-    else if (this.land && land !== this.land && !town) g.ui.banner(land.name, land.sub);
+    else if (this.land && land !== this.land && !town) { g.ui.banner(land.name, land.sub); setTimeout(() => g.banter.say(land.id, { force: true }), 1600); }
     this.inTown = town; this.land = land;
     if ((L.x <= 1 || L.z <= 1 || L.x >= N - 2 || L.z >= N - 2) && !this.endSaid) { this.endSaid = true; g.ui.toast(ROAD_END); setTimeout(() => { this.endSaid = false; }, 9000); }
     this.updatePrompt();
@@ -365,10 +381,15 @@ export class Explore {
     bang.position.y = 2.1;
     f.model.add(bang);
     sfx.alert(g.world.inTown(L.x, L.z, 16));
-    g.ui.banner('Seen!', `${f.z.name} · level ${f.level}`, true);
+    const near = this.foes.filter((o) => Math.hypot(o.x - f.x, o.zz - f.zz) <= 7.5 || Math.hypot(o.x - L.x, o.zz - L.z) <= 6.5);
+    // how it looks, before a blow is struck: the dead's weight against the party's
+    const T = threat(partyHeroes(g.st).map((h) => heroStats(h)), near.map((o) => zombieStats(o.kind, o.level)));
+    const rival = near.find((o) => o.rival);
+    g.ui.banner(rival ? rival.z.name : 'Seen!', `${near.length > 1 ? near.length + ' of the dead' : f.z.name + ' · level ' + f.level} · it looks ${T.word.toLowerCase()}`, true);
+    if (rival) g.banter.say('rival', { t: rival.z.name.split(',')[0], force: true });
+    if (g.st.auto && T.i >= 3) g.ui.chat.line('auto', '', `Taking a fight that looks ${T.word.toLowerCase()}. (Orders: how bold.)`);
     setTimeout(() => {
       f.model.remove(bang);
-      const near = this.foes.filter((o) => Math.hypot(o.x - f.x, o.zz - f.zz) <= 7.5 || Math.hypot(o.x - L.x, o.zz - L.z) <= 6.5);
       for (const o of near) setAnim(o.model, 'idle');
       g.startBattle(near, f);
     }, 1100);

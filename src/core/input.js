@@ -29,6 +29,7 @@ export class Input {
       else if (e.key === 'Escape' || e.key === 'Backspace') this.emit('back');
       else if (e.key === 'p' || e.key === 'P') this.emit('auto');
       else if (e.key === 'f' || e.key === 'F') this.emit('speed');
+      else if (e.key === 'c' || e.key === 'C') this.emit('call');
       else if (e.key === 'Tab') { this.emit('menu'); e.preventDefault(); }
     });
     window.addEventListener('keyup', (e) => { const d = KEYS[e.key]; if (d) this.release(d); });

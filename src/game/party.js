@@ -3,6 +3,8 @@ import { CLASSES, SPELLS, findSkill } from '../data/classes.js';
 import { WEAPONS, itemStats, makeItem } from '../data/items.js';
 import { HEROES } from '../data/cast.js';
 import { QUESTS } from '../data/enemies.js';
+import { boonSum, ordersOf } from './doctrine.js';
+import { fresh, skillsOpen } from './chronicle.js';
 
 export const PARTY_MAX = 6;
 export const SLOTS = ['weapon', 'armor', 'helm', 'ring1', 'ring2', 'amulet'];
@@ -18,11 +20,23 @@ export function newHero(id, { name, cls, g, heroId = null, lvl = 1 }) {
   h.equip.armor = makeItem(C.armor, 0, 0);
   const s = heroStats(h);
   h.hp = s.hp; h.mp = s.mp;
+  h.stance = defaultStance(cls); h.seenSkills = skillsOpen(h);
   return h;
 }
 export function heroFromCast(heroId, lvl = 1) {
   const d = HEROES[heroId];
   return newHero(heroId, { name: d.name, cls: d.cls, g: d.g, heroId, lvl });
+}
+
+// What the party's boons add to everyone (doctrine.js BOONS); set whenever the save is taken up or a boon is kept.
+let BOON = {};
+export function setBoons(st) { BOON = boonSum(st); }
+// How a class fights when nobody has said otherwise.
+export function defaultStance(cls) {
+  const role = (CLASSES[cls].role || '').toLowerCase();
+  if (/front|wall|soak|guard|shield/.test(role)) return 'shield';
+  if (CLASSES[cls].move <= 3 && CLASSES[cls].primary === 'int') return 'guarded';
+  return 'steady';
 }
 
 export function heroStats(h) {
@@ -44,6 +58,11 @@ export function heroStats(h) {
     const st = itemStats(it);
     for (const k in st) s[k] = (s[k] || 0) + st[k];
   }
+  if (BOON.hpPct) s.hp = Math.round(s.hp * (1 + BOON.hpPct / 100));
+  if (BOON.mpPct) s.mp = Math.round(s.mp * (1 + BOON.mpPct / 100));
+  if (BOON.atkPct) s.atk = Math.round(s.atk * (1 + BOON.atkPct / 100));
+  if (BOON.magPct) s.mag = Math.round(s.mag * (1 + BOON.magPct / 100));
+  for (const k of ['spd', 'crit', 'def', 'res', 'leech']) if (BOON[k]) s[k] += BOON[k];
   if (C.resource === 'rage') s.mp = 100;
   return s;
 }
@@ -55,6 +74,26 @@ export function canEquip(h, it) {
   return true;
 }
 export const slotsFor = (it) => (it.slot === 'ring' ? ['ring1', 'ring2'] : [it.slot]);
+/** What a piece is worth to this hero, for telling the better of two (auto-play's choice, and the green arrow). */
+export function itemWorth(h, it) {
+  if (!it) return 0;
+  const C = CLASSES[h.cls], w = h.equip.weapon, usesMag = (w && WEAPONS[w.kind].stat === 'mag') || C.primary === 'int';
+  const s = itemStats(it), W = { atk: usesMag ? 0.3 : 2, mag: usesMag ? 2 : 0.3, def: 1, res: 1, hp: 0.25, mp: 0.15, spd: 3, crit: 0.5, leech: 0.5 };
+  let v = 0; for (const k in s) v += s[k] * (W[k] || 0); return v;
+}
+/** Where this hero would wear it, if it's better than what's there: the slot, or null. */
+export function upgradeSlot(h, it) {
+  if (!canEquip(h, it)) return null;
+  const slot = slotsFor(it).reduce((a, b) => (itemWorth(h, h.equip[a]) <= itemWorth(h, h.equip[b]) ? a : b));
+  return itemWorth(h, it) > itemWorth(h, h.equip[slot]) + 0.01 ? slot : null;
+}
+/** Into the bag (if there's room), marked as new for the red dots unless told otherwise. */
+export function addToBag(st, it, isNew = true) {
+  if (st.bag.length >= st.bagSize) return false;
+  st.bag.push(it);
+  if (isNew) fresh(st).items[it.uid] = 1;
+  return true;
+}
 
 // The plain attack, shaped like a skill so combat treats it the same.
 export function basicAttack(h) {
@@ -81,7 +120,7 @@ export function newState({ name, cls, g }) {
     pos: null, dpad: 'A', auto: false, day: 1, flags: {}, stock: {},
   };
   st.heroes.lead = newHero('lead', { name, cls, g });
-  return st;
+  return migrate(st);
 }
 export const lead = (st) => st.heroes[st.party[0]];
 export const partyHeroes = (st) => st.party.map((id) => st.heroes[id]);
@@ -92,6 +131,7 @@ export function recruit(st, heroId) {
   const h = heroFromCast(heroId, Math.max(1, lead(st).lvl - (heroId === 'lisandra' ? 0 : 1)));
   st.heroes[heroId] = h;
   (st.party.length < PARTY_MAX ? st.party : st.reserve).push(heroId);
+  if (heroId !== 'lisandra') fresh(st).heroes[heroId] = 1;
   return h;
 }
 
@@ -100,7 +140,7 @@ export function restAll(st) {
 }
 
 // ---- quests ----
-export function startQuest(st, id) { if (!st.quests[id]) st.quests[id] = { state: 'active', n: 0 }; }
+export function startQuest(st, id) { if (!st.quests[id]) { st.quests[id] = { state: 'active', n: 0 }; fresh(st).quests[id] = 'new'; } }
 export function questProgress(st, q) {
   const s = st.quests[q.id];
   if (!s) return 0;
@@ -122,7 +162,17 @@ export function save(st) {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(st)); } catch (e) { console.warn('save failed', e); }
 }
 export function load() {
-  try { const s = localStorage.getItem(SAVE_KEY); return s ? JSON.parse(s) : null; } catch { return null; }
+  try { const s = localStorage.getItem(SAVE_KEY); return s ? migrate(JSON.parse(s)) : null; } catch { return null; }
+}
+/** A save from before any of these were kept is given them, so nothing has to ask whether they're there. */
+export function migrate(st) {
+  ordersOf(st); fresh(st);
+  st.chron ||= []; st.chronN ||= st.chron.length; st.chronSeen ??= st.chronN;
+  st.rivals ||= {}; st.boons ||= []; st.dread ||= 0; st.stats ||= { fights: 0, won: 0, lost: 0 };
+  st.opts ||= {};
+  for (const h of Object.values(st.heroes)) { h.stance ||= defaultStance(h.cls); h.seenSkills ??= skillsOpen(h); }
+  setBoons(st);
+  return st;
 }
 export function wipe() { try { localStorage.removeItem(SAVE_KEY); } catch { /* nothing to wipe */ } }
 export { findSkill };
