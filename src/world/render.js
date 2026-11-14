@@ -6,6 +6,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { N, T, STEP } from './map.js';
 import { rng32, vnoise, clamp } from '../core/util.js';
 import { label, mat } from '../gfx/models.js';
+import { Edges } from '../gfx/outline.js';
 
 const CAM = new THREE.Vector3(20, 16.5, 20);  // the camera's offset from what it looks at
 const RISE = CAM.y / CAM.x;                    // how fast a ray toward the camera climbs per tile of x and z
@@ -84,6 +85,7 @@ export class Renderer {
     this.faders = [];     // trees and buildings that go see-through when someone stands behind them
     this.units = new THREE.Group();
     this.scene.add(this.units);
+    this.edges = new Edges(this);   // the party's and the dead's edge light, outline and ring (gfx/outline.js)
 
     // Light: a cold bruise-coloured sky, one warm low sun.
     this.scene.add(new THREE.HemisphereLight(0x8fa0c8, 0x2a2018, 1.15));
@@ -695,6 +697,9 @@ export class Renderer {
   render() {
     this.cam.position.copy(this.target).add(CAM);
     this.cam.lookAt(this.target);
+    this.cam.updateMatrixWorld();
+    this.edges.update();
     this.gl.render(this.scene, this.cam);
+    this.edges.draw();
   }
 }
