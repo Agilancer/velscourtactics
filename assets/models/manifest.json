@@ -116,5 +116,343 @@
       "dead": 1.3,
       "revive": 1.6
     }
+  },
+  "zombie_shambler": {
+    "file": "zombie_shambler.glb",
+    "height": 1.5,
+    "inPlace": true,
+    "lift": 0.14,
+    "normal": 0.5,
+    "outline": 0.014,
+    "bones": {
+      "Head": 1.2
+    },
+    "anims": {
+      "idle": "Idle",
+      "walk": "Mummy_Stagger_inplace",
+      "attack": "Punch_Forward_with_Both_Fists",
+      "cast": "Zombie_Scream",
+      "hit": "Hit_Reaction",
+      "dead": "Dead",
+      "cheer": "Zombie_Scream"
+    },
+    "speed": {
+      "walk": 2.2,
+      "attack": 2.3,
+      "cast": 2.2,
+      "hit": 2.2,
+      "dead": 1.8
+    },
+    "trim": {
+      "attack": [
+        0.6,
+        2.9
+      ],
+      "cast": [
+        0.3,
+        2.5
+      ]
+    }
+  },
+  "zombie_gnawer": {
+    "file": "zombie_gnawer.glb",
+    "height": 1.45,
+    "inPlace": true,
+    "lift": 0.14,
+    "normal": 0.5,
+    "outline": 0.014,
+    "bones": {
+      "Head": 1.2
+    },
+    "anims": {
+      "idle": "Idle",
+      "walk": "Lean_Forward_Sprint_inplace",
+      "attack": "Punch_Forward_with_Both_Fists",
+      "cast": "Zombie_Scream",
+      "hit": "Hit_Reaction",
+      "dead": "Dead",
+      "cheer": "Zombie_Scream"
+    },
+    "speed": {
+      "walk": 1,
+      "attack": 2.3,
+      "cast": 2.2,
+      "hit": 2.2,
+      "dead": 1.8
+    },
+    "trim": {
+      "attack": [
+        0.6,
+        2.9
+      ],
+      "cast": [
+        0.3,
+        2.5
+      ]
+    }
+  },
+  "zombie_lurker": {
+    "file": "zombie_lurker.glb",
+    "height": 1.55,
+    "inPlace": true,
+    "lift": 0.14,
+    "normal": 0.5,
+    "outline": 0.014,
+    "bones": {
+      "Head": 1.2
+    },
+    "anims": {
+      "idle": "Idle",
+      "walk": "Cautious_Crouch_Walk_Forward_inplace",
+      "attack": "Punch_Forward_with_Both_Fists",
+      "cast": "Zombie_Scream",
+      "hit": "Hit_Reaction",
+      "dead": "Dead",
+      "cheer": "Zombie_Scream",
+      "pounce": "Jumping_Punch"
+    },
+    "speed": {
+      "walk": 1.3,
+      "attack": 2.3,
+      "cast": 2.2,
+      "hit": 2.2,
+      "dead": 1.8,
+      "pounce": 2
+    },
+    "trim": {
+      "attack": [
+        0.6,
+        2.9
+      ],
+      "cast": [
+        0.3,
+        2.5
+      ],
+      "pounce": [
+        1,
+        2.4
+      ]
+    }
+  },
+  "zombie_bonesack": {
+    "file": "zombie_bonesack.glb",
+    "height": 1.4,
+    "inPlace": true,
+    "lift": 0.14,
+    "normal": 0.5,
+    "outline": 0.014,
+    "bones": {
+      "Head": 1.2
+    },
+    "anims": {
+      "idle": "Idle",
+      "walk": "Slow_Orc_Walk_inplace",
+      "attack": "Punch_Forward_with_Both_Fists",
+      "cast": "Zombie_Scream",
+      "hit": "Hit_Reaction",
+      "dead": "Dead",
+      "cheer": "Zombie_Scream"
+    },
+    "speed": {
+      "walk": 2.4,
+      "attack": 2.3,
+      "cast": 2.2,
+      "hit": 2.2,
+      "dead": 1.8
+    },
+    "trim": {
+      "attack": [
+        0.6,
+        2.9
+      ],
+      "cast": [
+        0.3,
+        2.5
+      ]
+    }
+  },
+  "zombie_brute": {
+    "file": "zombie_brute.glb",
+    "height": 2.25,
+    "inPlace": true,
+    "lift": 0.14,
+    "normal": 0.5,
+    "outline": 0.014,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Slow_Orc_Walk_inplace",
+      "attack": "Charged_Ground_Slam",
+      "cast": "Zombie_Scream",
+      "hit": "Hit_Reaction",
+      "dead": "Dead",
+      "cheer": "Zombie_Scream",
+      "sweep": "Axe_Spin_Attack"
+    },
+    "speed": {
+      "walk": 2,
+      "attack": 2.4,
+      "cast": 2.2,
+      "hit": 2.2,
+      "dead": 1.8,
+      "sweep": 2.2
+    },
+    "trim": {
+      "attack": [
+        0.9,
+        3
+      ],
+      "cast": [
+        0.3,
+        2.5
+      ],
+      "sweep": [
+        0.3,
+        2.3
+      ]
+    }
+  },
+  "paladin_m": {
+    "file": "paladin_m.glb",
+    "height": 1.75,
+    "inPlace": true,
+    "lift": 0.14,
+    "outline": 0.016,
+    "bones": {
+      "Head": 1.15,
+      "LeftUpLeg": 0.92,
+      "RightUpLeg": 0.92,
+      "LeftHand": 1.1,
+      "RightHand": 1.1
+    },
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Swing",
+      "swing": "Swing",
+      "smite": "Smite",
+      "bolt": "Bolt",
+      "bless": "Bless",
+      "wave": "Wave",
+      "bash": "Shield_Bash"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "swing": 1.25,
+      "smite": 1.3,
+      "wave": 1.5
+    }
+  },
+  "ranger_f": {
+    "file": "ranger_f.glb",
+    "height": 1.62,
+    "inPlace": true,
+    "lift": 0.32,
+    "outline": 0.016,
+    "bones": {
+      "Head": 1.15,
+      "LeftUpLeg": 0.92,
+      "RightUpLeg": 0.92,
+      "LeftHand": 1.1,
+      "RightHand": 1.1
+    },
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Shoot",
+      "shoot": "Shoot",
+      "volley": "Volley",
+      "call": "Call"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "shoot": 1.3
+    }
+  },
+  "wizard_m": {
+    "file": "wizard_m.glb",
+    "height": 1.78,
+    "inPlace": true,
+    "lift": 0.22,
+    "outline": 0.016,
+    "bones": {
+      "Head": 1.15,
+      "LeftUpLeg": 0.92,
+      "RightUpLeg": 0.92,
+      "LeftHand": 1.1,
+      "RightHand": 1.1
+    },
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Bolt",
+      "bolt": "Bolt",
+      "wave": "Wave",
+      "meteor": "Meteor"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "wave": 1.5,
+      "meteor": 1.2
+    }
   }
 }

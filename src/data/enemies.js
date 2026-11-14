@@ -19,7 +19,7 @@ export const ZOMBIES = [
     id: 'lurker', name: 'Lurker', plural: 'Lurkers', hp: 0.9, atk: 1.3, def: 0.9, spd: 7, move: 4, jump: 2, sight: 3, ambush: true,
     color: 0x5a6a5a, scale: 1,
     blurb: 'Lies in the needles and plays dead. Then it does not.',
-    skills: [S('pounce', 'Pounce', 0, [2, 3], 0, 'enemy', 'phys', 1.2, { dash: true }), S('rake', 'Rake', 0, [1, 1], 0, 'enemy', 'phys', 1)],
+    skills: [S('pounce', 'Pounce', 0, [2, 3], 0, 'enemy', 'phys', 1.2, { dash: true, anim: 'pounce' }), S('rake', 'Rake', 0, [1, 1], 0, 'enemy', 'phys', 1)],
   },
   {
     id: 'bonesack', name: 'Bloated Bonesack', plural: 'Bloated Bonesacks', hp: 1.5, atk: 0.85, def: 0.8, spd: 4, move: 2, jump: 1, sight: 5, burst: true,
@@ -31,7 +31,7 @@ export const ZOMBIES = [
     id: 'brute', name: 'Chained Brute', plural: 'Chained Brutes', hp: 2.6, atk: 1.45, def: 1.4, spd: 4, move: 3, jump: 1, sight: 5,
     color: 0x6a6a7a, scale: 1.5,
     blurb: 'Too big for one grave. Whoever chained it did not chain it well.',
-    skills: [S('chain_sweep', 'Chain Sweep', 0, [0, 0], 1, 'self', 'phys', 0.9), S('slam', 'Slam', 0, [1, 1], 0, 'enemy', 'phys', 1.25, { st: ['stun', 1, 0.3] })],
+    skills: [S('chain_sweep', 'Chain Sweep', 0, [0, 0], 1, 'self', 'phys', 0.9, { anim: 'sweep' }), S('slam', 'Slam', 0, [1, 1], 0, 'enemy', 'phys', 1.25, { st: ['stun', 1, 0.3] })],
   },
 ];
 

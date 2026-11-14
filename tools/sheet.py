@@ -3,7 +3,7 @@ python tools/sheet.py <tag> [out.png]   (takes tools/build/shots/<tag>_*.png, cr
 import glob, os, sys
 from PIL import Image, ImageDraw
 tag = sys.argv[1]; root = os.path.join(os.path.dirname(__file__), 'build', 'shots')
-order = ['idle', 'walk', 'run', 'jump', 'attack', 'cast_bolt', 'snap', 'lantern', 'wave', 'thrust', 'charge', 'bash', 'guard_up', 'guard', 'rally', 'point', 'taunt',
+order = ['idle', 'walk', 'run', 'jump', 'attack', 'cast_bolt', 'snap', 'lantern', 'wave', 'thrust', 'charge', 'swing', 'smite', 'bolt', 'bless', 'shoot', 'volley', 'call', 'meteor', 'bash', 'guard_up', 'guard', 'rally', 'point', 'taunt',
          'cast', 'hit', 'wounded', 'stunned', 'talk', 'item', 'cheer', 'dead', 'revive']
 files = [os.path.join(root, f'{tag}_{n}.png') for n in order if os.path.exists(os.path.join(root, f'{tag}_{n}.png'))]
 cols = 8; tw, th = 230, 300
