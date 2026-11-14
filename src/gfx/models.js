@@ -1,0 +1,293 @@
+// Stand-in 3D models, built from boxes and cones until the Meshy ones arrive.
+// Every model is a Group whose userData.parts names the limbs, so one animator drives them all.
+//
+// To swap in a real model: put the .glb in assets/models/ and name it in assets/models/manifest.json
+// under the same key the stand-in uses (see docs/MODELS.md). Nothing else changes.
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
+import { CLASSES } from '../data/classes.js';
+
+const mats = new Map();
+export function mat(color, opts = {}) {
+  const key = color + JSON.stringify(opts);
+  if (!mats.has(key)) mats.set(key, new THREE.MeshLambertMaterial({ color, ...opts }));
+  return mats.get(key);
+}
+const geos = new Map();
+const G = (key, make) => { if (!geos.has(key)) geos.set(key, make()); return geos.get(key); };
+const box = (w, h, d) => G(`b${w},${h},${d}`, () => new THREE.BoxGeometry(w, h, d));
+const cyl = (rt, rb, h, n = 8) => G(`c${rt},${rb},${h},${n}`, () => new THREE.CylinderGeometry(rt, rb, h, n));
+const sph = (r, n = 10) => G(`s${r},${n}`, () => new THREE.SphereGeometry(r, n, Math.max(6, n - 2)));
+const cone = (r, h, n = 8) => G(`k${r},${h},${n}`, () => new THREE.ConeGeometry(r, h, n));
+
+function part(geo, color, x = 0, y = 0, z = 0, opts) {
+  const m = new THREE.Mesh(geo, mat(color, opts));
+  m.position.set(x, y, z);
+  return m;
+}
+const grp = (x = 0, y = 0, z = 0, ...kids) => { const g = new THREE.Group(); g.position.set(x, y, z); for (const k of kids) g.add(k); return g; };
+
+const SKIN = [0xd8b89a, 0xb88a66, 0x8a5e40, 0xe6cbb0];
+const STEEL = 0x8f98a6, DARK = 0x1a1220, WOOD = 0x5a3c24, GOLD = 0xc9a24a, BONE = 0xd8d0b8;
+
+// How each class dresses. body/trim are cloth and metal; hat and held are the silhouette hooks.
+const KIT = {
+  paladin: { body: 0x8f98a6, trim: 0x2a3a6a, hat: 'helm', held: 'mace', shield: 0x2a3a6a, cape: 0x2a3a6a },
+  ranger: { body: 0x3e5a34, trim: 0x6a4a2a, hat: 'hood', held: 'bow' },
+  wizard: { body: 0x7a3a1c, trim: 0xc9a24a, hat: 'point', held: 'staff', robe: true },
+  necromancer: { body: 0x2a1c3a, trim: 0xd8d0b8, hat: 'hood', held: 'wand', robe: true },
+  barbarian: { body: 0x7a4a2a, trim: 0xb8c8d8, hat: 'horns', held: 'axe', bare: true },
+  dragoon: { body: 0x3a5a8a, trim: 0x8f98a6, hat: 'spike', held: 'spear', cape: 0x1c2c4a },
+  totem_master: { body: 0x2e6a56, trim: 0xb07a3a, hat: 'mask', held: 'staff' },
+  death_knight: { body: 0x2a2e3a, trim: 0x7ad0ff, hat: 'helm', held: 'sword', cape: 0x12060a },
+  arcane_sorcerer: { body: 0x1c2a5a, trim: 0xd8e8ff, hat: 'veil', held: 'wand', robe: true },
+  carrion_witch: { body: 0x3a4a22, trim: 0x1a1220, hat: 'witch', held: 'staff', robe: true },
+  bard: { body: 0x8a2a44, trim: 0xc9a24a, hat: 'feather', held: 'lute' },
+  slime_lord: { body: 0x2a5aa8, trim: 0xc9a24a, hat: 'crown', held: 'mace', slime: true },
+  boomerang_knight: { body: 0x2a7a6a, trim: 0x8f98a6, hat: 'cap', held: 'boomerang' },
+  lancer: { body: 0xa0a4b0, trim: 0x5a5a6a, hat: 'helm', held: 'spear', shield: 0x8f98a6, tower: true },
+  dragon_knight: { body: 0x8a2a1a, trim: 0x2a1a1a, hat: 'spike', held: 'sword', shield: 0x5a1a10 },
+  gunner: { body: 0x6a5a3a, trim: 0x3a2a1a, hat: 'goggles', held: 'pistol' },
+  doorkeeper: { body: 0x4a3a2a, trim: 0xe6c27a, hat: 'witch', held: 'staff', robe: true },
+};
+
+function held(kind) {
+  const g = new THREE.Group();
+  switch (kind) {
+    case 'sword': g.add(part(box(0.07, 0.7, 0.03), STEEL, 0, 0.4, 0), part(box(0.24, 0.05, 0.06), GOLD, 0, 0.06, 0), part(box(0.05, 0.14, 0.05), WOOD, 0, -0.03, 0)); break;
+    case 'axe': g.add(part(cyl(0.025, 0.025, 0.8, 6), WOOD, 0, 0.3, 0), part(box(0.3, 0.24, 0.04), STEEL, 0.1, 0.6, 0)); break;
+    case 'mace': g.add(part(cyl(0.03, 0.03, 0.6, 6), WOOD, 0, 0.25, 0), part(box(0.2, 0.2, 0.2), STEEL, 0, 0.6, 0)); break;
+    case 'spear': g.add(part(cyl(0.022, 0.022, 1.7, 6), WOOD, 0, 0.5, 0), part(cone(0.07, 0.28, 6), STEEL, 0, 1.47, 0)); break;
+    case 'bow': { const b = new THREE.Mesh(G('bow', () => new THREE.TorusGeometry(0.42, 0.025, 6, 12, Math.PI)), mat(WOOD)); b.rotation.z = -Math.PI / 2; b.position.set(0, 0.25, 0); g.add(b, part(cyl(0.006, 0.006, 0.84, 4), BONE, 0, 0.25, 0)); break; }
+    case 'pistol': g.add(part(box(0.07, 0.14, 0.07), WOOD, 0, 0.02, 0), part(cyl(0.035, 0.035, 0.34, 6), 0x3a3a3a, 0, 0.12, 0.14).rotateX(Math.PI / 2)); break;
+    case 'boomerang': g.add(part(box(0.08, 0.4, 0.03), STEEL, 0, 0.3, 0), part(box(0.34, 0.08, 0.03), STEEL, 0.14, 0.5, 0)); break;
+    case 'staff': g.add(part(cyl(0.03, 0.035, 1.5, 6), WOOD, 0, 0.45, 0), part(sph(0.1, 8), 0xff8a30, 0, 1.28, 0, { emissive: 0x7a3000 })); break;
+    case 'wand': g.add(part(cyl(0.02, 0.028, 0.5, 6), BONE, 0, 0.22, 0), part(sph(0.06, 6), 0x9a70ff, 0, 0.5, 0, { emissive: 0x402080 })); break;
+    case 'lute': g.add(part(sph(0.17, 8), 0x9a6a3a, 0, 0.1, 0).scale.set(1, 1.2, 0.5) && part(sph(0.17, 8), 0x9a6a3a, 0, 0.1, 0), part(box(0.05, 0.5, 0.04), WOOD, 0, 0.42, 0)); break;
+  }
+  return g;
+}
+
+function hat(kind, kit, g) {
+  const o = new THREE.Group();
+  switch (kind) {
+    case 'helm': o.add(part(box(0.5, 0.3, 0.5), STEEL, 0, 0.1, 0), part(box(0.06, 0.2, 0.4), kit.trim, 0, 0.3, 0), part(box(0.3, 0.05, 0.04), DARK, 0, 0.06, 0.25)); break;
+    case 'spike': o.add(part(box(0.5, 0.26, 0.5), kit.trim, 0, 0.1, 0), part(cone(0.07, 0.36, 6), STEEL, 0, 0.4, -0.05), part(box(0.3, 0.05, 0.04), DARK, 0, 0.06, 0.25)); break;
+    case 'horns': o.add(part(box(0.48, 0.2, 0.48), 0x5a4a3a, 0, 0.14, 0), part(cone(0.06, 0.3, 6), BONE, 0.28, 0.28, 0).rotateZ(-0.5), part(cone(0.06, 0.3, 6), BONE, -0.28, 0.28, 0).rotateZ(0.5)); break;
+    case 'hood': o.add(part(sph(0.28, 8), kit.body, 0, 0.04, -0.04), part(cone(0.16, 0.26, 6), kit.body, 0, 0.26, -0.12).rotateX(-0.5)); break;
+    case 'point': o.add(part(cyl(0.38, 0.38, 0.03, 12), kit.body, 0, 0.14, 0), part(cone(0.24, 0.6, 8), kit.body, 0, 0.45, 0), part(cyl(0.245, 0.245, 0.06, 8), kit.trim, 0, 0.19, 0)); break;
+    case 'witch': o.add(part(cyl(0.44, 0.44, 0.03, 12), DARK, 0, 0.13, 0), part(cone(0.23, 0.55, 8), DARK, 0, 0.42, -0.03).rotateX(-0.25), part(cyl(0.235, 0.235, 0.05, 8), kit.trim, 0, 0.18, 0)); break;
+    case 'veil': o.add(part(sph(0.275, 8), kit.body, 0, 0.03, -0.03), part(box(0.34, 0.2, 0.02), kit.trim, 0, -0.1, 0.24, { transparent: true, opacity: 0.6 }), part(sph(0.05, 6), 0xd8e8ff, 0, 0.3, 0, { emissive: 0x4060a0 })); break;
+    case 'mask': o.add(part(box(0.4, 0.46, 0.06), 0xb07a3a, 0, 0, 0.23), part(cone(0.05, 0.3, 5), 0xd04a2a, 0.1, 0.36, 0), part(cone(0.05, 0.34, 5), 0x4ac8a0, -0.08, 0.38, 0)); break;
+    case 'feather': o.add(part(cyl(0.3, 0.32, 0.12, 10), kit.body, 0, 0.18, 0), part(cone(0.04, 0.4, 4), 0xe8e8e8, 0.2, 0.36, 0).rotateZ(-0.5)); break;
+    case 'crown': o.add(part(cyl(0.2, 0.17, 0.14, 8), GOLD, 0, 0.26, 0, { emissive: 0x3a2a00 })); break;
+    case 'cap': o.add(part(sph(0.265, 8), kit.trim, 0, 0.05, 0), part(cone(0.05, 0.2, 5), 0xe8e8e8, 0, 0.32, 0)); break;
+    case 'goggles': o.add(part(box(0.5, 0.12, 0.5), 0x3a2a1a, 0, 0.14, 0), part(box(0.36, 0.1, 0.06), 0xc9a24a, 0, 0.04, 0.24)); break;
+  }
+  // hair under everything that leaves the head showing
+  if (!['helm', 'spike', 'hood', 'veil'].includes(kind)) {
+    const hc = kit.hair ?? 0x3a2416;
+    o.add(part(sph(0.255, 8), hc, 0, 0.03, -0.04));
+    if (g === 'f') o.add(part(box(0.36, 0.4, 0.1), hc, 0, -0.18, -0.2));
+  }
+  return o;
+}
+
+// A person. look: { cls, g: 'm'|'f', tint?, skin?, small? }
+export function makePerson(look) {
+  const kit = { ...(KIT[look.cls] || KIT.ranger) };
+  if (look.tint != null) { kit.body = look.tint; kit.plain = true; }
+  const f = look.g === 'f';
+  const skin = look.skin ?? (kit.slime ? 0x4a8ae8 : SKIN[(look.cls.length + (f ? 1 : 0)) % SKIN.length]);
+  const w = f ? 0.4 : 0.48;
+  const root = new THREE.Group(), body = new THREE.Group();
+  root.add(body);
+  const legL = grp(-0.12, 0.45, 0, part(box(0.16, 0.45, 0.18), kit.robe ? kit.body : 0x2a221c, 0, -0.225, 0));
+  const legR = grp(0.12, 0.45, 0, part(box(0.16, 0.45, 0.18), kit.robe ? kit.body : 0x2a221c, 0, -0.225, 0));
+  const torso = new THREE.Group();
+  if (kit.robe) torso.add(part(cyl(w * 0.42, w * 0.72, 0.92, 8), kit.body, 0, 0.5, 0), part(cyl(w * 0.74, w * 0.74, 0.05, 8), kit.trim, 0, 0.07, 0));
+  else torso.add(part(box(w, 0.5, 0.3), kit.bare ? skin : kit.body, 0, 0.7, 0), part(box(w + 0.02, 0.1, 0.32), kit.trim, 0, 0.5, 0));
+  if (kit.bare) torso.add(part(box(w + 0.02, 0.12, 0.32), kit.body, 0, 0.82, 0));
+  if (!kit.robe && !kit.plain && !kit.bare && ['plate'].includes(CLASSES[look.cls]?.armor)) {
+    torso.add(part(box(0.2, 0.14, 0.34), kit.trim, -w / 2 - 0.06, 0.93, 0), part(box(0.2, 0.14, 0.34), kit.trim, w / 2 + 0.06, 0.93, 0));
+  }
+  if (kit.cape && !kit.plain) torso.add(part(box(w + 0.06, 0.7, 0.04), kit.cape, 0, 0.6, -0.19));
+  const head = grp(0, 1.2, 0, part(sph(0.24, 10), skin, 0, 0, 0), part(box(0.05, 0.05, 0.02), DARK, -0.09, 0.02, 0.23), part(box(0.05, 0.05, 0.02), DARK, 0.09, 0.02, 0.23));
+  head.add(hat(kit.plain ? 'none' : kit.hat, kit, look.g));
+  const sleeve = kit.bare ? skin : kit.body;
+  const armL = grp(-w / 2 - 0.08, 0.92, 0, part(box(0.12, 0.42, 0.12), sleeve, 0, -0.2, 0), part(box(0.1, 0.1, 0.1), skin, 0, -0.44, 0));
+  const armR = grp(w / 2 + 0.08, 0.92, 0, part(box(0.12, 0.42, 0.12), sleeve, 0, -0.2, 0), part(box(0.1, 0.1, 0.1), skin, 0, -0.44, 0));
+  if (!kit.plain) {
+    const h = held(kit.held); h.position.set(0, -0.44, 0.04); h.rotation.x = Math.PI / 2 - 0.5; armR.add(h);
+    if (kit.shield != null) armL.add(part(kit.tower ? box(0.06, 0.8, 0.5) : box(0.06, 0.5, 0.4), kit.shield, -0.1, -0.3, 0.06), part(box(0.07, 0.12, 0.12), GOLD, -0.11, -0.3, 0.06));
+  }
+  body.add(legL, legR, torso, head, armL, armR);
+  const s = look.small ? 0.68 : f ? 0.96 : 1;
+  root.scale.setScalar(s * (look.scale || 1));
+  root.userData.parts = { body, legL, legR, armL, armR, head, torso };
+  root.userData.height = 1.6 * s * (look.scale || 1);
+  return root;
+}
+
+// The dead. v is the zombie's definition from data/enemies.js.
+export function makeZombie(v) {
+  const c = v.color, dark = new THREE.Color(c).multiplyScalar(0.55).getHex();
+  const root = new THREE.Group(), body = new THREE.Group();
+  root.add(body);
+  const legL = grp(-0.12, 0.45, 0, part(box(0.16, 0.45, 0.18), dark, 0, -0.225, 0));
+  const legR = grp(0.12, 0.45, 0, part(box(0.16, 0.45, 0.18), dark, 0, -0.225, 0));
+  const torso = grp(0, 0, 0, part(box(0.46, 0.5, 0.3), dark, 0, 0.7, 0));
+  if (v.id === 'bonesack') torso.add(part(sph(0.36, 10), 0x9aa85a, 0, 0.66, 0.1), part(sph(0.1, 6), 0xc8d07a, 0.16, 0.8, 0.36), part(sph(0.08, 6), 0xc8d07a, -0.12, 0.56, 0.4));
+  if (v.id === 'brute') torso.add(part(box(0.7, 0.3, 0.4), dark, 0, 0.9, 0), part(G('chain', () => new THREE.TorusGeometry(0.32, 0.04, 6, 12)), 0x3a3a3a, 0, 0.78, 0).rotateX(Math.PI / 2));
+  const head = grp(0, 1.16, 0.06, part(sph(0.22, 8), c, 0, 0, 0), part(box(0.06, 0.05, 0.02), 0xe8e0a0, -0.08, 0.02, 0.21, { emissive: 0x6a6020 }), part(box(0.06, 0.05, 0.02), 0xe8e0a0, 0.08, 0.02, 0.21, { emissive: 0x6a6020 }), part(box(0.16, 0.05, 0.02), DARK, 0, -0.1, 0.2));
+  const armL = grp(-0.31, 0.9, 0, part(box(0.11, 0.46, 0.11), c, 0, -0.22, 0));
+  const armR = grp(0.31, 0.9, 0, part(box(0.11, 0.46, 0.11), c, 0, -0.22, 0));
+  body.add(legL, legR, torso, head, armL, armR);
+  body.rotation.x = v.id === 'gnawer' ? 0.5 : 0.16;
+  root.scale.setScalar(v.scale);
+  root.userData.parts = { body, legL, legR, armL, armR, head, torso };
+  root.userData.zombie = true;
+  root.userData.lean = body.rotation.x;
+  root.userData.height = 1.5 * v.scale;
+  return root;
+}
+
+// What the classes call up.
+export function makeCreature(kind) {
+  const root = new THREE.Group(), body = new THREE.Group();
+  root.add(body);
+  let parts = { body }, height = 0.9;
+  const legs = (c, y, sx, sz) => {
+    const mk = (x, z) => grp(x, y, z, part(box(0.1, y, 0.1), c, 0, -y / 2, 0));
+    const a = mk(-sx, sz), b = mk(sx, sz), d = mk(-sx, -sz), e = mk(sx, -sz);
+    body.add(a, b, d, e);
+    parts.legL = a; parts.legR = b; parts.armL = e; parts.armR = d;
+  };
+  if (kind === 'wolf') {
+    body.add(part(box(0.34, 0.3, 0.8), 0x6a6a72, 0, 0.5, 0), part(box(0.26, 0.26, 0.3), 0x7a7a84, 0, 0.66, 0.48), part(box(0.12, 0.1, 0.2), 0x4a4a52, 0, 0.6, 0.7), part(box(0.08, 0.08, 0.4), 0x5a5a62, 0, 0.56, -0.56));
+    legs(0x5a5a62, 0.36, 0.13, 0.28);
+  } else if (kind === 'slime') {
+    const s = part(sph(0.4, 12), 0x4a8ae8, 0, 0.3, 0, { transparent: true, opacity: 0.85 }); s.scale.y = 0.75;
+    body.add(s, part(sph(0.05, 6), DARK, -0.12, 0.38, 0.33), part(sph(0.05, 6), DARK, 0.12, 0.38, 0.33)); height = 0.7;
+  } else if (kind === 'whelp') {
+    body.add(part(sph(0.26, 8), 0xc8482a, 0, 0.8, 0), part(sph(0.17, 8), 0xd85a3a, 0, 1.0, 0.24), part(box(0.5, 0.04, 0.3), 0x8a2a1a, -0.4, 0.9, 0).rotateZ(0.4), part(box(0.5, 0.04, 0.3), 0x8a2a1a, 0.4, 0.9, 0).rotateZ(-0.4), part(cone(0.07, 0.4, 5), 0xc8482a, 0, 0.66, -0.36).rotateX(-1.3));
+    parts.fly = true; height = 1.3;
+  } else if (kind === 'turret') {
+    body.add(part(cyl(0.05, 0.3, 0.5, 3), 0x5a4a3a, 0, 0.25, 0), part(box(0.34, 0.26, 0.34), 0xb08a4a, 0, 0.62, 0), part(cyl(0.05, 0.05, 0.5, 6), 0x3a3a3a, 0, 0.64, 0.38).rotateX(Math.PI / 2)); height = 0.9;
+  } else if (kind === 'totem') {
+    body.add(part(cyl(0.2, 0.24, 0.5, 8), 0x7a4a2a, 0, 0.25, 0), part(cyl(0.2, 0.2, 0.45, 8), 0x2e8a6a, 0, 0.72, 0), part(cyl(0.16, 0.2, 0.4, 8), 0xb04a2a, 0, 1.14, 0), part(box(0.6, 0.06, 0.08), 0x7a4a2a, 0, 1.05, 0), part(sph(0.06, 6), 0xffe2a0, 0, 0.74, 0.2, { emissive: 0x806020 })); height = 1.4;
+  }
+  root.userData.parts = parts;
+  root.userData.height = height;
+  return root;
+}
+
+export function makeSummon(model) {
+  if (model === 'skeleton') return makePerson({ cls: 'necromancer', g: 'm', tint: 0xd8d0b8, skin: 0xe8e0c8, scale: 0.9 });
+  if (model === 'ghoul') return makeZombie({ id: 'gnawer', color: 0x7a6a8a, scale: 0.95 });
+  if (model === 'squire') return makePerson({ cls: 'lancer', g: 'm', scale: 0.85 });
+  return makeCreature(model);
+}
+
+// ---- animation: one state machine for every stand-in ----
+// states: idle | walk | attack | cast | hit | dead | cheer
+export function setAnim(model, state, hold = 0) {
+  const a = (model.userData.anim ||= { state: 'idle', t: 0, hold: 0 });
+  if (a.state === 'dead' && state !== 'idle') return;
+  if (a.state === state && state === 'walk') return;
+  a.state = state; a.t = 0; a.hold = hold;
+  const mx = model.userData.mixer;
+  if (mx) playClip(model, state);
+}
+
+export function animate(model, dt) {
+  const a = (model.userData.anim ||= { state: 'idle', t: Math.random() * 6, hold: 0 });
+  a.t += dt;
+  if (model.userData.mixer) { model.userData.mixer.update(dt); if (a.hold && a.t > a.hold) setAnim(model, 'idle'); return; }
+  const p = model.userData.parts;
+  if (!p) return;
+  const lean = model.userData.lean || 0, zomb = model.userData.zombie;
+  let lx = 0, rx = 0, ax = zomb ? -1.2 : 0, bx = zomb ? -1.1 : 0, by = 0, brx = lean, brz = 0;
+  const t = a.t;
+  switch (a.state) {
+    case 'walk': { const s = Math.sin(t * 10) * 0.7; lx = s; rx = -s; if (!zomb) { ax = -s * 0.7; bx = s * 0.7; } else { ax += s * 0.2; bx -= s * 0.2; brz = Math.sin(t * 5) * 0.08; } by = Math.abs(Math.sin(t * 10)) * 0.04; break; }
+    case 'attack': { const k = Math.min(1, t / 0.32); bx = -2.4 * Math.sin(k * Math.PI) - 0.2; if (zomb) ax = bx; brx = lean + 0.3 * Math.sin(k * Math.PI); break; }
+    case 'cast': { const k = Math.min(1, t / 0.5); ax = bx = -2.7 * Math.sin(k * Math.PI * 0.5 + 0.2); by = 0.05 * Math.sin(t * 20); break; }
+    case 'hit': { brx = lean - 0.35 * Math.max(0, 1 - t / 0.25); brz = Math.sin(t * 50) * 0.08 * Math.max(0, 1 - t / 0.25); break; }
+    case 'cheer': { ax = bx = -2.8; by = Math.abs(Math.sin(t * 8)) * 0.15; break; }
+    case 'dead': { const k = Math.min(1, t / 0.5); brx = -Math.PI / 2 * k; by = 0.1 * k; break; }
+    default: by = Math.sin(t * 2) * 0.012; if (!zomb) { ax = Math.sin(t * 2) * 0.05; bx = -ax; } else brz = Math.sin(t * 1.3) * 0.05;
+  }
+  if (p.fly) by += 0.1 * Math.sin(t * 5);
+  if (p.legL) p.legL.rotation.x = lx;
+  if (p.legR) p.legR.rotation.x = rx;
+  if (p.armL) p.armL.rotation.x = ax;
+  if (p.armR) p.armR.rotation.x = bx;
+  p.body.position.y = by; p.body.rotation.x = brx; p.body.rotation.z = brz;
+  if (a.hold && a.t > a.hold && a.state !== 'dead') { a.state = 'idle'; a.t = 0; a.hold = 0; }
+}
+
+// ---- real models, when there are any ----
+let manifest = null;
+const loaded = new Map();
+export async function loadManifest() {
+  try { const r = await fetch('assets/models/manifest.json'); manifest = r.ok ? await r.json() : {}; } catch { manifest = {}; }
+}
+function playClip(model, state) {
+  const d = model.userData.clips; if (!d) return;
+  const clip = d[state] || d.idle; if (!clip) return;
+  const mx = model.userData.mixer, act = mx.clipAction(clip);
+  const once = ['attack', 'cast', 'hit', 'dead', 'cheer'].includes(state);
+  mx.stopAllAction(); act.reset(); act.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); act.clampWhenFinished = state === 'dead'; act.play();
+}
+// Wraps a stand-in: if the manifest names a .glb for this key, the stand-in is replaced once it loads.
+export function withOverride(key, standIn) {
+  const def = manifest && manifest[key];
+  if (!def) return standIn;
+  const holder = new THREE.Group();
+  holder.add(standIn);
+  holder.userData = { ...standIn.userData };
+  const use = (gltf) => {
+    const obj = cloneSkinned(gltf.scene);
+    const bb = new THREE.Box3().setFromObject(obj), h = bb.max.y - bb.min.y || 1;
+    const want = def.height || standIn.userData.height || 1.6;
+    obj.scale.setScalar(want / h); obj.position.y = -bb.min.y * (want / h);
+    obj.rotation.y = def.turn || 0;
+    holder.remove(standIn); holder.add(obj);
+    holder.userData.parts = null;
+    holder.userData.mixer = new THREE.AnimationMixer(obj);
+    const clips = {};
+    for (const [state, name] of Object.entries(def.anims || {})) clips[state] = gltf.animations.find((c) => c.name === name);
+    if (!clips.idle && gltf.animations[0]) clips.idle = gltf.animations[0];
+    holder.userData.clips = clips;
+    playClip(holder, holder.userData.anim?.state || 'idle');
+  };
+  if (!loaded.has(def.file)) loaded.set(def.file, new Promise((res, rej) => new GLTFLoader().load('assets/models/' + def.file, res, undefined, rej)));
+  loaded.get(def.file).then(use).catch((e) => console.warn('model', key, 'failed to load; keeping the stand-in', e));
+  return holder;
+}
+
+// One blob of dark under each unit, instead of real shadows.
+export function shadowDisc(r = 0.34) {
+  const m = new THREE.Mesh(G('disc' + r, () => new THREE.CircleGeometry(r, 16)), mat(0x000000, { transparent: true, opacity: 0.32, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2; m.position.y = 0.02; m.renderOrder = 1;
+  return m;
+}
+
+// Text on a sprite: name tags, signs, the red "!".
+export function label(text, { color = '#e9dcc4', size = 44, bg = 'rgba(8,5,4,.72)', scale = 1, bold = true } = {}) {
+  const c = document.createElement('canvas'), x = c.getContext('2d');
+  const font = `${bold ? '700 ' : ''}${size}px Cinzel, Georgia, serif`;
+  x.font = font;
+  const w = Math.ceil(x.measureText(text).width) + 28, h = size + 22;
+  c.width = w; c.height = h;
+  if (bg) { x.fillStyle = bg; x.beginPath(); x.roundRect(0, 0, w, h, 10); x.fill(); }
+  x.font = font; x.fillStyle = color; x.textBaseline = 'middle'; x.textAlign = 'center';
+  x.fillText(text, w / 2, h / 2 + 2);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+  s.scale.set((w / h) * 0.34 * scale, 0.34 * scale, 1);
+  s.renderOrder = 20;
+  return s;
+}
