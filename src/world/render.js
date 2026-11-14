@@ -45,6 +45,24 @@ function matte(obj) {
     o.material = matted.get(src);
   });
 }
+// The scenery's own models (assets/props/<key>.glb, docs/MODELS.md): each loaded once, as one geometry with a group
+// per material (a tree's trunk, then its crown), on plain Lambert surfaces, with its size. Null if it can't be had.
+const propCache = new Map();
+function loadProp(key) {
+  if (!propCache.has(key)) propCache.set(key, new GLTFLoader().loadAsync(`assets/props/${key}.glb`).then((gltf) => {
+    const parts = [];
+    gltf.scene.updateMatrixWorld(true);
+    gltf.scene.traverse((o) => { if (o.isMesh) parts.push(o); });
+    parts.sort((a, b) => /trunk/.test(b.material.name) - /trunk/.test(a.material.name));
+    const geos = parts.map((o) => o.geometry.clone().applyMatrix4(o.matrixWorld));
+    const geo = geos.length > 1 ? mergeGeometries(geos, true) : geos[0];
+    if (!geo.groups.length) geo.addGroup(0, (geo.index || geo.attributes.position).count, 0);
+    geo.computeBoundingBox(); geo.computeBoundingSphere();
+    const mats = parts.map((o) => new THREE.MeshLambertMaterial({ map: o.material.map }));
+    return { geo, mats, size: geo.boundingBox.getSize(new THREE.Vector3()) };
+  }).catch((e) => { console.warn('no model for', key, e); return null; }));
+  return propCache.get(key);
+}
 // which rock a tile's cliff faces wear
 const SIDE = { [T.ROCK]: T.ROCK, [T.MOSS]: T.ROCK, [T.SNOW]: T.SNOWROCK, [T.SNOWROCK]: T.SNOWROCK, [T.ICE]: T.SNOWROCK,
   [T.SAND]: T.REDROCK, [T.CLAY]: T.REDROCK, [T.REDROCK]: T.REDROCK, [T.ASH]: T.BASALT, [T.BASALT]: T.BASALT, [T.DAIS]: CRYPT_SIDE };
@@ -167,11 +185,11 @@ export class Renderer {
     for (const p of [barkO, barkP, ...leaves, ...needles, ...Object.values(KIND).flatMap((k) => k.slice(1)).filter(Boolean)]) { M.solid[p] ||= solid(p); M.ghost[p] ||= ghost(p); }
 
     // a handful of shapes per kind and size, shared between trees
-    const shapes = {};
+    const shapes = {}, SIZE_R = [0, 0.62, 1.25, 1.95], SIZE_H = [0, 3.0, 4.8, 7.0];
     const shape = (kind, size, v) => {
       const key = kind + size + v;
       if (shapes[key]) return shapes[key];
-      const R = [0, 0.62, 1.25, 1.95][size], H = [0, 3.0, 4.8, 7.0][size];
+      const R = SIZE_R[size], H = SIZE_H[size];
       const crown = [];
       let trunk;
       if (kind === 'pine') {
@@ -205,76 +223,147 @@ export class Renderer {
       const geo = mergeGeometries([flat(trunk), mergeGeometries(crown.map(flat))], true);
       return (shapes[key] = { geo, R, H });
     };
+    const live = { pine: [], oak: [] };   // the trees that take their models when those come
     for (const t of this.world.trees) {
       const K = KIND[t.kind] || KIND.oak;
       const s = shape(K[0], t.size, t.v % 3);
       const bark = K[1], leaf = K[2] || (K[0] === 'pine' ? needles : leaves)[t.v];
-      const m = new THREE.Mesh(s.geo, [M.solid[bark], M.solid[leaf]]);
+      const wear = { solid: [M.solid[bark], M.solid[leaf]], ghost: [M.ghost[bark], M.ghost[leaf]] };
+      const m = new THREE.Mesh(s.geo, wear.solid);
       const c = (t.size - 1) / 2;
       m.position.set(t.x + c, 0, t.z + c);
       m.rotation.y = t.rot; m.scale.set(1, t.tall, 1);
       m.updateMatrix(); m.matrixAutoUpdate = false;
       this.scene.add(m);
       // hide(true) takes the crown away altogether: a fight has to be readable
-      this.faders.push({ tree: true, x: t.x + c, z: t.z + c, r: K[0] === 'bare' ? s.R * 0.3 : s.R, h: s.H * t.tall, on: 0, show: () => { m.material = [M.solid[bark], M.solid[leaf]]; }, hide: (hard) => { m.material = [M.ghost[bark], hard ? none : M.ghost[leaf]]; } });
+      const f = { tree: true, x: t.x + c, z: t.z + c, r: K[0] === 'bare' ? s.R * 0.3 : s.R, h: s.H * t.tall, on: 0,
+        show: () => { m.material = wear.solid; }, hide: (hard) => { m.material = [wear.ghost[0], hard ? none : wear.ghost[1]]; } };
+      this.faders.push(f);
+      if (live[t.kind]) live[t.kind].push({ t, m, f, wear });
     }
+    // the pine and the oak models: as tall as the shapes they stand in for (an oak a little less, being broad),
+    // each tree's crown one of four greens (the pine's needles are frosted at the tips; these take the frost off)
+    const GREENS = { oak: [0xffffff, 0xe2ead4, 0xd2e0da, 0xf0e6cc], pine: [0xb8d4a0, 0xaccaa8, 0xc4d6a4, 0xa8c49c] };
+    for (const kind in live) loadProp(kind).then((p) => {
+      if (!p) return;
+      const up = kind === 'oak' ? 0.8 : 1, wide = Math.max(p.size.x, p.size.z) / 2;
+      const wears = GREENS[kind].map((hex) => {
+        const solid = p.mats.map((x, k) => { const n = x.clone(); if (k) n.color.setHex(hex); return n; });
+        return { solid, ghost: solid.map((x) => { const n = x.clone(); n.transparent = true; n.opacity = 0.2; return n; }) };
+      });
+      for (const { t, m, f, wear } of live[kind]) {
+        const k = SIZE_H[t.size] * up * t.tall / p.size.y;
+        Object.assign(wear, wears[t.v % 4]);
+        m.geometry = p.geo; m.scale.setScalar(k); m.updateMatrix();
+        f.r = wide * k * 0.9; f.h = p.size.y * k;
+        if (f.on) f.hide(f.on === 2); else f.show();
+      }
+    });
   }
 
-  // ---- Herrington Hollow: walls, roofs, doors and signs from bm's building textures ----
+  // ---- Herrington Hollow: a cottage or a townhouse for each building (its `look`), the inn two townhouses with their
+  // doors toward the middle; without the models, walls, roofs and doors from bm's building textures ----
   buildTown() {
     const w = this.world;
-    for (const b of w.buildings) {
+    const DOOR_AT = { townhouse: -0.95, cottage: 0.44 };              // each model's door, from its middle along x
+    const TINTS = [0xffffff, 0xf2e6d6, 0xe2e6ee, 0xeee2cc, 0xe6eadc, 0xf6ece6];
+    const ghostOf = (m) => { const c = m.clone(); c.transparent = true; c.opacity = 0.25; c.depthWrite = false; return c; };
+    w.buildings.forEach((b, n) => {
       const H = 2.7, cx = b.x + (b.w - 1) / 2, cz = b.z + (b.d - 1) / 2;
-      const mk = (path, o = {}) => new THREE.MeshLambertMaterial({ map: this.tex(path), ...o });
-      const wallT = this.tex(`tex/${b.wall}_c.webp`).clone(); wallT.repeat.set(b.w / 6, 0.7); wallT.needsUpdate = true;
-      const roofT = this.tex(`tex/${b.roof}_c.webp`).clone(); roofT.repeat.set(b.w / 5, 1); roofT.needsUpdate = true;
-      const g = new THREE.Group();
-      const walls = new THREE.Mesh(new THREE.BoxGeometry(b.w - 0.2, H, b.d - 0.2), new THREE.MeshLambertMaterial({ map: wallT }));
-      walls.position.set(cx, H / 2, cz);
-      // a gable roof: a triangular prism along x
-      const hw = b.d / 2 + 0.25, hl = b.w / 2 + 0.2, rh = 1.7;
-      const P = [-hl, 0, hw, hl, 0, hw, hl, rh, 0, -hl, 0, hw, hl, rh, 0, -hl, rh, 0,   // south slope
-        hl, 0, -hw, -hl, 0, -hw, -hl, rh, 0, hl, 0, -hw, -hl, rh, 0, hl, rh, 0,          // north slope
-        hl, 0, hw, hl, 0, -hw, hl, rh, 0, -hl, 0, -hw, -hl, 0, hw, -hl, rh, 0];          // gable ends
-      const UV = [0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0.5, 1, 0, 0, 1, 0, 0.5, 1];
-      const rg = new THREE.BufferGeometry();
-      rg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
-      rg.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
-      rg.computeVertexNormals();
-      const roof = new THREE.Mesh(rg, new THREE.MeshLambertMaterial({ map: roofT, side: THREE.DoubleSide }));
-      roof.position.set(cx, H, cz);
-      const door = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.9), mk(`tex/${b.door}_c.webp`, { transparent: true, alphaTest: 0.4 }));
-      door.material.map = this.tex(`tex/${b.door}_c.webp`, false);
-      door.position.set(b.doorX, 0.95, b.z + b.d - 0.59);
       const sign = label(b.name, { size: 40, color: '#ffe2a0' });
       sign.position.set(b.doorX, H + 2.3, b.z + b.d - 0.5);
-      g.add(walls, roof, door);
+      const g = new THREE.Group(), meshes = [], solidM = [], ghostM = [];
       this.scene.add(g, sign);
-      const meshes = [walls, roof, door];
-      const solidM = meshes.map((m) => m.material);
-      const ghostM = solidM.map((m) => { const c = m.clone(); c.transparent = true; c.opacity = 0.25; c.depthWrite = false; return c; });
-      this.faders.push({ x: cx, z: cz, r: Math.max(b.w, b.d) / 2 + 0.3, rx: b.w / 2, rz: b.d / 2, h: H + rh, on: 0,
-        show: () => meshes.forEach((m, i) => { m.material = solidM[i]; }), hide: () => meshes.forEach((m, i) => { m.material = ghostM[i]; }) });
-    }
-    // the well
-    const stone = this.tex('tex/stone_c.webp');
-    const well = new THREE.Group();
-    well.add(new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.5, 0.6, 12), new THREE.MeshLambertMaterial({ map: stone })).translateY(0.3));
-    well.add(new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.02, 12), mat(0x0a1620)).translateY(0.56));
-    for (const sx of [-0.44, 0.44]) well.add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 0.08), mat(0x5a3c24)).translateX(sx).translateY(0.75));
-    well.add(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.7), mat(0x3a2416)).translateY(1.55));
-    well.position.set(w.well.x, 0, w.well.z);
-    this.scene.add(well);
-    // the bounty board
-    const board = new THREE.Group();
-    for (const sx of [-0.4, 0.4]) board.add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 0.08), mat(0x5a3c24)).translateX(sx).translateY(0.75));
-    board.add(new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 0.06), new THREE.MeshLambertMaterial({ map: this.tex('tex/wood_c.webp') })).translateY(1.15));
-    for (const [px, py] of [[-0.25, 1.25], [0.1, 1.1], [0.28, 1.3]]) board.add(new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.3), mat(0xd8c8a0)).translateX(px).translateY(py).translateZ(0.04));
-    board.position.set(w.board.x, 0, w.board.z);
-    const bl = label('Bounties', { size: 36, color: '#ffe2a0' }); bl.position.set(w.board.x, 2.1, w.board.z);
-    this.scene.add(board, bl);
-    // the ruins' walls and the standing stones: one instanced mesh per texture
-    const by = {};
+      const fd = { x: cx, z: cz, r: Math.max(b.w, b.d) / 2 + 0.3, rx: b.w / 2, rz: b.d / 2, h: H + 1.7, on: 0,
+        show: () => meshes.forEach((m, i) => { m.material = solidM[i]; }), hide: () => meshes.forEach((m, i) => { m.material = ghostM[i]; }) };
+      this.faders.push(fd);
+      const wear = (m, solid) => { g.add(m); meshes.push(m); solidM.push(solid); ghostM.push(Array.isArray(solid) ? solid.map(ghostOf) : ghostOf(solid)); };
+      const model = (p) => {
+        const tint = new THREE.Color(TINTS[n % TINTS.length]);
+        const solid = p.mats.map((x) => { const c = x.clone(); c.color.copy(tint); return c; });
+        // a house is turned over (mirrored) every other slot, and slid along so its door comes near the front tile
+        const homes = b.w > 6 ? [[cx - 2.5, -1], [cx + 2.5, 1]] : [[cx, n % 2 ? -1 : 1]];
+        for (const [hx, s] of homes) {
+          const m = new THREE.Mesh(p.geo, solid);
+          m.position.set(hx + (b.w > 6 ? 0 : clamp(-DOOR_AT[b.look] * s, -0.4, 0.4)), 0, cz); m.scale.set(s, 1, 1);
+          wear(m, solid);
+        }
+        sign.position.set(b.doorX, p.size.y + 0.5, cz); fd.h = p.size.y;    // over the ridge, not off by a neighbour's
+        if (fd.on) fd.hide();
+      };
+      if (b.look) loadProp(b.look).then((p) => (p ? model(p) : this.oldHouse(b, wear)));
+      else this.oldHouse(b, wear);
+    });
+    // the well and the bounty board, or the old posts and stone
+    const lone = (key, x, z, turn, old) => loadProp(key).then((p) => {
+      if (!p) { this.scene.add(old()); return; }
+      const m = new THREE.Mesh(p.geo, p.mats);
+      m.position.set(x, w.y(x, z), z); m.rotation.y = turn * Math.PI / 2;
+      m.updateMatrix(); m.matrixAutoUpdate = false;
+      this.scene.add(m);
+    });
+    lone('well', w.well.x, w.well.z, 0, () => {
+      const stone = this.tex('tex/stone_c.webp'), well = new THREE.Group();
+      well.add(new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.5, 0.6, 12), new THREE.MeshLambertMaterial({ map: stone })).translateY(0.3));
+      well.add(new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.02, 12), mat(0x0a1620)).translateY(0.56));
+      for (const sx of [-0.44, 0.44]) well.add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 0.08), mat(0x5a3c24)).translateX(sx).translateY(0.75));
+      well.add(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.7), mat(0x3a2416)).translateY(1.55));
+      well.position.set(w.well.x, 0, w.well.z);
+      return well;
+    });
+    lone('bounty_board', w.board.x, w.board.z, 0, () => {
+      const board = new THREE.Group();
+      for (const sx of [-0.4, 0.4]) board.add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 0.08), mat(0x5a3c24)).translateX(sx).translateY(0.75));
+      board.add(new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 0.06), new THREE.MeshLambertMaterial({ map: this.tex('tex/wood_c.webp') })).translateY(1.15));
+      for (const [px, py] of [[-0.25, 1.25], [0.1, 1.1], [0.28, 1.3]]) board.add(new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.3), mat(0xd8c8a0)).translateX(px).translateY(py).translateZ(0.04));
+      board.position.set(w.board.x, 0, w.board.z);
+      return board;
+    });
+    const bl = label('Bounties', { size: 36, color: '#ffe2a0' }); bl.position.set(w.board.x, 2.6, w.board.z);
+    this.scene.add(bl);
+    // the market stalls, signposts, fences and stone walls (w.decor): one instanced mesh a kind
+    const kinds = {}, at = new THREE.Matrix4();
+    for (const d of w.decor || []) (kinds[d.kind] ||= []).push(d);
+    for (const kind in kinds) loadProp(kind).then((p) => {
+      if (!p) return;
+      const list = kinds[kind], im = new THREE.InstancedMesh(p.geo, p.mats, list.length);
+      list.forEach((d, k) => {
+        at.makeRotationY(d.turn * Math.PI / 2).setPosition(d.x, w.y(Math.round(d.x), Math.round(d.z)), d.z);
+        im.setMatrixAt(k, at);
+      });
+      im.computeBoundingSphere();
+      this.scene.add(im);
+    });
+    this.buildRuins();
+  }
+
+  // The old house: a box of walls, a gable roof and a door, from bm's building textures, worn through `wear`.
+  oldHouse(b, wear) {
+    const H = 2.7, cx = b.x + (b.w - 1) / 2, cz = b.z + (b.d - 1) / 2;
+    const wallT = this.tex(`tex/${b.wall}_c.webp`).clone(); wallT.repeat.set(b.w / 6, 0.7); wallT.needsUpdate = true;
+    const roofT = this.tex(`tex/${b.roof}_c.webp`).clone(); roofT.repeat.set(b.w / 5, 1); roofT.needsUpdate = true;
+    const walls = new THREE.Mesh(new THREE.BoxGeometry(b.w - 0.2, H, b.d - 0.2), new THREE.MeshLambertMaterial({ map: wallT }));
+    walls.position.set(cx, H / 2, cz);
+    // a gable roof: a triangular prism along x
+    const hw = b.d / 2 + 0.25, hl = b.w / 2 + 0.2, rh = 1.7;
+    const P = [-hl, 0, hw, hl, 0, hw, hl, rh, 0, -hl, 0, hw, hl, rh, 0, -hl, rh, 0,   // south slope
+      hl, 0, -hw, -hl, 0, -hw, -hl, rh, 0, hl, 0, -hw, -hl, rh, 0, hl, rh, 0,          // north slope
+      hl, 0, hw, hl, 0, -hw, hl, rh, 0, -hl, 0, -hw, -hl, 0, hw, -hl, rh, 0];          // gable ends
+    const UV = [0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0.5, 1, 0, 0, 1, 0, 0.5, 1];
+    const rg = new THREE.BufferGeometry();
+    rg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    rg.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
+    rg.computeVertexNormals();
+    const roof = new THREE.Mesh(rg, new THREE.MeshLambertMaterial({ map: roofT, side: THREE.DoubleSide }));
+    roof.position.set(cx, H, cz);
+    const door = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.9), new THREE.MeshLambertMaterial({ map: this.tex(`tex/${b.door}_c.webp`, false), transparent: true, alphaTest: 0.4 }));
+    door.position.set(b.doorX, 0.95, b.z + b.d - 0.59);
+    for (const m of [walls, roof, door]) wear(m, m.material);
+  }
+
+  // the ruins' walls and the standing stones (w.props), one instanced mesh per texture, and the places' names
+  buildRuins() {
+    const w = this.world, by = {};
     for (const p of w.props) (by[p.kind + '|' + p.tex] ||= []).push(p);
     const m4 = new THREE.Matrix4(), rr = rng32(7);
     for (const k in by) {

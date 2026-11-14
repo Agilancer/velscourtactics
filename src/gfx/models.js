@@ -9,6 +9,7 @@ import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { CLASSES } from '../data/classes.js';
 import { fitGear } from './gear.js';
 import { bankClips, dress } from './clipbank.js';
+import { dyeBody } from './dye.js';
 
 const mats = new Map();
 export function mat(color, opts = {}) {
@@ -51,6 +52,7 @@ const KIT = {
   lancer: { body: 0xa0a4b0, trim: 0x5a5a6a, hat: 'helm', held: 'spear', shield: 0x8f98a6, tower: true },
   dragon_knight: { body: 0x8a2a1a, trim: 0x2a1a1a, hat: 'spike', held: 'sword', shield: 0x5a1a10 },
   gunner: { body: 0x6a5a3a, trim: 0x3a2a1a, hat: 'goggles', held: 'pistol' },
+  ninja: { body: 0x23232e, trim: 0x6a2430, hat: 'hood', held: 'dagger' },
   doorkeeper: { body: 0x4a3a2a, trim: 0xe6c27a, hat: 'witch', held: 'staff', robe: true },
 };
 
@@ -62,6 +64,7 @@ function held(kind) {
     case 'mace': g.add(part(cyl(0.03, 0.03, 0.6, 6), WOOD, 0, 0.25, 0), part(box(0.2, 0.2, 0.2), STEEL, 0, 0.6, 0)); break;
     case 'spear': g.add(part(cyl(0.022, 0.022, 1.7, 6), WOOD, 0, 0.5, 0), part(cone(0.07, 0.28, 6), STEEL, 0, 1.47, 0)); break;
     case 'bow': { const b = new THREE.Mesh(G('bow', () => new THREE.TorusGeometry(0.42, 0.025, 6, 12, Math.PI)), mat(WOOD)); b.rotation.z = -Math.PI / 2; b.position.set(0, 0.25, 0); g.add(b, part(cyl(0.006, 0.006, 0.84, 4), BONE, 0, 0.25, 0)); break; }
+    case 'dagger': g.add(part(box(0.05, 0.3, 0.02), STEEL, 0, 0.2, 0), part(box(0.12, 0.03, 0.04), DARK, 0, 0.05, 0), part(box(0.04, 0.1, 0.04), DARK, 0, -0.01, 0)); break;
     case 'pistol': g.add(part(box(0.07, 0.14, 0.07), WOOD, 0, 0.02, 0), part(cyl(0.035, 0.035, 0.34, 6), 0x3a3a3a, 0, 0.12, 0.14).rotateX(Math.PI / 2)); break;
     case 'boomerang': g.add(part(box(0.08, 0.4, 0.03), STEEL, 0, 0.3, 0), part(box(0.34, 0.08, 0.03), STEEL, 0.14, 0.5, 0)); break;
     case 'staff': g.add(part(cyl(0.03, 0.035, 1.5, 6), WOOD, 0, 0.45, 0), part(sph(0.1, 8), 0xff8a30, 0, 1.28, 0, { emissive: 0x7a3000 })); break;
@@ -314,7 +317,8 @@ function inPlace(clip, home) {
 //   props: [{ file, bone, at: [x,y,z], rot: [x,y,z,w], scale }]   held models (a lance, a shield) hung on a bone, placed in
 //          its frame; tools/blender/retarget.py works the numbers out (Target.props) and turns the hands in every clip
 //   bank: 'heroes' | 'folk'          the clips come from one of bm's clip banks (gfx/clipbank.js), named in anims by its names
-//   skin: { map, normal }            pictures for a file that comes without (bm's townsfolk), under assets/models/ }
+//   skin: { map, normal }            pictures for a file that comes without (bm's townsfolk), under assets/models/
+//   dye: palette                     a bm body always worn in these colours where nothing covers it (gfx/dye.js PALETTES) }
 const glb = (file) => {
   if (!loaded.has(file)) loaded.set(file, new Promise((res, rej) => new GLTFLoader().load('assets/models/' + file, res, undefined, rej)));
   return loaded.get(file);
@@ -344,6 +348,7 @@ export function withOverride(key, standIn) {
     obj.scale.setScalar(want / h); obj.position.y = -bb.min.y * (want / h);
     obj.rotation.y = def.turn || 0;
     paint(obj);
+    dyeBody(holder, obj, def);                           // a bm body wears what's on it (gfx/dye.js)
     const bones = {};
     obj.traverse((o) => { if (o.isBone) bones[o.name] = o; });
     const find = (end) => Object.keys(bones).filter((n) => n.endsWith(end)).map((n) => bones[n]);

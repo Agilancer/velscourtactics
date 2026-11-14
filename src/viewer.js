@@ -260,6 +260,7 @@ window.viewer = {
   THREE,
   show, play,
   view,
+  internals: () => ({ gl, scene, camera: place() }),   // for tools that render the same view another way (marks, picking)
   step(sec = 1 / 30) { const n = Math.max(1, Math.round(sec * 30)); for (let i = 0; i < n; i++) update(1 / 30); render(); info(); },
   async shot(name) { render(); await fetch('/shot?name=' + encodeURIComponent(name), { method: 'POST', body: gl.domElement.toDataURL('image/png') }); },
 };

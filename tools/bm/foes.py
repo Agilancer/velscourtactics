@@ -94,6 +94,12 @@ def paint(pic, marks):
 
 def repaint(path, marks):
     """Paints marks off the colour and normal pictures inside a .glb, rewriting its binary chunk."""
+    swap_pictures(path, lambda pics: {role: paint(pic, marks) for role, pic in pics.items()})
+
+
+def swap_pictures(path, fn):
+    """Rewrites a .glb's colour, normal and metal-roughness pictures: fn({'color': Image, 'normal': Image, 'rough': Image})
+    -> the same, changed. (A mark left on the roughness map still shows, as a shape in the sheen.)"""
     from PIL import Image
     b = open(path, "rb").read()
     jl = struct.unpack("<I", b[12:16])[0]
@@ -101,15 +107,22 @@ def repaint(path, marks):
     bl = struct.unpack("<I", b[20 + jl:24 + jl])[0]
     blob = b[28 + jl:28 + jl + bl]
     m = j["materials"][0]
-    new = {}
-    for ref in (m["pbrMetallicRoughness"].get("baseColorTexture"), m.get("normalTexture")):
+    refs = {"color": m["pbrMetallicRoughness"].get("baseColorTexture"), "normal": m.get("normalTexture"),
+            "rough": m["pbrMetallicRoughness"].get("metallicRoughnessTexture")}
+    pics, where = {}, {}
+    for role, ref in refs.items():
         if not ref:
             continue
         img = j["images"][j["textures"][ref["index"]]["source"]]
         bv = j["bufferViews"][img["bufferView"]]
         o = bv.get("byteOffset", 0)
+        pics[role] = Image.open(io.BytesIO(blob[o:o + bv["byteLength"]])).convert("RGB")
+        where[role] = img
+    new = {}
+    for role, pic in fn(pics).items():
+        img = where[role]
         buf = io.BytesIO()
-        paint(Image.open(io.BytesIO(blob[o:o + bv["byteLength"]])), marks).save(buf, "JPEG", quality=92)
+        pic.save(buf, "JPEG", quality=92)
         new[img["bufferView"]] = buf.getvalue()
         img["mimeType"] = "image/jpeg"
     out = bytearray()

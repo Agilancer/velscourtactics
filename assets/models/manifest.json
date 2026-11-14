@@ -244,191 +244,162 @@
   },
   "zombie_shambler": {
     "file": "zombie_shambler.glb",
-    "height": 1.5,
+    "height": 1.7,
     "inPlace": true,
     "lift": 0.14,
-    "normal": 0.5,
-    "bones": {
-      "Head": 1.2
-    },
     "anims": {
       "idle": "Idle",
-      "walk": "Mummy_Stagger_inplace",
-      "attack": "Punch_Forward_with_Both_Fists",
-      "cast": "Zombie_Scream",
-      "hit": "Hit_Reaction",
-      "dead": "Dead",
-      "cheer": "Zombie_Scream"
+      "walk": "Walk",
+      "jump": "Hop",
+      "cast": "Roar",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Roar",
+      "taunt": "Roar",
+      "attack": "Rake",
+      "rake": "Rake"
     },
     "speed": {
-      "walk": 2.2,
-      "attack": 2.3,
-      "cast": 2.2,
-      "hit": 2.2,
-      "dead": 1.8
-    },
-    "trim": {
-      "attack": [
-        0.6,
-        2.9
-      ],
-      "cast": [
-        0.3,
-        2.5
-      ]
+      "walk": 1.2,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6
     }
   },
   "zombie_gnawer": {
     "file": "zombie_gnawer.glb",
-    "height": 1.45,
+    "height": 1.65,
     "inPlace": true,
-    "lift": 0.14,
-    "normal": 0.5,
-    "bones": {
-      "Head": 1.2
-    },
+    "lift": 0.12,
     "anims": {
       "idle": "Idle",
-      "walk": "Lean_Forward_Sprint_inplace",
-      "attack": "Punch_Forward_with_Both_Fists",
-      "cast": "Zombie_Scream",
-      "hit": "Hit_Reaction",
-      "dead": "Dead",
-      "cheer": "Zombie_Scream"
+      "walk": "Walk",
+      "jump": "Hop",
+      "cast": "Roar",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Roar",
+      "taunt": "Roar",
+      "attack": "Bite",
+      "bite": "Bite"
     },
     "speed": {
-      "walk": 1,
-      "attack": 2.3,
-      "cast": 2.2,
-      "hit": 2.2,
-      "dead": 1.8
-    },
-    "trim": {
-      "attack": [
-        0.6,
-        2.9
-      ],
-      "cast": [
-        0.3,
-        2.5
-      ]
+      "walk": 1.3,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6
     }
   },
   "zombie_lurker": {
     "file": "zombie_lurker.glb",
-    "height": 1.55,
+    "height": 1.8,
     "inPlace": true,
-    "lift": 0.14,
-    "normal": 0.5,
-    "bones": {
-      "Head": 1.2
-    },
+    "lift": 0.2,
     "anims": {
       "idle": "Idle",
-      "walk": "Cautious_Crouch_Walk_Forward_inplace",
-      "attack": "Punch_Forward_with_Both_Fists",
-      "cast": "Zombie_Scream",
-      "hit": "Hit_Reaction",
-      "dead": "Dead",
-      "cheer": "Zombie_Scream",
-      "pounce": "Jumping_Punch"
+      "walk": "Walk",
+      "jump": "Hop",
+      "cast": "Roar",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Roar",
+      "taunt": "Roar",
+      "attack": "Rake",
+      "rake": "Rake",
+      "pounce": "Pounce"
     },
     "speed": {
       "walk": 1.3,
-      "attack": 2.3,
-      "cast": 2.2,
-      "hit": 2.2,
-      "dead": 1.8,
-      "pounce": 2
-    },
-    "trim": {
-      "attack": [
-        0.6,
-        2.9
-      ],
-      "cast": [
-        0.3,
-        2.5
-      ],
-      "pounce": [
-        1,
-        2.4
-      ]
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "pounce": 1.2
     }
   },
   "zombie_bonesack": {
     "file": "zombie_bonesack.glb",
-    "height": 1.4,
+    "height": 1.6,
     "inPlace": true,
-    "lift": 0.14,
-    "normal": 0.5,
-    "bones": {
-      "Head": 1.2
-    },
+    "lift": 0.12,
     "anims": {
       "idle": "Idle",
-      "walk": "Slow_Orc_Walk_inplace",
-      "attack": "Punch_Forward_with_Both_Fists",
-      "cast": "Zombie_Scream",
-      "hit": "Hit_Reaction",
-      "dead": "Dead",
-      "cheer": "Zombie_Scream"
+      "walk": "Walk",
+      "jump": "Hop",
+      "cast": "Retch",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Roar",
+      "taunt": "Roar",
+      "attack": "Rake",
+      "rake": "Rake",
+      "retch": "Retch"
     },
     "speed": {
-      "walk": 2.4,
-      "attack": 2.3,
-      "cast": 2.2,
-      "hit": 2.2,
-      "dead": 1.8
-    },
-    "trim": {
-      "attack": [
-        0.6,
-        2.9
-      ],
-      "cast": [
-        0.3,
-        2.5
-      ]
+      "walk": 1.1,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6
     }
   },
   "zombie_brute": {
     "file": "zombie_brute.glb",
-    "height": 2.25,
+    "height": 2.3,
     "inPlace": true,
     "lift": 0.14,
-    "normal": 0.5,
     "anims": {
       "idle": "Idle",
-      "walk": "Slow_Orc_Walk_inplace",
-      "attack": "Charged_Ground_Slam",
-      "cast": "Zombie_Scream",
-      "hit": "Hit_Reaction",
-      "dead": "Dead",
-      "cheer": "Zombie_Scream",
-      "sweep": "Axe_Spin_Attack"
+      "walk": "Walk",
+      "jump": "Hop",
+      "cast": "Roar",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Roar",
+      "taunt": "Roar",
+      "attack": "Slam",
+      "slam": "Slam",
+      "sweep": "Sweep"
     },
     "speed": {
-      "walk": 2,
-      "attack": 2.4,
-      "cast": 2.2,
-      "hit": 2.2,
-      "dead": 1.8,
-      "sweep": 2.2
-    },
-    "trim": {
-      "attack": [
-        0.9,
-        3
-      ],
-      "cast": [
-        0.3,
-        2.5
-      ],
-      "sweep": [
-        0.3,
-        2.3
-      ]
+      "walk": 1.1,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "sweep": 1.3
     }
   },
   "paladin_m": {
@@ -1412,7 +1383,9 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
@@ -1422,6 +1395,10 @@
       "call": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -1459,7 +1436,9 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
@@ -1469,6 +1448,10 @@
       "call": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -1506,7 +1489,9 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
@@ -1516,6 +1501,10 @@
       "call": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -1552,7 +1541,9 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
@@ -1570,6 +1561,10 @@
       "ballad": [
         0,
         3.2
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -1606,7 +1601,9 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
@@ -1624,6 +1621,10 @@
       "ballad": [
         0,
         3.2
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -1660,7 +1661,9 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
@@ -1678,6 +1681,10 @@
       "ballad": [
         0,
         3.2
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -1714,7 +1721,9 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
@@ -1732,6 +1741,10 @@
       "ballad": [
         0,
         3.2
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -1768,7 +1781,9 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
@@ -1786,6 +1801,10 @@
       "ballad": [
         0,
         3.2
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -1822,7 +1841,9 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
@@ -1840,6 +1861,10 @@
       "ballad": [
         0,
         3.2
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -1878,12 +1903,18 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -1922,12 +1953,18 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -1966,12 +2003,18 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -2010,12 +2053,18 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -2054,12 +2103,18 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -2097,12 +2152,18 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -2140,12 +2201,18 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -2183,12 +2250,18 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -2226,12 +2299,18 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -2269,12 +2348,18 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -2300,7 +2385,11 @@
       "talk": "Idle_Talking_Loop",
       "item": "Consume",
       "taunt": "LP_swagger",
-      "point": "LP_Pointing_at_an_enemy"
+      "point": "LP_Pointing_at_an_enemy",
+      "shoot": "Spell_Simple_Shoot",
+      "fan": "Spell_Simple_Shoot",
+      "lob": "OverhandThrow",
+      "deploy": "Fixing_Kneeling"
     },
     "speed": {
       "walk": 1.5,
@@ -2309,12 +2398,18 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -2340,7 +2435,11 @@
       "talk": "Idle_Talking_Loop",
       "item": "Consume",
       "taunt": "LP_swagger",
-      "point": "LP_Pointing_at_an_enemy"
+      "point": "LP_Pointing_at_an_enemy",
+      "shoot": "Spell_Simple_Shoot",
+      "fan": "Spell_Simple_Shoot",
+      "lob": "OverhandThrow",
+      "deploy": "Fixing_Kneeling"
     },
     "speed": {
       "walk": 1.5,
@@ -2349,12 +2448,18 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -2380,7 +2485,11 @@
       "talk": "Idle_Talking_Loop",
       "item": "Consume",
       "taunt": "LP_swagger",
-      "point": "LP_Pointing_at_an_enemy"
+      "point": "LP_Pointing_at_an_enemy",
+      "shoot": "Spell_Simple_Shoot",
+      "fan": "Spell_Simple_Shoot",
+      "lob": "OverhandThrow",
+      "deploy": "Fixing_Kneeling"
     },
     "speed": {
       "walk": 1.5,
@@ -2389,12 +2498,18 @@
       "attack": 1.2,
       "cast": 0.8,
       "dead": 1.2,
-      "revive": 1.4
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
     },
     "trim": {
       "point": [
         0,
         2.6
+      ],
+      "taunt": [
+        0,
+        2.4
       ]
     }
   },
@@ -3696,6 +3811,3576 @@
       "dead": 1.3,
       "revive": 1.6,
       "thrust": 1.25
+    }
+  },
+  "boomerang_knight_f_t4": {
+    "file": "heroes/boomerang_f1.glb",
+    "from": "bm assets/game/heroes/boomerang_f1.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "OverhandThrow",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "throw": "OverhandThrow",
+      "twin": "OverhandThrow",
+      "whirl": "Sword_Attack",
+      "typhoon": "OverhandThrow"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "dragoon_f_t4": {
+    "file": "heroes/dragoon_f3.glb",
+    "from": "bm assets/game/heroes/dragoon_f3.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "leap": "NinjaJump_Start",
+      "breath": "Spell_Simple_Shoot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "gunner_m_t4": {
+    "file": "heroes/rogue_m3.glb",
+    "from": "bm assets/game/heroes/rogue_m3.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Spell_Simple_Shoot",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "shoot": "Spell_Simple_Shoot",
+      "fan": "Spell_Simple_Shoot",
+      "lob": "OverhandThrow",
+      "deploy": "Fixing_Kneeling"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "paladin_f_t3": {
+    "file": "heroes/paladin_f1.glb",
+    "from": "bm assets/game/heroes/paladin_f1.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Attack",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "swing": "Sword_Attack",
+      "smite": "Sword_Regular_C",
+      "bolt": "Spell_Simple_Shoot",
+      "bless": "LP_cast_a_spell",
+      "wave": "LP_2_handed_fancy_spell_casting",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "bless": [
+        0,
+        2.6
+      ],
+      "wave": [
+        0,
+        3.0
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "paladin_f_t5": {
+    "file": "heroes/paladin_f2.glb",
+    "from": "bm assets/game/heroes/paladin_f2.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Attack",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "swing": "Sword_Attack",
+      "smite": "Sword_Regular_C",
+      "bolt": "Spell_Simple_Shoot",
+      "bless": "LP_cast_a_spell",
+      "wave": "LP_2_handed_fancy_spell_casting",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "bless": [
+        0,
+        2.6
+      ],
+      "wave": [
+        0,
+        3.0
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "paladin_m_t3": {
+    "file": "heroes/paladin_m1.glb",
+    "from": "bm assets/game/heroes/paladin_m1.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Attack",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "swing": "Sword_Attack",
+      "smite": "Sword_Regular_C",
+      "bolt": "Spell_Simple_Shoot",
+      "bless": "LP_cast_a_spell",
+      "wave": "LP_2_handed_fancy_spell_casting",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "bless": [
+        0,
+        2.6
+      ],
+      "wave": [
+        0,
+        3.0
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "paladin_m_t5": {
+    "file": "heroes/paladin_m2.glb",
+    "from": "bm assets/game/heroes/paladin_m2.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Attack",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "swing": "Sword_Attack",
+      "smite": "Sword_Regular_C",
+      "bolt": "Spell_Simple_Shoot",
+      "bless": "LP_cast_a_spell",
+      "wave": "LP_2_handed_fancy_spell_casting",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "bless": [
+        0,
+        2.6
+      ],
+      "wave": [
+        0,
+        3.0
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "lancer_f_t3": {
+    "file": "heroes/lancer_f1.glb",
+    "from": "bm assets/game/heroes/lancer_f1.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "guard_up": "Shield_OneShot",
+      "rally": "LP_Pointing_into_the_distance",
+      "charge": "Shield_Dash",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "rally": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "lancer_f_t4": {
+    "file": "heroes/lancer_f2.glb",
+    "from": "bm assets/game/heroes/lancer_f2.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "guard_up": "Shield_OneShot",
+      "rally": "LP_Pointing_into_the_distance",
+      "charge": "Shield_Dash",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "rally": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "lancer_f_t5": {
+    "file": "heroes/lancer_f3.glb",
+    "from": "bm assets/game/heroes/lancer_f3.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "guard_up": "Shield_OneShot",
+      "rally": "LP_Pointing_into_the_distance",
+      "charge": "Shield_Dash",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "rally": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "lancer_m_t3": {
+    "file": "heroes/lancer_m1.glb",
+    "from": "bm assets/game/heroes/lancer_m1.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "guard_up": "Shield_OneShot",
+      "rally": "LP_Pointing_into_the_distance",
+      "charge": "Shield_Dash",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "rally": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "lancer_m_t4": {
+    "file": "heroes/lancer_m2.glb",
+    "from": "bm assets/game/heroes/lancer_m2.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "guard_up": "Shield_OneShot",
+      "rally": "LP_Pointing_into_the_distance",
+      "charge": "Shield_Dash",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "rally": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "lancer_m_t5": {
+    "file": "heroes/lancer_m4.glb",
+    "from": "bm assets/game/heroes/lancer_m4.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "guard_up": "Shield_OneShot",
+      "rally": "LP_Pointing_into_the_distance",
+      "charge": "Shield_Dash",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "rally": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "ninja_m_t1": {
+    "file": "heroes/ninja_m1.glb",
+    "from": "bm assets/game/heroes/ninja_m1.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "L_Slash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_bow",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_warm_up",
+      "point": "LP_Pointing_at_an_enemy",
+      "slash": "L_Slash",
+      "stars": "OverhandThrow",
+      "step": "LP_flip",
+      "smoke": "LP_jump_down",
+      "cuts": "Sword_Regular_Combo"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "step": [
+        0,
+        1.6
+      ],
+      "smoke": [
+        0,
+        1.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ],
+      "cheer": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "ninja_m_t3": {
+    "file": "heroes/ninja_m2.glb",
+    "from": "bm assets/game/heroes/ninja_m2.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "L_Slash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_bow",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_warm_up",
+      "point": "LP_Pointing_at_an_enemy",
+      "slash": "L_Slash",
+      "stars": "OverhandThrow",
+      "step": "LP_flip",
+      "smoke": "LP_jump_down",
+      "cuts": "Sword_Regular_Combo"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "step": [
+        0,
+        1.6
+      ],
+      "smoke": [
+        0,
+        1.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ],
+      "cheer": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "ninja_m_t5": {
+    "file": "heroes/ninja_m3.glb",
+    "from": "bm assets/game/heroes/ninja_m3.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "L_Slash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_bow",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_warm_up",
+      "point": "LP_Pointing_at_an_enemy",
+      "slash": "L_Slash",
+      "stars": "OverhandThrow",
+      "step": "LP_flip",
+      "smoke": "LP_jump_down",
+      "cuts": "Sword_Regular_Combo"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "step": [
+        0,
+        1.6
+      ],
+      "smoke": [
+        0,
+        1.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ],
+      "cheer": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "ninja_f_t1": {
+    "file": "heroes/archer_f6.glb",
+    "from": "bm assets/game/heroes/archer_f6.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "L_Slash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_bow",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_warm_up",
+      "point": "LP_Pointing_at_an_enemy",
+      "slash": "L_Slash",
+      "stars": "OverhandThrow",
+      "step": "LP_flip",
+      "smoke": "LP_jump_down",
+      "cuts": "Sword_Regular_Combo"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "step": [
+        0,
+        1.6
+      ],
+      "smoke": [
+        0,
+        1.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ],
+      "cheer": [
+        0,
+        2.4
+      ]
+    },
+    "dye": "night"
+  },
+  "ninja_f_t3": {
+    "file": "heroes/archer_f1.glb",
+    "from": "bm assets/game/heroes/archer_f1.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "L_Slash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_bow",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_warm_up",
+      "point": "LP_Pointing_at_an_enemy",
+      "slash": "L_Slash",
+      "stars": "OverhandThrow",
+      "step": "LP_flip",
+      "smoke": "LP_jump_down",
+      "cuts": "Sword_Regular_Combo"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "step": [
+        0,
+        1.6
+      ],
+      "smoke": [
+        0,
+        1.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ],
+      "cheer": [
+        0,
+        2.4
+      ]
+    },
+    "dye": "night"
+  },
+  "ninja_f_t5": {
+    "file": "heroes/archer_f3.glb",
+    "from": "bm assets/game/heroes/archer_f3.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "L_Slash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_bow",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_warm_up",
+      "point": "LP_Pointing_at_an_enemy",
+      "slash": "L_Slash",
+      "stars": "OverhandThrow",
+      "step": "LP_flip",
+      "smoke": "LP_jump_down",
+      "cuts": "Sword_Regular_Combo"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "step": [
+        0,
+        1.6
+      ],
+      "smoke": [
+        0,
+        1.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ],
+      "cheer": [
+        0,
+        2.4
+      ]
+    },
+    "dye": "night"
+  },
+  "hero_archer_f1": {
+    "file": "heroes/archer_f1.glb",
+    "from": "bm assets/game/heroes/archer_f1.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Spell_Simple_Shoot",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "shoot": "Spell_Simple_Shoot",
+      "volley": "Spell_Simple_Shoot",
+      "call": "LP_Pointing_into_the_distance"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "call": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_archer_f2": {
+    "file": "heroes/archer_f2.glb",
+    "from": "bm assets/game/heroes/archer_f2.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Spell_Simple_Shoot",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "shoot": "Spell_Simple_Shoot",
+      "volley": "Spell_Simple_Shoot",
+      "call": "LP_Pointing_into_the_distance"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "call": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_archer_f3": {
+    "file": "heroes/archer_f3.glb",
+    "from": "bm assets/game/heroes/archer_f3.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Spell_Simple_Shoot",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "shoot": "Spell_Simple_Shoot",
+      "volley": "Spell_Simple_Shoot",
+      "call": "LP_Pointing_into_the_distance"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "call": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_archer_f4": {
+    "file": "heroes/archer_f4.glb",
+    "from": "bm assets/game/heroes/archer_f4.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Spell_Simple_Shoot",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "shoot": "Spell_Simple_Shoot",
+      "volley": "Spell_Simple_Shoot",
+      "call": "LP_Pointing_into_the_distance"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "call": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_archer_f5": {
+    "file": "heroes/archer_f5.glb",
+    "from": "bm assets/game/heroes/archer_f5.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Spell_Simple_Shoot",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "shoot": "Spell_Simple_Shoot",
+      "volley": "Spell_Simple_Shoot",
+      "call": "LP_Pointing_into_the_distance"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "call": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_archer_f6": {
+    "file": "heroes/archer_f6.glb",
+    "from": "bm assets/game/heroes/archer_f6.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Spell_Simple_Shoot",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "shoot": "Spell_Simple_Shoot",
+      "volley": "Spell_Simple_Shoot",
+      "call": "LP_Pointing_into_the_distance"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "call": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_bard_f1": {
+    "file": "heroes/bard_f1.glb",
+    "from": "bm assets/game/heroes/bard_f1.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "LP_sing_01",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "strum": "LP_sing_01",
+      "ballad": "LP_sing_03"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "attack": [
+        0,
+        2.4
+      ],
+      "strum": [
+        0,
+        2.4
+      ],
+      "ballad": [
+        0,
+        3.2
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_bard_f2": {
+    "file": "heroes/bard_f2.glb",
+    "from": "bm assets/game/heroes/bard_f2.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "LP_sing_01",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "strum": "LP_sing_01",
+      "ballad": "LP_sing_03"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "attack": [
+        0,
+        2.4
+      ],
+      "strum": [
+        0,
+        2.4
+      ],
+      "ballad": [
+        0,
+        3.2
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_bard_f3": {
+    "file": "heroes/bard_f3.glb",
+    "from": "bm assets/game/heroes/bard_f3.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "LP_sing_01",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "strum": "LP_sing_01",
+      "ballad": "LP_sing_03"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "attack": [
+        0,
+        2.4
+      ],
+      "strum": [
+        0,
+        2.4
+      ],
+      "ballad": [
+        0,
+        3.2
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_bard_m1": {
+    "file": "heroes/bard_m1.glb",
+    "from": "bm assets/game/heroes/bard_m1.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "LP_sing_01",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "strum": "LP_sing_01",
+      "ballad": "LP_sing_03"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "attack": [
+        0,
+        2.4
+      ],
+      "strum": [
+        0,
+        2.4
+      ],
+      "ballad": [
+        0,
+        3.2
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_bard_m2": {
+    "file": "heroes/bard_m2.glb",
+    "from": "bm assets/game/heroes/bard_m2.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "LP_sing_01",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "strum": "LP_sing_01",
+      "ballad": "LP_sing_03"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "attack": [
+        0,
+        2.4
+      ],
+      "strum": [
+        0,
+        2.4
+      ],
+      "ballad": [
+        0,
+        3.2
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_bard_m3": {
+    "file": "heroes/bard_m3.glb",
+    "from": "bm assets/game/heroes/bard_m3.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "LP_sing_01",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "strum": "LP_sing_01",
+      "ballad": "LP_sing_03"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "attack": [
+        0,
+        2.4
+      ],
+      "strum": [
+        0,
+        2.4
+      ],
+      "ballad": [
+        0,
+        3.2
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_boomerang_f1": {
+    "file": "heroes/boomerang_f1.glb",
+    "from": "bm assets/game/heroes/boomerang_f1.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "OverhandThrow",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "throw": "OverhandThrow",
+      "twin": "OverhandThrow",
+      "whirl": "Sword_Attack",
+      "typhoon": "OverhandThrow"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_boomerang_f2": {
+    "file": "heroes/boomerang_f2.glb",
+    "from": "bm assets/game/heroes/boomerang_f2.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "OverhandThrow",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "throw": "OverhandThrow",
+      "twin": "OverhandThrow",
+      "whirl": "Sword_Attack",
+      "typhoon": "OverhandThrow"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_boomerang_f3": {
+    "file": "heroes/boomerang_f3.glb",
+    "from": "bm assets/game/heroes/boomerang_f3.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "OverhandThrow",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "throw": "OverhandThrow",
+      "twin": "OverhandThrow",
+      "whirl": "Sword_Attack",
+      "typhoon": "OverhandThrow"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_boomerang_m1": {
+    "file": "heroes/boomerang_m1.glb",
+    "from": "bm assets/game/heroes/boomerang_m1.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "OverhandThrow",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "throw": "OverhandThrow",
+      "twin": "OverhandThrow",
+      "whirl": "Sword_Attack",
+      "typhoon": "OverhandThrow"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_boomerang_m2": {
+    "file": "heroes/boomerang_m2.glb",
+    "from": "bm assets/game/heroes/boomerang_m2.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "OverhandThrow",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "throw": "OverhandThrow",
+      "twin": "OverhandThrow",
+      "whirl": "Sword_Attack",
+      "typhoon": "OverhandThrow"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_boomerang_m3": {
+    "file": "heroes/boomerang_m3.glb",
+    "from": "bm assets/game/heroes/boomerang_m3.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "OverhandThrow",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "throw": "OverhandThrow",
+      "twin": "OverhandThrow",
+      "whirl": "Sword_Attack",
+      "typhoon": "OverhandThrow"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_dragoon_f1": {
+    "file": "heroes/dragoon_f1.glb",
+    "from": "bm assets/game/heroes/dragoon_f1.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "leap": "NinjaJump_Start",
+      "breath": "Spell_Simple_Shoot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_dragoon_f2": {
+    "file": "heroes/dragoon_f2.glb",
+    "from": "bm assets/game/heroes/dragoon_f2.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "leap": "NinjaJump_Start",
+      "breath": "Spell_Simple_Shoot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_dragoon_f3": {
+    "file": "heroes/dragoon_f3.glb",
+    "from": "bm assets/game/heroes/dragoon_f3.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "leap": "NinjaJump_Start",
+      "breath": "Spell_Simple_Shoot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_dragoon_f4": {
+    "file": "heroes/dragoon_f4.glb",
+    "from": "bm assets/game/heroes/dragoon_f4.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "leap": "NinjaJump_Start",
+      "breath": "Spell_Simple_Shoot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_dragoon_m1": {
+    "file": "heroes/dragoon_m1.glb",
+    "from": "bm assets/game/heroes/dragoon_m1.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "leap": "NinjaJump_Start",
+      "breath": "Spell_Simple_Shoot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_dragoon_m2": {
+    "file": "heroes/dragoon_m2.glb",
+    "from": "bm assets/game/heroes/dragoon_m2.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "leap": "NinjaJump_Start",
+      "breath": "Spell_Simple_Shoot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_dragoon_m3": {
+    "file": "heroes/dragoon_m3.glb",
+    "from": "bm assets/game/heroes/dragoon_m3.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "leap": "NinjaJump_Start",
+      "breath": "Spell_Simple_Shoot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_dragoon_m4": {
+    "file": "heroes/dragoon_m4.glb",
+    "from": "bm assets/game/heroes/dragoon_m4.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "leap": "NinjaJump_Start",
+      "breath": "Spell_Simple_Shoot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_lancer_f1": {
+    "file": "heroes/lancer_f1.glb",
+    "from": "bm assets/game/heroes/lancer_f1.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "guard_up": "Shield_OneShot",
+      "rally": "LP_Pointing_into_the_distance",
+      "charge": "Shield_Dash",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "rally": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_lancer_f2": {
+    "file": "heroes/lancer_f2.glb",
+    "from": "bm assets/game/heroes/lancer_f2.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "guard_up": "Shield_OneShot",
+      "rally": "LP_Pointing_into_the_distance",
+      "charge": "Shield_Dash",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "rally": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_lancer_f3": {
+    "file": "heroes/lancer_f3.glb",
+    "from": "bm assets/game/heroes/lancer_f3.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "guard_up": "Shield_OneShot",
+      "rally": "LP_Pointing_into_the_distance",
+      "charge": "Shield_Dash",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "rally": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_lancer_m1": {
+    "file": "heroes/lancer_m1.glb",
+    "from": "bm assets/game/heroes/lancer_m1.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "guard_up": "Shield_OneShot",
+      "rally": "LP_Pointing_into_the_distance",
+      "charge": "Shield_Dash",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "rally": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_lancer_m2": {
+    "file": "heroes/lancer_m2.glb",
+    "from": "bm assets/game/heroes/lancer_m2.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "guard_up": "Shield_OneShot",
+      "rally": "LP_Pointing_into_the_distance",
+      "charge": "Shield_Dash",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "rally": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_lancer_m3": {
+    "file": "heroes/lancer_m3.glb",
+    "from": "bm assets/game/heroes/lancer_m3.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "guard_up": "Shield_OneShot",
+      "rally": "LP_Pointing_into_the_distance",
+      "charge": "Shield_Dash",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "rally": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_lancer_m4": {
+    "file": "heroes/lancer_m4.glb",
+    "from": "bm assets/game/heroes/lancer_m4.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Dash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "thrust": "Sword_Dash",
+      "guard_up": "Shield_OneShot",
+      "rally": "LP_Pointing_into_the_distance",
+      "charge": "Shield_Dash",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "rally": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_ninja_m1": {
+    "file": "heroes/ninja_m1.glb",
+    "from": "bm assets/game/heroes/ninja_m1.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "L_Slash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_bow",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_warm_up",
+      "point": "LP_Pointing_at_an_enemy",
+      "slash": "L_Slash",
+      "stars": "OverhandThrow",
+      "step": "LP_flip",
+      "smoke": "LP_jump_down",
+      "cuts": "Sword_Regular_Combo"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "step": [
+        0,
+        1.6
+      ],
+      "smoke": [
+        0,
+        1.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ],
+      "cheer": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_ninja_m2": {
+    "file": "heroes/ninja_m2.glb",
+    "from": "bm assets/game/heroes/ninja_m2.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "L_Slash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_bow",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_warm_up",
+      "point": "LP_Pointing_at_an_enemy",
+      "slash": "L_Slash",
+      "stars": "OverhandThrow",
+      "step": "LP_flip",
+      "smoke": "LP_jump_down",
+      "cuts": "Sword_Regular_Combo"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "step": [
+        0,
+        1.6
+      ],
+      "smoke": [
+        0,
+        1.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ],
+      "cheer": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_ninja_m3": {
+    "file": "heroes/ninja_m3.glb",
+    "from": "bm assets/game/heroes/ninja_m3.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "L_Slash",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_bow",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_warm_up",
+      "point": "LP_Pointing_at_an_enemy",
+      "slash": "L_Slash",
+      "stars": "OverhandThrow",
+      "step": "LP_flip",
+      "smoke": "LP_jump_down",
+      "cuts": "Sword_Regular_Combo"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "step": [
+        0,
+        1.6
+      ],
+      "smoke": [
+        0,
+        1.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ],
+      "cheer": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_paladin_f1": {
+    "file": "heroes/paladin_f1.glb",
+    "from": "bm assets/game/heroes/paladin_f1.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Attack",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "swing": "Sword_Attack",
+      "smite": "Sword_Regular_C",
+      "bolt": "Spell_Simple_Shoot",
+      "bless": "LP_cast_a_spell",
+      "wave": "LP_2_handed_fancy_spell_casting",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "bless": [
+        0,
+        2.6
+      ],
+      "wave": [
+        0,
+        3.0
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_paladin_f2": {
+    "file": "heroes/paladin_f2.glb",
+    "from": "bm assets/game/heroes/paladin_f2.glb",
+    "height": 1.8,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Attack",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "swing": "Sword_Attack",
+      "smite": "Sword_Regular_C",
+      "bolt": "Spell_Simple_Shoot",
+      "bless": "LP_cast_a_spell",
+      "wave": "LP_2_handed_fancy_spell_casting",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "bless": [
+        0,
+        2.6
+      ],
+      "wave": [
+        0,
+        3.0
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_paladin_m1": {
+    "file": "heroes/paladin_m1.glb",
+    "from": "bm assets/game/heroes/paladin_m1.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Attack",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "swing": "Sword_Attack",
+      "smite": "Sword_Regular_C",
+      "bolt": "Spell_Simple_Shoot",
+      "bless": "LP_cast_a_spell",
+      "wave": "LP_2_handed_fancy_spell_casting",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "bless": [
+        0,
+        2.6
+      ],
+      "wave": [
+        0,
+        3.0
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_paladin_m2": {
+    "file": "heroes/paladin_m2.glb",
+    "from": "bm assets/game/heroes/paladin_m2.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Sword_Attack",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "swing": "Sword_Attack",
+      "smite": "Sword_Regular_C",
+      "bolt": "Spell_Simple_Shoot",
+      "bless": "LP_cast_a_spell",
+      "wave": "LP_2_handed_fancy_spell_casting",
+      "bash": "Shield_OneShot"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "bless": [
+        0,
+        2.6
+      ],
+      "wave": [
+        0,
+        3.0
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_rogue_m1": {
+    "file": "heroes/rogue_m1.glb",
+    "from": "bm assets/game/heroes/rogue_m1.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Spell_Simple_Shoot",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "shoot": "Spell_Simple_Shoot",
+      "fan": "Spell_Simple_Shoot",
+      "lob": "OverhandThrow",
+      "deploy": "Fixing_Kneeling"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_rogue_m2": {
+    "file": "heroes/rogue_m2.glb",
+    "from": "bm assets/game/heroes/rogue_m2.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Spell_Simple_Shoot",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "shoot": "Spell_Simple_Shoot",
+      "fan": "Spell_Simple_Shoot",
+      "lob": "OverhandThrow",
+      "deploy": "Fixing_Kneeling"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_rogue_m3": {
+    "file": "heroes/rogue_m3.glb",
+    "from": "bm assets/game/heroes/rogue_m3.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Spell_Simple_Shoot",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "shoot": "Spell_Simple_Shoot",
+      "fan": "Spell_Simple_Shoot",
+      "lob": "OverhandThrow",
+      "deploy": "Fixing_Kneeling"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "hero_rogue_m4": {
+    "file": "heroes/rogue_m4.glb",
+    "from": "bm assets/game/heroes/rogue_m4.glb",
+    "height": 1.86,
+    "bank": "heroes",
+    "anims": {
+      "idle": "Idle_Loop",
+      "walk": "Walk_Loop",
+      "run": "Jog_Fwd_Loop",
+      "jump": "NinjaJump_Start",
+      "attack": "Spell_Simple_Shoot",
+      "cast": "Spell_Simple_Shoot",
+      "hit": "Hit_Chest",
+      "dead": "Death01",
+      "revive": "LayToIdle",
+      "cheer": "LP_cheer",
+      "guard": "Idle_Shield_Loop",
+      "wounded": "LP_depressed",
+      "stunned": "LP_frightened",
+      "talk": "Idle_Talking_Loop",
+      "item": "Consume",
+      "taunt": "LP_swagger",
+      "point": "LP_Pointing_at_an_enemy",
+      "shoot": "Spell_Simple_Shoot",
+      "fan": "Spell_Simple_Shoot",
+      "lob": "OverhandThrow",
+      "deploy": "Fixing_Kneeling"
+    },
+    "speed": {
+      "walk": 1.5,
+      "run": 1.2,
+      "jump": 1.6,
+      "attack": 1.2,
+      "cast": 0.8,
+      "dead": 1.2,
+      "revive": 1.4,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "trim": {
+      "point": [
+        0,
+        2.6
+      ],
+      "taunt": [
+        0,
+        2.4
+      ]
+    }
+  },
+  "wolf": {
+    "file": "wolf.glb",
+    "height": 0.95,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Run",
+      "run": "Run",
+      "attack": "Bite",
+      "bite": "Bite",
+      "cast": "Howl",
+      "hit": "Hit",
+      "dead": "Dead",
+      "cheer": "Howl",
+      "taunt": "Howl"
+    },
+    "speed": {
+      "walk": 1.3,
+      "run": 1.5
+    }
+  },
+  "whelp": {
+    "file": "whelp.glb",
+    "height": 0.9,
+    "anims": {
+      "idle": "Hover",
+      "walk": "Fly",
+      "run": "Fly",
+      "jump": "Fly",
+      "attack": "Spit",
+      "cast": "Spit",
+      "spit": "Spit",
+      "hit": "Hit",
+      "dead": "Dead",
+      "cheer": "Roar",
+      "taunt": "Roar",
+      "wounded": "Hover",
+      "stunned": "Hover",
+      "guard": "Hover"
+    }
+  },
+  "slime": {
+    "file": "slime.glb",
+    "height": 0.7,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Hop",
+      "run": "Hop",
+      "jump": "Hop",
+      "attack": "Lunge",
+      "cast": "Lunge",
+      "lunge": "Lunge",
+      "hit": "Hit",
+      "dead": "Dead",
+      "cheer": "Hop",
+      "taunt": "Hop"
+    },
+    "speed": {
+      "walk": 1.2
+    }
+  },
+  "turret": {
+    "file": "turret.glb",
+    "height": 0.9,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Idle",
+      "attack": "Fire",
+      "cast": "Fire",
+      "fire": "Fire",
+      "hit": "Hit",
+      "dead": "Break"
+    }
+  },
+  "totem": {
+    "file": "totem.glb",
+    "height": 1.4,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Idle",
+      "attack": "Pulse",
+      "cast": "Pulse",
+      "pulse": "Pulse",
+      "hit": "Hit",
+      "dead": "Break"
     }
   }
 }

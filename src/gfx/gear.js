@@ -116,7 +116,9 @@ function place(rig, look) {
       return { side: 'chest', bone: c.bone, matrix: c.to.clone().multiply(m) };
     }
     case 'haft': pos = grip(rig.R); q = basis(v3(0, 0.55, 1), edge); break;            // head up ahead, bit down
-    default: pos = grip(rig.R); q = basis(v3(0, -0.36, 1), edge);                        // point ahead and a little down
+    default:                                                                              // point ahead and a little down
+      if (look.left) side = 'L';                                                          // a second knife, in the other hand
+      pos = grip(rig[side]); q = basis(v3(0, -0.36, 1), edge);
   }
   const f = rig[side];
   const m = new THREE.Matrix4().compose(pos, q, v3(s, s, s));

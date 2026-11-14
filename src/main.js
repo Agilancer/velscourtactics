@@ -1,6 +1,8 @@
 // VELSCOUR TACTICS. Boots the world, then hands over to whichever of walking, talking or fighting is going on.
 import { buildWorld, TOWN } from './world/map.js';
 import { Renderer } from './world/render.js';
+import { FX } from './gfx/fx.js';
+import { Touches } from './core/pinch.js';
 import { Input } from './core/input.js';
 import { UI } from './ui/ui.js';
 import { Explore } from './game/explore.js';
@@ -23,6 +25,7 @@ class Game {
     this.world = buildWorld();
     this.canvas = document.getElementById('view');
     this.r = new Renderer(this.canvas, this.world);
+    this.r.fx = new FX(this.r);    // the fight's sparks, flashes and shakes (src/gfx/fx.js)
     this.input = new Input();
     this.ui = new UI(this);
     this.mode = 'title';          // title | explore | alert | battle | talk | menu
@@ -39,9 +42,13 @@ class Game {
     this.input.on('menu', () => { if (this.mode === 'explore') this.ui.openPanel('party'); else if (this.mode === 'menu') this.ui.close(); });
     this.input.on('auto', () => this.toggleAuto());
     this.input.on('dir', (d) => { if (this.mode === 'battle') this.battle.dir(d); });
-    this.canvas.addEventListener('pointermove', (e) => { if (this.mode === 'battle') this.battle.pointer(e.clientX, e.clientY, false); });
-    this.canvas.addEventListener('pointerdown', (e) => { if (this.mode === 'battle') this.battle.pointer(e.clientX, e.clientY, true); });
-    window.addEventListener('wheel', (e) => { if (!this.ui.isOpen()) this.r.setZoom(this.r.zoom + Math.sign(e.deltaY) * 1.2); }, { passive: true });
+    // the map under a mouse or a finger: two fingers pinch the view in and out, one taps (src/core/pinch.js)
+    this.touches = new Touches(this.canvas, {
+      zoom: () => this.r.zoom, setZoom: (z) => this.r.setZoom(z),
+      tap: (x, y) => { if (this.mode === 'battle') this.battle.pointer(x, y, true); },
+      hover: (x, y) => { if (this.mode === 'battle') this.battle.pointer(x, y, false); },
+    });
+    window.addEventListener('wheel', (e) => { if (!e.ctrlKey && e.target === this.canvas && !this.ui.isOpen()) this.r.setZoom(this.r.zoom + Math.sign(e.deltaY) * 1.2); }, { passive: true });
 
     // the sounds sit where their makers are on screen
     sound.where = (x, y, z) => (this.r.project(x, y, z).x / window.innerWidth) * 2 - 1;
@@ -59,13 +66,17 @@ class Game {
   tween(dur, fn) { return new Promise((res) => this.tweens.push({ t: 0, dur: dur / (this.st?.auto ? 1.6 : 1), fn, res })); }
 
   update(dt) {
+    const real = dt;
+    dt *= this.r.fx.timeScale();      // a heavy blow holds the frame for a moment
     for (const tw of this.tweens) { tw.t = Math.min(1, tw.t + dt / tw.dur); tw.fn(tw.t); if (tw.t >= 1) tw.res(); }
     this.tweens = this.tweens.filter((tw) => tw.t < 1);
     if (this.mode === 'title') { const t = performance.now() / 9000; this.r.follow(this.world.well.x + Math.cos(t) * 9, 0, this.world.well.z + Math.sin(t) * 7, dt); }
     else if (this.battle) this.battle.update(dt);
     else if (this.explore) { this.auto.update(dt); this.explore.update(dt); if (this.mode === 'explore') this.cryptWatch(); }
     this.r.tick(dt);
-    this.r.render();
+    this.r.fx.update(real);
+    this.r.fx.shaken(() => this.r.render());
+    dt = real;
     const set = this.place(), fight = this.mode === 'battle' || this.mode === 'alert';
     music.update(dt, { set, fight });
     ambience.update(dt, { on: !!this.explore && !title.up, set, fight, ear: this.r.target, world: this.world });

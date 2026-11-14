@@ -260,7 +260,7 @@ export const setMuted = (m) => sound.setMuted(m);
 const S = sound;
 const T0 = () => S.now + 0.005;
 // (every weapon kind, items.js's: put in hand, it's a blade's ring)
-const WEAPON_KINDS = { sword: 1, axe: 1, mace: 1, spear: 1, bow: 1, pistol: 1, boomerang: 1, staff: 1, wand: 1, lute: 1 };
+const WEAPON_KINDS = { sword: 1, axe: 1, mace: 1, spear: 1, bow: 1, pistol: 1, boomerang: 1, staff: 1, wand: 1, lute: 1, dagger: 1 };
 const BLADE = new Set(['sword', 'spear']), BLUNT = new Set(['mace', 'slam', 'chain', 'staff', 'lute']);
 
 /** A blow through the air. */
@@ -284,6 +284,7 @@ function swing(kind, at, el) {
   if (kind === 'claw' || kind === 'bite') { S.play('sword_attack', { ...p, vol: 0.55, rate: 0.72 }); growl(at, 0.6); return; }
   const done = BLUNT.has(kind) ? S.play('torch_attack_strike', { ...p, vol: kind === 'slam' ? 1.15 : 0.9, rate: kind === 'slam' ? 0.62 : 0.85 })
     : kind === 'boomerang' ? S.play('sword_attack', { ...p, vol: 0.8, rate: 0.66 })
+    : kind === 'dagger' ? S.play('sword_attack', { ...p, vol: 0.6, rate: 1.35 })   // short and quick, a knife's
     : S.play('sword_attack', { ...p, vol: kind === 'axe' ? 1 : 0.9, rate: kind === 'axe' ? 0.85 : 1 });
   if (!done) S.noise(T0(), 0.26, { type: 'bandpass', f0: 500, f1: 2400, q: 1.6, gain: 0.12, attack: 0.07, pan: S.panAt(at) });
 }

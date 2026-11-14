@@ -6,6 +6,8 @@
 // An item rolls its look once, when it's made (`it.look`): any id from its kind's pool at its tier. Older items, and
 // anything without a look, show the first of the pool.
 
+import { SKINS } from './skins.js';
+
 // kind -> tier (Rusted, Iron, Steel, Tempered, Mithril) -> the ids it may look like
 export const GEAR = {
   sword: [['iron_sword', 'copper_sword', 'falchion'], ['scimitar', 'lionguard_sword'], ['spiked_longsword', 'bluesteel_sword', 'goldspur_sword', 'vinewrap_sword'],
@@ -24,6 +26,8 @@ export const GEAR = {
   // a wand is a short staff: the same heads, drawn at under half the length
   wand: [['wraith_staff'], ['skullhorn_staff'], ['bonecrystal_staff'], ['crystal_staff'], ['galaxy_coil']],
   lute: [['lute_rosewood'], ['lute_greenwood'], ['lute_amber'], ['lute_ebony'], ['lute_ivory']],
+  // the ninja's: a knife in each hand (gfx/gear.js puts the off hand's twin in the left)
+  dagger: [['crescent_dagger'], ['horned_dagger'], ['serpent_dagger'], ['venom_dagger'], ['rubyfang_dagger']],
   // bm has no guns: the gunner's is built in code (gfx/gear.js), one look at every tier
   pistol: [['flintlock'], ['flintlock'], ['flintlock'], ['flintlock'], ['flintlock']],
   // not items: what the lancer's spear looks like (a lance), and the shields on the arms of the plate classes
@@ -36,10 +40,9 @@ export const GEAR = {
 
 // How each look is held. hold: blade | haft (axe, mace) | pole (spear, lance, staff) | bow | rang | lute | kite | tower | dagger.
 // scale: drawn larger or smaller than the model (a wand). Two-handed looks ride the right hand like the rest.
-const HOLD = { sword: 'blade', axe: 'haft', mace: 'haft', spear: 'pole', lance: 'pole', staff: 'pole', wand: 'pole', bow: 'bow', boomerang: 'rang', lute: 'lute', kite: 'kite', tower: 'tower', pistol: 'blade' };
+const HOLD = { sword: 'blade', axe: 'haft', mace: 'haft', spear: 'pole', lance: 'pole', staff: 'pole', wand: 'pole', bow: 'bow', boomerang: 'rang', lute: 'lute', kite: 'kite', tower: 'tower', pistol: 'blade', dagger: 'dagger' };
 export const LOOKS = {};
 for (const [kind, tiers] of Object.entries(GEAR)) for (const ids of tiers) for (const id of ids) LOOKS[id] ||= { id, kind, hold: HOLD[kind], scale: kind === 'wand' ? 0.42 : 1 };
-for (const id of ['crescent_dagger', 'horned_dagger', 'rubyfang_dagger', 'serpent_dagger', 'venom_dagger']) LOOKS[id] = { id, kind: 'dagger', hold: 'dagger', scale: 1 };
 // a wand drawn from a staff's model keeps its own entry under a key of its own
 for (const ids of GEAR.wand) for (const id of ids) LOOKS['wand:' + id] = { id, kind: 'wand', hold: 'pole', scale: 0.42 };
 
@@ -91,6 +94,22 @@ export function foeGear(id, seed = 0) {
   if (!g) return null;
   const pick = (row) => (row ? LOOKS[row[Math.abs(seed) % row.length]] : null);
   return { main: pick(g[0]), off: pick(g[1]) };
+}
+
+// What armour and helms look like on a body: one of bm's player skins (data/skins.js), rolled by rarity when the item is
+// made (`it.skin`), and worn part by part (gfx/dye.js). An item made before looks were rolled shows one its uid picks.
+const SKIN_BY_ID = new Map(SKINS.map((s) => [s.id, s]));
+const hash = (s) => [...String(s)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+const skinPool = (rarity) => { const p = SKINS.filter((s) => s.rarity === rarity); return p.length ? p : SKINS; };
+export function rollSkin(rarity, r = Math.random) {
+  const pool = skinPool(rarity);
+  return pool[Math.floor(r() * pool.length)].id;
+}
+export function skinOf(it) {
+  if (!it || (it.slot !== 'armor' && it.slot !== 'helm')) return null;
+  if (it.skin && SKIN_BY_ID.has(it.skin)) return SKIN_BY_ID.get(it.skin);
+  const pool = skinPool(it.rarity || 0);
+  return pool[hash(it.uid) % pool.length];
 }
 
 // The picture for an item in the bag, a shop or the party screen; null if it has none (rings, amulets, armour, draughts).

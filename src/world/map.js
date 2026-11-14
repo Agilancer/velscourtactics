@@ -35,22 +35,23 @@ export const REGIONS = [
 export const STEP = 0.5;
 
 // Buildings sit in two rows with their doors on the south face, where the camera can see them.
-// `id` ties a building to the merchant or folk who stand at its door (see data/cast.js).
+// `id` ties a building to the merchant or folk who stand at its door (see data/cast.js); `look` is the house it is
+// drawn as (assets/props: a tall timbered townhouse or a low thatched cottage; the inn is two townhouses side by side).
 const SLOTS_X = [42, 48, 54, 70, 76, 82].map((x) => x + O);
 const BUILDINGS = [
   // row A, north of the main street
-  { id: 'weapons', name: 'Ironhand Arms', slot: 0, row: 0, wall: 'wall_12', roof: 'roof_2', door: 'door_2' },
-  { id: 'forge', name: 'The Proud Anvil', slot: 1, row: 0, wall: 'wall_16', roof: 'roof_3', door: 'door_4' },
-  { id: 'armor', name: 'Thicker Than Hope', slot: 2, row: 0, wall: 'wall_09', roof: 'roof_1', door: 'door_1' },
-  { id: 'spells', name: "Vey's Scrolls", slot: 3, row: 0, wall: 'wall_14', roof: 'roof_4', door: 'door_3' },
-  { id: 'gems', name: 'The Lapidary', slot: 4, row: 0, wall: 'wall_08', roof: 'roof_2', door: 'door_5' },
-  { id: 'rings', name: "Fortunato's Wheel", slot: 5, row: 0, wall: 'wall_18', roof: 'roof_1', door: 'door_2' },
+  { id: 'weapons', name: 'Ironhand Arms', slot: 0, row: 0, wall: 'wall_12', roof: 'roof_2', door: 'door_2', look: 'townhouse' },
+  { id: 'forge', name: 'The Proud Anvil', slot: 1, row: 0, wall: 'wall_16', roof: 'roof_3', door: 'door_4', look: 'cottage' },
+  { id: 'armor', name: 'Thicker Than Hope', slot: 2, row: 0, wall: 'wall_09', roof: 'roof_1', door: 'door_1', look: 'townhouse' },
+  { id: 'spells', name: "Vey's Scrolls", slot: 3, row: 0, wall: 'wall_14', roof: 'roof_4', door: 'door_3', look: 'townhouse' },
+  { id: 'gems', name: 'The Lapidary', slot: 4, row: 0, wall: 'wall_08', roof: 'roof_2', door: 'door_5', look: 'cottage' },
+  { id: 'rings', name: "Fortunato's Wheel", slot: 5, row: 0, wall: 'wall_18', roof: 'roof_1', door: 'door_2', look: 'townhouse' },
   // row B, south of the main street, fronting the back lane
-  { id: 'bags', name: 'Reed Saddlery', slot: 0, row: 1, wall: 'wall_10', roof: 'roof_3', door: 'door_1' },
-  { id: 'inn', name: 'The Last Toll', slot: 1, row: 1, wall: 'wall_20', roof: 'roof_4', door: 'door_4', wide: 2 },
-  { id: 'enchant', name: 'The Veiled Kiln', slot: 3, row: 1, wall: 'wall_13', roof: 'roof_2', door: 'door_3' },
-  { id: 'socket', name: "The Curator's Bench", slot: 4, row: 1, wall: 'wall_17', roof: 'roof_1', door: 'door_5' },
-  { id: 'cottage', name: 'Moss Cottage', slot: 5, row: 1, wall: 'wall_11', roof: 'roof_3', door: 'door_2' },
+  { id: 'bags', name: 'Reed Saddlery', slot: 0, row: 1, wall: 'wall_10', roof: 'roof_3', door: 'door_1', look: 'cottage' },
+  { id: 'inn', name: 'The Last Toll', slot: 1, row: 1, wall: 'wall_20', roof: 'roof_4', door: 'door_4', wide: 2, look: 'townhouse' },
+  { id: 'enchant', name: 'The Veiled Kiln', slot: 3, row: 1, wall: 'wall_13', roof: 'roof_2', door: 'door_3', look: 'townhouse' },
+  { id: 'socket', name: "The Curator's Bench", slot: 4, row: 1, wall: 'wall_17', roof: 'roof_1', door: 'door_5', look: 'cottage' },
+  { id: 'cottage', name: 'Moss Cottage', slot: 5, row: 1, wall: 'wall_11', roof: 'roof_3', door: 'door_2', look: 'cottage' },
 ];
 
 export function buildWorld(seed = 4013) {
@@ -291,6 +292,37 @@ export function buildWorld(seed = 4013) {
     trees.push({ id: trees.length, x, z, size: 2, kind: 'oak', v: Math.floor(r() * 4), rot: r() * 6.28, tall: 1 });
     for (let dz = 0; dz < 2; dz++) for (let dx = 0; dx < 2; dx++) block[I(x + dx, z + dz)] = 2;
   }
+
+  // --- the Hollow's furniture: stalls in the square, a signpost inside each road in, and round the edge a fence, with
+  //     a dry-stone wall either side of the four roads. Nothing here draws on r(), so the rest of the map stays put. ---
+  const decor = [];   // { kind, x, z, turn }: its middle, and quarter turns from facing south (+z)
+  const put = (kind, x, z, turn, tiles) => {
+    for (const [tx, tz] of tiles) block[I(tx, tz)] = 1;
+    decor.push({ kind, x, z, turn });
+  };
+  for (const [x, z, turn] of [[60, 60, 0], [60, 68, 2], [67, 68, 2]]) put('market_stall', x + O + 0.5, z + O, turn, [[x + O, z + O], [x + O + 1, z + O]]);
+  for (const [x, z, turn] of [[67, 53, 0], [60, 76, 0], [87, 60, 1], [41, 68, 1]]) put('signpost', x + O, z + O, turn, [[x + O, z + O]]);
+  block[I(board.x - 1, board.z)] = block[I(board.x + 1, board.z)] = 1;     // the board is wider than its tile
+  // the edge, side by side: runs of free tiles, wall within six of a road's middle, fence beyond, in two-tile lengths
+  const edge = (fixed, along, a0, a1, mid, turn) => {
+    let run = [], kind = null;
+    const flush = () => {
+      for (let k = 0; run.length > 1 && k < run.length; k += 2) {      // an odd last tile shares the length before it
+        const two = k + 1 < run.length ? [run[k], run[k + 1]] : [run[k - 1], run[k]], m = (two[0] + two[1]) / 2;
+        put(kind, along === 'x' ? m : fixed, along === 'x' ? fixed : m, turn, two.map((a) => (along === 'x' ? [a, fixed] : [fixed, a])));
+      }
+      run = [];
+    };
+    for (let a = a0; a <= a1; a++) {
+      const [x, z] = along === 'x' ? [a, fixed] : [fixed, a], i = I(x, z), off = Math.abs(a - mid);
+      const k = road[i] || block[i] || off <= 2 ? null : off <= 8 ? 'stone_wall' : 'fence';
+      if (k !== kind) { if (run.length) flush(); kind = k; }
+      if (k) run.push(a);
+    }
+    if (run.length) flush();
+  };
+  edge(TOWN.z0, 'x', TOWN.x0, TOWN.x1, TOWN.cx, 0); edge(TOWN.z1, 'x', TOWN.x0, TOWN.x1, TOWN.cx, 0);
+  edge(TOWN.x0, 'z', TOWN.z0 + 1, TOWN.z1 - 1, TOWN.cz, 1); edge(TOWN.x1, 'z', TOWN.z0 + 1, TOWN.z1 - 1, TOWN.cz, 1);
 
   // --- the old crypt, out where the pines are oldest ---
   // A roofless walled yard, 13 tiles across inside, its gate in the south wall where the camera looks in. The wall
@@ -543,11 +575,43 @@ export function buildWorld(seed = 4013) {
   packs.push({ x: crypt.x, z: crypt.z, tier: 4, region: 0, crypt: true, members: CRYPT_PACK.map(([id, level], k) => ({ ...crypt.spots[k], kind: KIND[id], level })) });
 
   return {
-    N, seed, type, h, block, road, reach, region, trees, buildings, well, board, knolls, chests, packs, props, places, start, lisandraSpot, crypt,
+    N, seed, type, h, block, road, reach, region, trees, buildings, well, board, decor, knolls, chests, packs, props, places, start, lisandraSpot, crypt,
     I, inMap, inTown,
     regionAt(x, z) { return REGIONS[inMap(x, z) ? region[I(x, z)] : 0]; },
     walkable(x, z) { return inMap(x, z) && !block[I(x, z)]; },
     height(x, z) { return inMap(x, z) ? h[I(x, z)] : 0; },
     y(x, z) { return (inMap(x, z) ? h[I(x, z)] : 0) * STEP; },
   };
+}
+
+// Where the recruits of a land (REGIONS index) stand, n of them: a short way off its road, well apart, and out of
+// sight of the dead where the land has room. The same tiles every time for the same world; each pass asks a little
+// less than the one before.
+export function recruitSpots(w, reg, n) {
+  const r = rng32(w.seed + 101 + reg * 7), out = [], members = w.packs.flatMap((p) => p.members);
+  const roadGap = (x, z, far) => {
+    for (let d = 1; d <= far; d++) for (let dz = -d; dz <= d; dz++) for (let dx = -d; dx <= d; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dz)) === d && w.inMap(x + dx, z + dz) && w.road[w.I(x + dx, z + dz)]) return d;
+    }
+    return Infinity;
+  };
+  const tiles = [];
+  for (let z = 3; z < N - 3; z++) for (let x = 3; x < N - 3; x++) {
+    const i = w.I(x, z);
+    if (w.region[i] !== reg || !w.reach[i] || w.block[i] || w.road[i] || w.h[i] !== 0 || w.inTown(x, z, reg ? 4 : 18)) continue;
+    if (Math.hypot(x - w.start.x, z - w.start.z) < 8 || w.chests.some((c) => Math.hypot(c.x - x, c.z - z) < 3) || w.places.some((p) => x >= p.x - 3 && x <= p.x + p.w + 3 && z >= p.z - 3 && z <= p.z + p.d + 3)) continue;
+    const road = roadGap(x, z, 12);
+    if (road === Infinity) continue;
+    const foe = members.reduce((m, o) => Math.min(m, Math.hypot(o.x - x, o.z - z)), Infinity);
+    tiles.push({ x, z, road, foe, k: r() });
+  }
+  tiles.sort((p, q) => p.k - q.k);
+  for (const [apart, foe, road] of [[12, 10, 4], [10, 9, 6], [8, 8, 8], [6, 7, 12]]) {
+    for (const t of tiles) {
+      if (out.length >= n) break;
+      if (t.road > road || t.foe < foe || out.some(([a, b]) => Math.hypot(a - t.x, b - t.z) < apart)) continue;
+      out.push([t.x, t.z]);
+    }
+  }
+  return out;
 }

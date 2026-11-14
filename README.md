@@ -62,14 +62,18 @@ scream, from BigSoundBank.com, sound 0477.
 | Back | Esc | |
 | Party screen | Tab | Party |
 | Auto-play | P | Auto |
-| Zoom | mouse wheel | |
+| Zoom | mouse wheel (or a trackpad pinch) | pinch with two fingers |
 
 The grid's four directions are the screen's four diagonals, so the d-pad has two settings (the
 **D-pad A / B** button): in A, Left goes down-left; in B, Left goes up-left. The other three follow.
 
 In a fight: place your party on the green tiles, press Begin, then each turn is a Move and an act in
 either order. Click or tap a tile, or steer the cursor with the d-pad and press A. Height, facing
-(hits from behind and the side do more) and reach all count.
+(hits from behind and the side do more) and reach all count. Knock them into a wall or a body and it hurts
+more; step them onto a trap and they stop there.
+
+The fight's log sits bottom left (across the top on a phone): drag its corner to size it, fold it with the arrow,
+and the gear sets the letter size, how dark the window is and its size. Those settings stay in your browser.
 
 ## What is in it
 
@@ -79,10 +83,17 @@ either order. Click or tap a tile, or steer the cursor with the d-pad and press 
   Dry Court, and the palms at Last Water), the **Drowned Fen** south (black pools, bare trees, the Swamp Abbey)
   and the **Cinder Reach** west (ash, basalt, a dead rail line, Cinder Halt). The names are VELSCOUR's
   (the Great Hunt's lands, the Siege's forts, the Iron Express); the ground is bm's snow, fen, ash and desert textures.
-- **Sixteen classes** from VELSCOUR, male and female, four skills each opening at levels 1, 3, 6, 10
-  (`src/data/classes.js`), plus Lisandra's own.
-- **Thirteen people to walk with**: Lisandra (from the start), Homunculus the Proud, Lily Belle the
-  Veiled, Jamie the Curator, Stevie the Stronger, and eight more standing about the Hollow.
+- **Seventeen classes**, sixteen from VELSCOUR and the Ninja, male and female, eight skills each opening at levels 1, 2,
+  3, 4, 6, 8, 10, 13 (`src/data/classes.js`), plus Lisandra's own: four from VELSCOUR's trees (1, 3, 6, 10) and four only this game
+  has (2, 4, 8, 13), built on the board: pushes and pulls, lines and cones, chains, traps, blinks, turn order
+  bent forward and back, wards, dooms, ripostes, taunts and the wyrm.
+- **Fights worth watching**: the skill's name along the top, a cut-in across the screen for each class's last two,
+  casting circles, the world dimming and the view leaning in for big spells, a look for every school of magic,
+  hit-stop and shake on heavy blows, and big outlined numbers that bounce off whoever is hit.
+- **Fifty-seven people to walk with**: Lisandra (from the start), Homunculus the Proud, Lily Belle the
+  Veiled, Jamie the Curator, Stevie the Stronger, eight more standing about the Hollow, and forty-four more about the
+  Hollow, the pines and the four lands (eight to a land, by its road), each in one of bm's hero bodies in colours of
+  their own. Six walk at once; the rest wait at The Last Toll.
 - **Ten shops**: weapons, armour, spell scrolls, gems, rings and charms, bag room, enhancing (+1 to +10),
   enchanting, sockets and gem removal, and the inn (beds and draughts).
 - **Twenty-six kinds of foe** in about 80 packs. In the pines, five kinds of the dead and the things that keep their
@@ -91,8 +102,10 @@ either order. Click or tap a tile, or steer the cursor with the d-pad and press 
   at home in the land's ruin with a chest behind it. A bounty for most kinds, a writ for each lord. The twelve kinds of
   the lands beyond are stand-ins until their Meshy models are made (`docs/MODELS.md` sections 5 and 7).
 - **The crypt** in the deep pines: a roofless ruin of bm's catacomb stone, its keeper the Bone Golem, and a chest.
-- **Gear you can see**: every weapon is drawn in the hand that holds it, and the armour worn changes the body
-  (steel and up, for the classes bm has bodies for).
+- **Gear you can see**: every weapon is drawn in the hand that holds it (a ninja's knives in both), and the armour
+  worn changes the body (steel and up, for the classes bm has bodies for). On bm's bodies, what is worn also paints
+  the part of the body it covers: the helm the head, the armour the chest, shoulders, arms, legs and feet, each in the
+  cloth, trim and weave of one of bm's 152 player skins, and the metal toned by the item's rarity (`src/gfx/dye.js`).
 - **Auto-play**: rests, reads the board, fills the party, hunts, fights, wears what is better.
 
 ## Where things are
@@ -104,6 +117,9 @@ either order. Click or tap a tile, or steer the cursor with the d-pad and press 
 | `src/gfx/models.js` | stand-in models, their animation, and the loader for real ones |
 | `src/game/explore.js` | walking, the follow chain, townsfolk, the dead spotting you |
 | `src/game/battle.js` | the fight: placement, the turn clock, skills, statuses, the AI |
+| `src/game/show.js` | how a fight looks: each skill's staging, the numbers, the banners and cut-ins |
+| `src/gfx/fx.js` | the particles, flares, beams, rings and screen effects show.js draws with |
+| `src/ui/combatlog.js`, `src/core/pinch.js` | the fight's log window and its settings; pinch to zoom |
 | `src/game/auto.js` | auto-play's errands outside a fight |
 | `src/game/party.js` | heroes, stats, quests, the save |
 | `src/ui/title.js` | the title: the two cards, the logo, the menu |
@@ -122,12 +138,14 @@ either order. Click or tap a tile, or steer the cursor with the d-pad and press 
 
 A good deal of this came over from bm (its `origin/main`, read with `git -C ../bm show`, never changed). Each piece is
 written out by a tool here that says what it took and what it left behind. Anything carrying either side's mark stayed in
-bm: a cross is Tessariel's, so the cross-shaped shields, the paladin and lancer bodies, and two dragoon bodies stayed there.
+bm: a cross is Tessariel's, so the cross-shaped shields stayed there, and the crosses on fourteen hero bodies (the
+paladins, the lancers, two dragoons and a boomerang knight) are painted off as they come over (`tools/bm/marks`).
 
 | | | |
 |---|---|---|
 | `assets/gear/` | 129 weapons, shields and lutes, baked small, with their icons | `tools/gear/bake.py`, `tools/gear/sources.txt` |
-| `assets/models/heroes/` | 22 hero bodies, worn as armour tiers 3 to 5 (`<class>_<g>_t<n>`) | `tools/bm/heroes.py` |
+| `assets/models/heroes/` | all 44 hero bodies, each a recruit's (`hero_<body>`) and most again as armour tiers 3 to 5 (`<class>_<g>_t<n>`), with a dye mask each (`<body>.dye.png`) | `tools/bm/heroes.py` |
+| `assets/skins/`, `src/data/skins.js` | bm's 152 player skins: each part's cloth, trim and weave, and the 593 weave swatches in one sheet | `tools/bm/skins.py` |
 | `assets/models/folk/` | ten townsfolk bodies and their paint | `tools/bm/folk.py` |
 | `assets/models/clips/` | bm's hero and townsfolk clip banks (`"bank"` in the manifest) | the two above |
 | `assets/models/foes/` | the new kinds of foe, a look or three each, their own clips in the file | `tools/bm/foes.py` |

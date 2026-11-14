@@ -179,7 +179,7 @@ export class UI {
 
   partyPanel() {
     const st = this.g.st;
-    this.sel = this.sel && st.heroes[this.sel] ? this.sel : st.party[0];
+    this.sel = this.sel && st.heroes[this.sel] ? this.sel : st.party[0]; this.resY = 0;
     this.open('Party', (b) => {
       const left = el('div', 'pp-l'), right = el('div', 'pp-r');
       left.append(el('h4', '', `Marching order <small>${st.party.length}/${PARTY_MAX}</small>`));
@@ -193,14 +193,21 @@ export class UI {
         mk('rest', () => { st.party.splice(i, 1); st.reserve.push(id); }, i === 0);
         r.append(a); left.append(r);
       });
-      if (st.reserve.length) left.append(el('h4', '', 'Waiting at The Last Toll'));
-      st.reserve.forEach((id, i) => {
+      // the rest, highest level first, in a list of its own that scrolls (there can be fifty of them)
+      if (st.reserve.length) left.append(el('h4', '', `Waiting at The Last Toll <small>${st.reserve.length}</small>`));
+      const res = el('div', 'pp-res');
+      [...st.reserve].sort((a, b) => st.heroes[b].lvl - st.heroes[a].lvl || st.heroes[a].name.localeCompare(st.heroes[b].name)).forEach((id) => {
         const h = st.heroes[id], r = el('div', 'hrow' + (this.sel === id ? ' on' : ''), `<b style="color:${CLASSES[h.cls].color}">${esc(h.name)}</b><small>Lv ${h.lvl} ${esc(CLASSES[h.cls].name)}</small>`);
         r.onclick = () => { this.sel = id; this.draw(); };
         const a = el('span', 'mini'), x = el('button', st.party.length >= PARTY_MAX ? 'off' : '', 'join');
-        if (st.party.length < PARTY_MAX) x.onclick = (e) => { e.stopPropagation(); st.reserve.splice(i, 1); st.party.push(id); this.g.partyChanged(); this.draw(); };
-        a.append(x); r.append(a); left.append(r);
+        if (st.party.length < PARTY_MAX) x.onclick = (e) => { e.stopPropagation(); st.reserve.splice(st.reserve.indexOf(id), 1); st.party.push(id); this.g.partyChanged(); this.draw(); };
+        a.append(x); r.append(a); res.append(r);
       });
+      if (st.reserve.length) {
+        left.append(res);
+        res.onscroll = () => { this.resY = res.scrollTop; };
+        queueMicrotask(() => { res.scrollTop = this.resY || 0; });
+      }
       // the sheet
       const h = st.heroes[this.sel], C = CLASSES[h.cls], s = heroStats(h);
       right.innerHTML = `<div class="sheethead"><div><h3 style="color:${C.color}">${esc(h.name)}</h3><p class="role">Level ${h.lvl} ${esc(C.name)} · ${h.xp}/${xpNeed(h.lvl)} xp · ${esc(C.role)}</p></div><div class="roles">${roleIcons(C, true)}</div></div>

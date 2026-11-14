@@ -1,6 +1,15 @@
 // The fight. It happens where everyone is standing: the walk stops, the party is placed round the
 // leader, and then it is turns, Final Fantasy Tactics style. Speed fills each unit's clock; a turn is
 // a move and an act in either order; height, facing and reach all matter.
+//
+// What a turn does is decided here; how it looks (the circles, the cut-ins, the numbers) is show.js.
+// Beyond the plain blows and spells a skill may: push or pull (`push`, `pull`: tiles; into a wall or a body
+// hurts), chain from one body to the next (`chain`), run in a straight line or fan out in a cone (`shape`),
+// leave a trap on a tile (kind 'trap'), step through the air to where it is aimed (`blink`), land behind its
+// target (`dash: 'behind'`), finish the badly hurt (`execute`), put someone's turn back (`delay`) or bring an
+// ally's forward (kind 'tempo'), clear what ails them (kind 'cleanse'), stand the fallen up (kind 'revive'),
+// or cost life as well as mana (`hpCost`). A status may be a ward that soaks harm, a doom that falls when it
+// runs out, a riposte, a taunt, or the wyrm.
 import { el, esc, manhattan, clamp } from '../core/util.js';
 import { CLASSES, STATUS, SUMMONS } from '../data/classes.js';
 import { CONSUMABLES, rollLoot, itemName, RARITY } from '../data/items.js';
@@ -9,22 +18,30 @@ import { HEROES } from '../data/cast.js';
 import { heroStats, heroSkills, basicAttack, gainXp, noteKill, partyHeroes } from './party.js';
 import { heroModel, ground, clinks } from './explore.js';
 import { makeSummon, withOverride, shadowDisc, setAnim, setRest, animate } from '../gfx/models.js';
+import { palOf } from '../gfx/fx.js';
 import { DPAD } from '../core/input.js';
 import { sfx } from '../core/audio.js';
 import { music } from '../core/music.js';
+import { Show } from './show.js';
+import { CombatLog } from '../ui/combatlog.js';
 
 const K = (x, z) => x + ',' + z;
+const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const ITEM_SKILLS = {
   potion: { id: 'item_potion', item: 'potion', name: CONSUMABLES.potion.name, cost: 0, r: [0, 1], aoe: 0, at: 'ally', kind: 'item' },
   ether: { id: 'item_ether', item: 'ether', name: CONSUMABLES.ether.name, cost: 0, r: [0, 1], aoe: 0, at: 'ally', kind: 'item' },
   tonic: { id: 'item_tonic', item: 'tonic', name: CONSUMABLES.tonic.name, cost: 0, r: [1, 1], aoe: 0, at: 'fallen', kind: 'item' },
 };
+const lifeCost = (u, sk) => (sk.hpCost ? Math.max(1, Math.round(u.maxhp * sk.hpCost)) : 0);
 
 export class Battle {
   constructor(g, foes, alerted) {
     this.g = g; this.st = g.st; this.w = g.world; this.r = g.r;
-    this.units = []; this.over = false; this.lock = false; this.xp = 0; this.slain = []; this.log = [];
+    this.units = []; this.over = false; this.lock = false; this.xp = 0; this.slain = [];
     this.sel = { mode: 'place' }; this.active = null; this.cursor = null; this.hover = null;
+    this.camAt = null;            // where a big skill wants the camera (show.js sets it)
+    this.traps = [];              // { owner, side, x, z, sk }
+    this.batch = false;           // a multi-hit skill is landing: its blows are summed in the log, not listed
     const L = g.explore.leader;
     this.origin = { x: L.x, z: L.z };
     // the field: a square round the leader, stretched to take in every foe
@@ -66,7 +83,7 @@ export class Battle {
     const pow = Math.max(caster.s.atk, caster.s.mag);
     const s = { hp: Math.round(caster.maxhp * d.hp), mp: 0, atk: Math.round(pow * d.atk), mag: Math.round(pow * d.atk), def: Math.round(caster.s.def * 0.7), res: Math.round(caster.s.res * 0.7), spd: caster.s.spd, move: d.move, jump: d.jump, crit: 3, leech: 0 };
     const model = withOverride(d.model, makeSummon(d.model)); model.add(shadowDisc(0.3)); this.r.units.add(model);   // a real model where the manifest has one
-    const basic = { id: 'attack', name: d.kind === 'heal' ? 'Mend' : 'Attack', cost: 0, r: d.r, aoe: 0, at: d.kind === 'heal' ? 'ally' : 'enemy', kind: d.kind, pow: 1, basic: true };
+    const basic = { id: 'attack', name: d.kind === 'heal' ? 'Mend' : 'Attack', cost: 0, r: d.r, aoe: 0, at: d.kind === 'heal' ? 'ally' : 'enemy', kind: d.kind, pow: 1, basic: true, el: d.el, chain: d.chain };
     const u = { id: caster.id + '_' + kind, side: caster.side, owner: caster.id, kind, summon: true, name: d.name, lvl: caster.lvl, x, z, s, hp: s.hp, mp: 0, maxhp: s.hp, maxmp: 0,
       skills: [], basic, ct: 40, st: [], model, alive: true, ai: true, undead: kind === 'skeleton' || kind === 'ghoul', color: caster.color, face: caster.face };
     this.place(u); this.units.push(u); this.addBar(u); return u;
@@ -82,18 +99,24 @@ export class Battle {
   place(u) { u.model.visible = true; u.model.position.set(u.x, this.w.y(u.x, u.z), u.z); }
   faceTo(u, x, z) { const dx = x - u.x, dz = z - u.z; if (!dx && !dz) return; u.face = Math.abs(dx) >= Math.abs(dz) ? [Math.sign(dx), 0] : [0, Math.sign(dz)]; u.model.rotation.y = Math.atan2(dx, dz); }
   unitAt(x, z) { return this.units.find((u) => u.alive && u.x === x && u.z === z); }
+  trapAt(x, z) { return this.traps.find((p) => p.x === x && p.z === z); }
   inBounds(x, z) { return x >= this.b.x0 && x <= this.b.x1 && z >= this.b.z0 && z <= this.b.z1; }
   open(x, z) { return this.inBounds(x, z) && this.w.walkable(x, z) && !this.g.explore.npcAt.has(z * this.w.N + x); }
   has(u, id) { return u.st.some((s) => s.id === id); }
   foesOf(u) { return this.units.filter((o) => o.alive && o.side !== u.side); }
   friendsOf(u) { return this.units.filter((o) => o.alive && o.side === u.side); }
+  unmoved(u) { return !!(u.zdef?.boss || u.zdef?.lord); }
+  // a skill aimed at friends rather than foes
+  good(sk) { return ['heal', 'buff', 'cleanse', 'revive', 'tempo'].includes(sk.kind) || (sk.kind === 'item' && sk.at !== 'fallen'); }
+  // the log's way of naming someone
+  nm(u) { return `<b class="${u.side}" style="color:${u.color}">${esc(u.name)}</b>`; }
 
   // tiles within n steps of a point, ignoring units (for placement)
   flood(x, z, n) {
     const seen = new Map([[K(x, z), { x, z, d: 0 }]]), q = [{ x, z, d: 0 }];
     for (let i = 0; i < q.length; i++) {
       const c = q[i]; if (c.d >= n) continue;
-      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      for (const [dx, dz] of DIRS) {
         const X = c.x + dx, Z = c.z + dz;
         if (seen.has(K(X, Z)) || !this.open(X, Z) || Math.abs(this.w.height(X, Z) - this.w.height(c.x, c.z)) > 2) continue;
         const t = { x: X, z: Z, d: c.d + 1 }; seen.set(K(X, Z), t); q.push(t);
@@ -107,7 +130,7 @@ export class Battle {
     const start = { x: u.x, z: u.z, d: 0, prev: null }, seen = new Map([[K(u.x, u.z), start]]), q = [start], n = this.moveRange(u);
     for (let i = 0; i < q.length; i++) {
       const c = q[i]; if (c.d >= n) continue;
-      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      for (const [dx, dz] of DIRS) {
         const X = c.x + dx, Z = c.z + dz;
         if (seen.has(K(X, Z)) || !this.open(X, Z)) continue;
         const dh = this.w.height(X, Z) - this.w.height(c.x, c.z);
@@ -121,45 +144,83 @@ export class Battle {
     return seen;
   }
   rangeTiles(sk, x, z) {
-    const out = [];
+    const out = [], straight = sk.shape === 'line' || sk.shape === 'cone';
     for (let dz = -sk.r[1]; dz <= sk.r[1]; dz++) for (let dx = -sk.r[1]; dx <= sk.r[1]; dx++) {
       const d = Math.abs(dx) + Math.abs(dz);
-      if (d < sk.r[0] || d > sk.r[1] || !this.inBounds(x + dx, z + dz)) continue;
+      if (d < sk.r[0] || d > sk.r[1] || !this.inBounds(x + dx, z + dz) || (straight && dx && dz)) continue;
       out.push({ x: x + dx, z: z + dz });
     }
     return out;
   }
   aoeTiles(sk, x, z) {
-    const out = [];
-    for (let dz = -sk.aoe; dz <= sk.aoe; dz++) for (let dx = -sk.aoe; dx <= sk.aoe; dx++) if (Math.abs(dx) + Math.abs(dz) <= sk.aoe && this.inBounds(x + dx, z + dz)) out.push({ x: x + dx, z: z + dz });
+    const out = [], a = sk.aoe || 0;
+    for (let dz = -a; dz <= a; dz++) for (let dx = -a; dx <= a; dx++) if (Math.abs(dx) + Math.abs(dz) <= a && this.inBounds(x + dx, z + dz)) out.push({ x: x + dx, z: z + dz });
     return out;
   }
-  // who a skill aimed at (x,z) would touch
+  // the tiles a skill aimed at (x,z) covers: its blast, or a line out from the caster, or a widening cone
+  shapeTiles(u, sk, x, z) {
+    if (sk.shape !== 'line' && sk.shape !== 'cone') return this.aoeTiles(sk, x, z);
+    const dx = Math.sign(x - u.x), dz = Math.sign(z - u.z), out = [];
+    if (!dx && !dz) return out;
+    if (sk.shape === 'line') {
+      for (let i = Math.max(1, sk.r[0]); i <= sk.r[1]; i++) {
+        const X = u.x + dx * i, Z = u.z + dz * i;
+        if (!this.inBounds(X, Z) || !this.w.walkable(X, Z)) break;   // a trunk or a wall stops it
+        out.push({ x: X, z: Z });
+      }
+    } else {
+      for (let i = 1; i <= sk.r[1]; i++) for (let j = 1 - i; j <= i - 1; j++) {
+        const X = u.x + dx * i + dz * j, Z = u.z + dz * i + dx * j;
+        if (this.inBounds(X, Z)) out.push({ x: X, z: Z });
+      }
+    }
+    return out;
+  }
+  // who a skill aimed at (x,z) would touch. A chain's extra links come after the rest (out.links says where).
   affected(u, sk, x, z) {
-    const good = sk.kind === 'heal' || sk.kind === 'buff' || (sk.kind === 'item' && sk.at !== 'fallen');
-    if (sk.at === 'fallen') return this.units.filter((o) => !o.alive && o.hero && o.x === x && o.z === z && !this.unitAt(x, z));
-    const out = [];
-    for (const t of this.aoeTiles(sk, x, z)) { const o = this.unitAt(t.x, t.z); if (o && (o.side === u.side) === good) out.push(o); }
+    if (sk.at === 'fallen') return this.units.filter((o) => !o.alive && o.hero && o.side === u.side && o.x === x && o.z === z && !this.unitAt(x, z));
+    if (sk.kind === 'summon' || sk.kind === 'trap') return [];
+    const good = this.good(sk), out = [];
+    for (const t of this.shapeTiles(u, sk, x, z)) {
+      const o = this.unitAt(t.x, t.z);
+      if (!o || (o.side === u.side) !== good || (o === u && sk.kind === 'tempo')) continue;
+      out.push(o);
+    }
+    out.links = out.length;
+    if (sk.chain && out.length) {
+      let last = out[out.length - 1];
+      for (let i = 0; i < sk.chain; i++) {
+        const next = this.units.filter((o) => o.alive && (o.side === u.side) === good && !out.includes(o) && manhattan(o.x, o.z, last.x, last.z) <= 2)
+          .sort((a, b) => manhattan(a.x, a.z, last.x, last.z) - manhattan(b.x, b.z, last.x, last.z))[0];
+        if (!next) break;
+        out.push(next); last = next;
+      }
+    }
     return out;
   }
+  // how hard the i-th one is struck: a chain loses a quarter at each jump
+  falloff(list, i) { return i >= list.links ? 0.75 ** (i - list.links + 1) : 1; }
   validTarget(u, sk, x, z) {
-    if (sk.kind === 'summon') return this.open(x, z) && !this.unitAt(x, z);
+    if (sk.kind === 'summon' || sk.kind === 'trap' || sk.blink) return this.open(x, z) && !this.unitAt(x, z) && !this.trapAt(x, z);
     return this.affected(u, sk, x, z).length > 0;
   }
 
   // ---- numbers ----
   // What a blow would do. `sure` leaves out luck (for forecasts and the AI).
-  damage(a, t, sk, sure = false, from = a) {
+  damage(a, t, sk, sure = false, from = a, mult = 1) {
     const magic = sk.kind === 'magic';
-    let v = (magic ? a.s.mag : a.s.atk) * sk.pow * 100 / (100 + (magic ? t.s.res : t.s.def) * 4);
+    let v = (magic ? a.s.mag : a.s.atk) * sk.pow * mult * 100 / (100 + (magic ? t.s.res : t.s.def) * 4);
     if (this.has(a, 'might')) v *= 1.3;
+    if (this.has(a, 'wyrm')) v *= 1.3;
     if (this.has(a, 'weaken')) v *= 0.7;
     if (this.has(t, 'guard')) v *= 0.6;
+    if (this.has(t, 'wyrm')) v *= 0.75;
     if (this.has(t, 'curse')) v *= 1.3;
     if (sk.el === 'holy' && t.undead) v *= 1.5;
+    if (sk.execute && t.hp <= t.maxhp * sk.execute) v *= 2;
     const dx = from.x - t.x, dz = from.z - t.z, dot = Math.sign(dx) * t.face[0] + Math.sign(dz) * t.face[1];
     let side = '';
-    if (!sk.aoe) { if (dot < 0) { v *= 1.25; side = 'back'; } else if (dot === 0) { v *= 1.1; side = 'side'; } }
+    if (!sk.aoe && !sk.shape) { if (dot < 0) { v *= 1.25; side = 'back'; } else if (dot === 0) { v *= 1.1; side = 'side'; } }
     const dh = this.w.height(from.x, from.z) - this.w.height(t.x, t.z);
     if (dh >= 2) v *= 1.15; else if (dh <= -2) v *= 0.9;
     let crit = false;
@@ -170,44 +231,104 @@ export class Battle {
 
   // ---- doing things ----
   wait(ms) { return new Promise((r) => setTimeout(r, ms / (this.st.auto ? 1.7 : 1))); }
-  say(text) { this.log.push(text); if (this.log.length > 4) this.log.shift(); this.logEl.innerHTML = this.log.map((l) => `<div>${l}</div>`).join(''); }
-  float(u, text, cls = '') {
-    const p = this.r.project(u.model.position.x, u.model.position.y + (u.model.userData.height || 1.5) + 0.2, u.model.position.z);
-    const e = el('div', 'float ' + cls, esc(text));
-    e.style.left = p.x + 'px'; e.style.top = p.y + 'px';
-    this.floats.append(e); setTimeout(() => e.remove(), 1100);
+  say(text, cls = '') { this.chron.add(text, cls); }
+  float(u, text, cls = '') { this.show.word(u, text, cls); }
+  // A status taking hold. st: [id, turns, chance, strength]; `loud` says so when it fails (for a curse that was the point).
+  addStatus(t, st, by = null, loud = false) {
+    if (!st || !t.alive || !STATUS[st[0]]) return false;
+    const S = STATUS[st[0]];
+    if (Math.random() > st[2]) { if (loud) { this.show.status(t, st[0], false); this.say(`${this.nm(t)} shrugs off ${esc(S.name.toLowerCase())}.`, 'st'); } return false; }
+    let s = t.st.find((o) => o.id === st[0]);
+    if (s) s.turns = Math.max(s.turns, st[1]); else { s = { id: st[0], turns: st[1] }; t.st.push(s); }
+    const pow = by ? Math.max(by.s.mag, by.s.atk) : 12;
+    if (S.doom) { s.amt = Math.round(pow * (st[3] || 2)); s.by = by?.id; }
+    if (st[0] === 'ward') s.amt = Math.round(pow * (st[3] || 1.5) + t.maxhp * 0.1);
+    this.show.status(t, st[0], true);
+    this.say(`${this.nm(t)}: <span style="color:${S.color}">${esc(S.name)}</span>${s.amt && st[0] === 'ward' ? ` (${s.amt})` : ''}`, 'st');
+    return true;
   }
-  addStatus(t, st) {
-    if (!st || !t.alive || Math.random() > st[2]) return;
-    const cur = t.st.find((s) => s.id === st[0]);
-    if (cur) cur.turns = Math.max(cur.turns, st[1]); else t.st.push({ id: st[0], turns: st[1] });
-    this.float(t, STATUS[st[0]].name, STATUS[st[0]].bad ? 'bad' : 'good');
-  }
-  hurt(t, n, by, cls = '') {
+  // Harm landing. cls: crit | back | side | wall | dot. Returns what got through a ward.
+  hurt(t, n, by, cls = '', h = 0, note = '') {
+    if (!t.alive) return 0;
+    const ward = t.st.find((s) => s.id === 'ward');
+    if (ward && n > 0) {
+      const soak = Math.min(n, ward.amt || 0);
+      ward.amt -= soak; n -= soak;
+      if (soak) this.show.word(t, `Ward −${soak}`, 'good', STATUS.ward.color);
+      if (ward.amt <= 0) { t.st = t.st.filter((s) => s !== ward); this.show.word(t, 'Ward breaks', 'bad'); }
+      if (n <= 0) return 0;
+    }
     t.hp = Math.max(0, t.hp - n);
-    this.float(t, '-' + n, 'dmg ' + cls);
+    this.show.num(t, n, cls === 'crit' ? 'crit' : cls === 'dot' ? 'dot' : 'dmg', ['back', 'side', 'wall'].includes(cls) ? cls : '', h);
+    if (cls === 'dot') this.show.dot(t);
+    if (!this.batch) this.say(`${this.nm(t)} takes <b class="dmg">${n}</b>${cls === 'crit' ? ' <i>critical</i>' : cls === 'back' ? ' <i>from behind</i>' : ''}${note ? ` <i>${esc(note)}</i>` : ''}`, cls === 'dot' ? 'dot' : 'hit');
     setAnim(t.model, 'hit', 0.3);
     if (t.rage) t.mp = Math.min(100, t.mp + 10);
     if (t.hp <= 0) this.kill(t, by);
+    return n;
   }
-  mend(t, n) { const v = Math.min(n, t.maxhp - t.hp); t.hp += v; this.float(t, '+' + v, 'heal'); }
+  mend(t, n, L = null) {
+    if (!t.alive) return 0;
+    const v = Math.max(0, Math.min(n, t.maxhp - t.hp));
+    t.hp += v;
+    this.show.heal(t, v, L);
+    if (v && !this.batch) this.say(`${this.nm(t)} recovers <b class="heal">${v}</b>`, 'heal');
+    return v;
+  }
+  // a turn brought forward (n > 0) or put back (n < 0)
+  tempo(t, n) {
+    if (!t.alive || !n) return;
+    if (n > 0) t.ct = Math.min(160, n >= 100 ? Math.max(100, t.ct + n) : t.ct + n);
+    else t.ct = Math.max(-60, t.ct + n);
+    this.show.tempo(t, n > 0);
+    this.say(`${this.nm(t)} ${n > 0 ? 'moves up the order' : 'loses time'}.`, 'st');
+    this.drawOrder();
+  }
+  cleanse(t) {
+    const bad = t.st.filter((s) => STATUS[s.id]?.bad);
+    if (!bad.length) return 0;
+    t.st = t.st.filter((s) => !STATUS[s.id]?.bad);
+    this.show.cleanse(t);
+    this.say(`${this.nm(t)} is clear of it.`, 'heal');
+    return bad.length;
+  }
+  revive(t, frac) {
+    t.alive = true; t.st = []; t.ct = 0;
+    t.hp = Math.max(1, Math.round(t.maxhp * frac)); if (t.hero) t.hero.hp = t.hp;
+    setAnim(t.model, 'revive');
+    this.show.revive(t); this.float(t, 'Up!', 'good');
+    sfx.revive(t.model.position);
+    this.say(`${this.nm(t)} gets back up.`, 'heal');
+  }
   kill(u, by, quiet = false) {
     if (!u.alive) return;
     u.alive = false; u.hp = 0; u.st = [];
     setAnim(u.model, 'dead');
-    if (!quiet) { sfx.die(u.side === 'foe' ? 'foe' : u.summon ? 'summon' : 'hero', u.model.position, this.clinks(u)); this.say(`<b>${esc(u.name)}</b> ${u.side === 'foe' ? 'goes down and stays down.' : u.summon ? 'is gone.' : 'has fallen.'}`); }
+    if (!quiet) { sfx.die(u.side === 'foe' ? 'foe' : u.summon ? 'summon' : 'hero', u.model.position, this.clinks(u)); this.show.death(u); this.say(`${this.nm(u)} ${u.side === 'foe' ? 'goes down and stays down.' : u.summon ? 'is gone.' : 'has fallen.'}`, 'kill'); }
     if (u.summon) setTimeout(() => { this.r.units.remove(u.model); }, 700);
     if (u.side === 'foe' && by && by.hero && by.alive) setTimeout(() => { if (by.alive && !this.over) setAnim(by.model, 'taunt'); }, 520);
     if (u.side === 'foe') {
       this.xp += u.s.xp; this.slain.push(u); this.st.slain[u.id] = this.st.day; noteKill(this.st, u.zdef.id);
       if (u.zdef.burst) {
         const what = u.zdef.burst === true ? 'poison' : u.zdef.burst;
-        this.say(`${esc(u.name)} bursts.`);
+        this.say(`${this.nm(u)} bursts.`, 'kill');
         sfx.squelch(u.model.position);
+        this.show.burstOpen(u, what);
         for (const o of this.units) if (o.alive && o.side !== 'foe' && manhattan(o.x, o.z, u.x, u.z) <= 1) { this.hurt(o, Math.max(1, Math.round(u.s.atk * 0.5)), null); this.addStatus(o, [what, 3, 1]); }
       }
     }
     if (u.hero) u.hero.hp = 0;
+  }
+  // a doom running out: it falls on them (and, primed, on whoever of theirs stands close)
+  async doomFalls(u, s) {
+    const S = STATUS[s.id], by = this.units.find((o) => o.id === s.by) || null, amt = s.amt || 20;
+    const through = (t) => Math.max(1, Math.round(amt * 100 / (100 + t.s.res * 4)));
+    this.say(`${S.blast ? 'It goes off' : 'The doom falls'} on ${this.nm(u)}.`, 'kill');
+    this.show.doomFall(u, !!S.blast);
+    await this.wait(320);
+    this.hurt(u, through(u), by, 'crit');
+    if (S.blast) for (const o of this.units) if (o !== u && o.alive && o.side === u.side && manhattan(o.x, o.z, u.x, u.z) <= S.blast) this.hurt(o, Math.max(1, Math.round(through(o) * 0.6)), by);
+    await this.wait(260);
   }
 
   async moveTo(u, tile) {
@@ -219,83 +340,230 @@ export class Battle {
       if (hop) sfx.jump(ground(this.w, t.x, t.z), this.clinks(u)); else sfx.tread(ground(this.w, t.x, t.z), this.clinks(u), u.model.position);
       await this.g.tween(hop ? 0.22 : 0.12, (k) => u.model.position.set(fx + (t.x - fx) * k, fy + (ty - fy) * k + Math.sin(Math.PI * k) * hop, fz + (t.z - fz) * k));
       u.x = t.x; u.z = t.z;
+      if (hop) this.show.step(u);
+      if (this.traps.length && await this.springTrap(u)) break;     // a trap stops the walk where it is
     }
-    setAnim(u.model, 'idle');
+    if (u.alive) setAnim(u.model, 'idle');
     u.moved = true;
   }
 
   async act(u, sk, tx, tz) {
     this.faceTo(u, tx, tz);
     if (sk.item) this.st.consum[sk.item]--;
-    else if (u.side === 'party' && !u.summon) u.mp = Math.max(0, u.mp - sk.cost);
-    this.say(`<b style="color:${u.color}">${esc(u.name)}</b>: ${esc(sk.name)}`);
+    else if (u.side === 'party' && !u.summon) u.mp = Math.max(0, u.mp - (sk.cost || 0));
+    const blood = lifeCost(u, sk);
+    if (blood) { u.hp = Math.max(1, u.hp - blood); this.show.num(u, blood, 'dot'); }
+    this.say(`${this.nm(u)} · <b class="sk">${esc(sk.name)}</b>`, 'act');
     if (u.hero && HEROES[u.hero.heroId] && Math.random() < 0.16) this.g.ui.toast(HEROES[u.hero.heroId].barks[Math.floor(Math.random() * HEROES[u.hero.heroId].barks.length)], u.name);
+    const L = this.show.look(u, sk);
+    await this.show.begin(u, sk, L, tx, tz);
     const from = { x: u.x, z: u.z };
-    if (sk.dash) {                                        // land beside the target
+    if (sk.blink) { await this.blinkTo(u, tx, tz, L); from.x = u.x; from.z = u.z; }
+    else if (sk.dash) {                                   // land beside the target (or behind it)
       let best = null;
-      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const tgt = this.unitAt(tx, tz);
+      if (sk.dash === 'behind' && tgt) {
+        const X = tgt.x - tgt.face[0], Z = tgt.z - tgt.face[1];
+        if (this.open(X, Z) && (!this.unitAt(X, Z) || this.unitAt(X, Z) === u)) best = { x: X, z: Z };
+      }
+      if (!best) for (const [dx, dz] of DIRS) {
         const X = tx + dx, Z = tz + dz;
         if (!this.open(X, Z) || (this.unitAt(X, Z) && this.unitAt(X, Z) !== u)) continue;
         const d = manhattan(X, Z, u.x, u.z);
         if (!best || d < best.d) best = { x: X, z: Z, d };
       }
       if (best && (best.x !== u.x || best.z !== u.z)) {
-        const fx = u.x, fz = u.z, fy = u.model.position.y, ty = this.w.y(best.x, best.z);
+        const fx = u.x, fz = u.z, fy = u.model.position.y, ty = this.w.y(best.x, best.z), up = L.big ? 3.8 : 2.2;
         sfx.jump(ground(this.w, u.x, u.z), this.clinks(u));
-        await this.g.tween(0.36, (k) => u.model.position.set(fx + (best.x - fx) * k, fy + (ty - fy) * k + Math.sin(Math.PI * k) * 2.2, fz + (best.z - fz) * k));
+        let n = 0;
+        await this.g.tween(L.big ? 0.5 : 0.36, (k) => {
+          u.model.position.set(fx + (best.x - fx) * k, fy + (ty - fy) * k + Math.sin(Math.PI * k) * up, fz + (best.z - fz) * k);
+          if (n++ % 2 === 0) this.show.streak(u);
+        });
         u.x = best.x; u.z = best.z; from.x = u.x; from.z = u.z; this.faceTo(u, tx, tz);
         sfx.land(ground(this.w, u.x, u.z), this.clinks(u));
+        this.show.land2(u, L);
       }
     }
     const spell = sk.kind !== 'phys';
     setAnim(u.model, sk.item ? 'item' : sk.anim || (spell ? 'cast' : 'attack'), 0.5, spell ? 'cast' : 'attack');
     const at = u.model.position, kind = this.weaponOf(u, sk);
     if (sk.item) { if (sk.item !== 'tonic') sfx.drink(at); }
-    else if (sk.kind === 'heal') sfx.heal(at);
-    else if (sk.kind === 'buff') sfx.buff(at);
+    else if (sk.kind === 'heal' || sk.kind === 'cleanse' || sk.kind === 'revive') sfx.heal(at);
+    else if (sk.kind === 'buff' || sk.kind === 'tempo') sfx.buff(at);
     else if (sk.kind === 'debuff') sfx.debuff(at);
     else if (sk.kind === 'summon') sfx.summon(at);
     else if (spell) sfx.cast(sk, at, kind);
     else sfx.swing(kind, at, sk.el);
-    await this.wait(260);
-    if (sk.kind === 'summon') { const s = this.addSummon(u, sk.summon, tx, tz); this.faceTo(s, tx + u.face[0], tz + u.face[1]); this.float(s, s.name, 'good'); }
-    else if (sk.kind === 'item') {
-      for (const t of this.affected(u, sk, tx, tz)) {
-        if (sk.item === 'potion') this.mend(t, Math.round(t.maxhp * 0.45));
-        else if (sk.item === 'ether') { t.mp = Math.min(t.maxmp, t.mp + Math.round(t.maxmp * 0.45)); this.float(t, 'Mana', 'good'); }
-        else { t.alive = true; t.hp = Math.round(t.maxhp / 3); t.hero.hp = t.hp; t.ct = 0; setAnim(t.model, 'revive'); this.float(t, 'Up!', 'heal'); sfx.revive(t.model.position); }
+    await this.wait(200);
+    if (sk.kind === 'summon') {
+      await this.show.travel(u, sk, L, tx, tz, []);
+      this.show.land(u, sk, L, tx, tz);
+      await this.wait(260);
+      const s = this.addSummon(u, sk.summon, tx, tz); this.faceTo(s, tx + u.face[0], tz + u.face[1]);
+      this.float(s, s.name, 'good'); this.say(`${this.nm(s)} answers.`, 'st');
+    } else if (sk.kind === 'trap') {
+      await this.show.travel(u, sk, L, tx, tz, []);
+      this.placeTrap(u, sk, tx, tz);
+    } else if (sk.kind === 'item') {
+      const ts = this.affected(u, sk, tx, tz);
+      if (ts[0] && ts[0] !== u) await this.show.travel(u, sk, L, tx, tz, ts);
+      for (const t of ts) {
+        if (sk.item === 'potion') this.mend(t, Math.round(t.maxhp * 0.45), L);
+        else if (sk.item === 'ether') { const v = Math.min(t.maxmp - t.mp, Math.round(t.maxmp * 0.45)); t.mp += v; this.show.mana(t, v); this.say(`${this.nm(t)} gets <b class="mana">${v}</b> mana back`, 'heal'); }
+        else this.revive(t, 1 / 3);
       }
     } else {
-      for (let h = 0; h < (sk.hits || 1); h++) {
+      const hits = sk.hits || 1, tally = new Map();
+      let last = [];
+      this.batch = hits > 1;
+      for (let h = 0; h < hits; h++) {
         const targets = this.affected(u, sk, tx, tz);
         if (h && !targets.length) break;
+        last = targets;
+        await this.show.travel(u, sk, L, tx, tz, targets, h);
+        this.show.land(u, sk, L, tx, tz);
         let crit = false, blocked = false;
-        for (const t of targets) {
-          if (sk.kind === 'heal') this.mend(t, this.healing(u, sk));
-          else if (sk.kind === 'buff') { this.addStatus(t, sk.st); this.addStatus(t, sk.st2); }
-          else if (sk.kind === 'debuff') this.addStatus(t, sk.st);
+        for (let i = 0; i < targets.length; i++) {
+          const t = targets[i], mult = this.falloff(targets, i);
+          if (!t.alive && sk.at !== 'fallen') continue;
+          if (i >= targets.links) { this.show.hop(targets[i - 1], t, L); await this.wait(110); }
+          if (sk.kind === 'heal') this.mend(t, Math.round(this.healing(u, sk) * mult), L);
+          else if (sk.kind === 'buff') { this.addStatus(t, sk.st, u); this.addStatus(t, sk.st2, u); }
+          else if (sk.kind === 'debuff') { this.addStatus(t, sk.st, u, true); this.addStatus(t, sk.st2, u, true); if (sk.delay) this.tempo(t, -sk.delay); }
+          else if (sk.kind === 'cleanse') { const n = this.cleanse(t); if (sk.pow) this.mend(t, Math.round(this.healing(u, sk) * mult), L); else if (!n) this.float(t, 'Clear', 'good'); }
+          else if (sk.kind === 'revive') this.revive(t, sk.pow || 0.4);
+          else if (sk.kind === 'tempo') this.tempo(t, sk.tempo || 60);
           else {
-            const d = this.damage(u, t, sk, false, from);
+            const d = this.damage(u, t, sk, false, from, mult);
             crit ||= d.crit;
             if (sk.kind === 'phys' && !d.crit && !d.side && this.clinks(t) && Math.random() < 0.6) blocked = true;   // (met head on, on mail)
-            this.hurt(t, d.n, u, d.crit ? 'crit' : d.side);
+            this.show.hit(u, t, sk, L, d, h);
+            const got = this.hurt(t, d.n, u, d.crit ? 'crit' : d.side, h);
+            tally.set(t, (tally.get(t) || 0) + got);
             const take = (sk.drain || 0) + (u.s.leech || 0) / 100;
-            if (take && u.alive) this.mend(u, Math.max(1, Math.round(d.n * take)));
-            this.addStatus(t, sk.st);
+            if (take && u.alive && got) this.mend(u, Math.max(1, Math.round(got * take)), { el: 'blood' });
+            this.addStatus(t, sk.st, u);
+            this.addStatus(t, sk.st2, u);
+            if (sk.delay && t.alive) this.tempo(t, -sk.delay);
           }
         }
         if (targets.length && (sk.kind === 'phys' || sk.kind === 'magic')) {
           const where = targets[0].model.position;
           if (sk.kind === 'magic') sfx.burst(sk, where, crit); else sfx.hit({ kind, el: sk.el, crit, blocked, at: where });
         }
-        if (sk.allyHeal) for (const t of this.aoeTiles(sk, tx, tz)) { const o = this.unitAt(t.x, t.z); if (o && o.side === u.side && o.hp < o.maxhp) this.mend(o, Math.round(u.s.mag * sk.allyHeal)); }
-        if (h < (sk.hits || 1) - 1) await this.wait(170);
+        if (sk.allyHeal) for (const t of this.aoeTiles(sk, tx, tz)) { const o = this.unitAt(t.x, t.z); if (o && o.side === u.side && o.hp < o.maxhp) this.mend(o, Math.round(u.s.mag * sk.allyHeal), L); }
+        if (h < hits - 1) await this.wait(170);
+      }
+      this.batch = false;
+      if (hits > 1) for (const [t, n] of tally) if (n > 0) { this.show.total(t, n, hits); this.say(`${this.nm(t)} takes <b class="dmg">${n}</b> in ${hits} blows`, 'hit'); }
+      // pushed, pulled, and anyone with a riposte ready
+      if ((sk.push || sk.pull) && !this.over) { await this.wait(120); await this.shoveAll(u, sk, last.filter((t) => t.alive), tx, tz); }
+      if (sk.kind === 'phys' && !sk.aoe && !sk.shape && last.length === 1) {
+        const t = last[0];
+        if (t.alive && u.alive && this.has(t, 'counter') && manhattan(t.x, t.z, u.x, u.z) <= 1) await this.counterBlow(t, u);
       }
     }
+    if (sk.self && u.alive) this.addStatus(u, sk.self, u);
     if (u.rage && sk.rage) u.mp = Math.min(100, u.mp + sk.rage);
     u.acted = true;
-    await this.wait(380);
+    await this.wait(240);
+    this.show.end();
+    await this.wait(220);
     this.checkOver();
+  }
+  // a riposte: struck in the open by someone standing close, they strike back
+  async counterBlow(t, u) {
+    const sk = { id: 'riposte', name: 'Riposte', kind: 'phys', pow: 0.9, r: [1, 1], aoe: 0 };
+    await this.wait(200);
+    this.faceTo(t, u.x, u.z);
+    this.float(t, 'Riposte', 'good');
+    this.say(`${this.nm(t)} answers in kind.`, 'act');
+    setAnim(t.model, 'attack', 0.5, 'attack');
+    const kind = this.weaponOf(t, sk);
+    sfx.swing(kind, t.model.position);
+    await this.wait(180);
+    const d = this.damage(t, u, sk, false, t);
+    this.show.hit(t, u, sk, this.show.look(t, sk), d);
+    sfx.hit({ kind, crit: d.crit, at: u.model.position });
+    this.hurt(u, d.n, t, d.crit ? 'crit' : d.side);
+    await this.wait(200);
+  }
+  // a trap on a tile: two each at most, the oldest goes when a third is set
+  placeTrap(u, sk, x, z) {
+    const mine = this.traps.filter((p) => p.owner === u.id);
+    if (mine.length >= 2) { const old = mine[0]; this.traps = this.traps.filter((p) => p !== old); this.show.trapGone(old.x, old.z, null, true); }
+    this.traps.push({ owner: u.id, side: u.side, x, z, sk });
+    this.show.trapMark(x, z, palOf(sk.trap?.el || 'phys').mid);
+    this.say(`${this.nm(u)} leaves a ${esc(sk.name.toLowerCase())} in the grass.`, 'st');
+  }
+  // someone walking (or knocked) onto the other side's trap: it goes off, and they stop there
+  async springTrap(u) {
+    const p = this.traps.find((q) => q.x === u.x && q.z === u.z && q.side !== u.side);
+    if (!p) return false;
+    this.traps = this.traps.filter((q) => q !== p);
+    const T = p.sk.trap || {}, by = this.units.find((o) => o.id === p.owner);
+    const sk = { id: p.sk.id, name: p.sk.name, kind: T.kind || 'phys', pow: T.pow || 1, el: T.el, aoe: T.aoe || 0, shape: 'trap', r: [0, 0] };
+    setAnim(u.model, 'idle');
+    this.show.trapGone(p.x, p.z, T.el || 'phys');
+    this.say(`${this.nm(u)} finds the ${esc(p.sk.name.toLowerCase())}.`, 'kill');
+    await this.wait(140);
+    const hit = T.aoe ? this.aoeTiles(sk, p.x, p.z).map((t) => this.unitAt(t.x, t.z)).filter((o) => o && o.side !== p.side) : [u];
+    for (const o of hit) {
+      const d = this.damage(by || u, o, sk, false, o);
+      this.hurt(o, d.n, by, d.crit ? 'crit' : '');
+      this.addStatus(o, T.st, by);
+    }
+    await this.wait(260);
+    return true;
+  }
+  // stepping through the air to the aimed tile
+  async blinkTo(u, x, z, L) {
+    this.show.vanish(u, L);
+    u.model.visible = false;
+    await this.wait(220);
+    u.x = x; u.z = z; this.place(u);
+    this.show.appear(u, L);
+    await this.wait(180);
+  }
+  // Everyone a pushing (or pulling) skill reached, moved in turn: the farthest first, so nobody blocks a friend.
+  async shoveAll(u, sk, targets, tx, tz) {
+    const pull = !!sk.pull, n = sk.pull || sk.push, aimed = sk.aoe && sk.at !== 'self';
+    const moves = targets.map((t) => {
+      const O = pull ? (aimed ? { x: tx, z: tz } : u) : (!aimed || (t.x === tx && t.z === tz) ? u : { x: tx, z: tz });
+      const dx = t.x - O.x, dz = t.z - O.z, d = Math.abs(dx) + Math.abs(dz);
+      if (!d) return null;
+      let dir = Math.abs(dx) >= Math.abs(dz) ? [Math.sign(dx), 0] : [0, Math.sign(dz)];
+      if (pull) dir = [-dir[0], -dir[1]];
+      return { t, dir, d, n: pull ? Math.min(n, d - 1) : n };
+    }).filter((m) => m && m.n > 0).sort((a, b) => (pull ? a.d - b.d : b.d - a.d));
+    for (const m of moves) await this.shove(m.t, m.dir, m.n, u, pull);
+  }
+  // One body knocked n tiles. Into a wall, a rise or another body, it hurts (the other body too); off a drop, the fall does.
+  async shove(t, [dx, dz], n, by, pull = false) {
+    if (!t.alive) return;
+    if (this.unmoved(t)) { this.float(t, 'Unmoved', 'resist'); return; }
+    let went = 0;
+    for (let i = 0; i < n && t.alive; i++) {
+      const X = t.x + dx, Z = t.z + dz, blocker = this.unitAt(X, Z), h0 = this.w.height(t.x, t.z);
+      if (!this.open(X, Z) || blocker || this.w.height(X, Z) - h0 > 1) {
+        if (!pull) {
+          const hard = Math.max(1, Math.round(t.maxhp * 0.08 * (n - i)));
+          this.show.thump(t, blocker);
+          this.say(`${this.nm(t)} is slammed into ${blocker ? this.nm(blocker) : 'the ground'}.`, 'hit');
+          this.hurt(t, hard, by, 'wall');
+          if (blocker) this.hurt(blocker, Math.max(1, Math.round(hard * 0.6)), by, 'wall');
+        }
+        break;
+      }
+      const drop = h0 - this.w.height(X, Z), p0 = t.model.position.clone(), ty = this.w.y(X, Z);
+      this.show.shove(t);
+      await this.g.tween(drop > 0 ? 0.16 : 0.09, (k) => t.model.position.set(p0.x + dx * k, p0.y + (ty - p0.y) * k * k + (drop > 0 ? Math.sin(Math.PI * k) * 0.25 : 0), p0.z + dz * k));
+      t.x = X; t.z = Z; went++;
+      if (drop >= 3) { this.show.land2(t); this.hurt(t, Math.max(1, Math.round(t.maxhp * 0.05 * drop)), by, 'wall', 0, 'from the fall'); }
+      if (this.traps.length && await this.springTrap(t)) break;
+    }
+    if (went && t.alive) this.place(t);
   }
 
   // ---- the clock ----
@@ -323,28 +591,32 @@ export class Battle {
     this.sel = { mode: 'wait' };
     this.r.clearHighlights();
     this.menuEl.innerHTML = '';
-    this.g.ui.banner('Battle', `${this.foesOf({ side: 'party' }).length} of the dead`);
+    const n = this.foesOf({ side: 'party' }).length;
+    this.show.splash('Battle', `${n} of the dead`, 'start');
+    this.say(`<b>The fight begins.</b> ${n} of the dead.`, 'sys');
     this.run();
   }
   async run() {
-    await this.wait(500);
+    await this.wait(900);
     while (!this.over) {
       const u = this.nextUp();
       this.active = u; u.moved = false; u.acted = false;
       this.drawOrder();
+      this.show.turn(u);
       // what was done to them last turn comes due
       let skip = false;
       for (const s of [...u.st]) {
         const S = STATUS[s.id];
-        if (S.dot) this.hurt(u, Math.max(1, Math.ceil(u.maxhp * S.dot)), null, 'dot');
-        if (S.hot && u.alive) this.mend(u, Math.ceil(u.maxhp * S.hot));
+        if (!S) { u.st = u.st.filter((o) => o !== s); continue; }
+        if (S.dot) this.hurt(u, Math.max(1, Math.ceil(u.maxhp * S.dot)), null, 'dot', 0, S.name.toLowerCase());
+        if (S.hot && u.alive) this.mend(u, Math.ceil(u.maxhp * S.hot), { el: 'light' });
         if (s.id === 'stun') skip = true;
-        if (--s.turns <= 0) u.st = u.st.filter((o) => o !== s);
+        if (--s.turns <= 0) { u.st = u.st.filter((o) => o !== s); if (S.doom && u.alive) await this.doomFalls(u, s); }
       }
       this.checkOver();
       if (this.over) break;
       if (!u.alive) continue;
-      if (skip) { this.float(u, 'Stunned', 'bad'); u.ct -= 100; await this.wait(500); continue; }
+      if (skip) { this.float(u, 'Stunned', 'bad'); this.say(`${this.nm(u)} is too stunned to move.`, 'st'); u.ct -= 100; await this.wait(500); continue; }
       if (u.ai || this.st.auto) await this.aiTurn(u); else await this.playerTurn(u);
       u.ct -= u.moved && u.acted ? 100 : u.moved || u.acted ? 80 : 60;
       this.r.clearHighlights(); this.menuEl.innerHTML = '';
@@ -384,7 +656,10 @@ export class Battle {
     m.append(el('div', 'bt-who', `<b style="color:${u.color}">${esc(u.name)}</b><span>Lv ${u.lvl} ${esc(CLASSES[u.hero.cls].name)}</span>`));
     btn('Move', () => this.cmdMove(), u.moved || this.moveRange(u) === 0, u.moved ? 'done' : `${this.moveRange(u)} tiles`);
     btn('Attack', () => this.cmdSkill(u.basic), u.acted);
-    for (const sk of u.skills) btn(sk.name, () => this.cmdSkill(sk), u.acted || sk.cost > u.mp, sk.cost ? `${sk.cost} ${u.rage ? 'rage' : 'mp'}` : 'free').title = sk.desc || '';
+    for (const sk of u.skills) {
+      const blood = lifeCost(u, sk), price = [sk.cost ? `${sk.cost} ${u.rage ? 'rage' : 'mp'}` : '', blood ? `${blood} life` : ''].filter(Boolean).join(' · ') || 'free';
+      btn(sk.name, () => this.cmdSkill(sk), u.acted || sk.cost > u.mp || (blood && u.hp <= blood), price).title = sk.desc || '';
+    }
     for (const id in ITEM_SKILLS) if (this.st.consum[id] > 0) btn(CONSUMABLES[id].name, () => this.cmdSkill(ITEM_SKILLS[id]), u.acted, 'x' + this.st.consum[id]).title = CONSUMABLES[id].desc;
     btn('Wait', () => this.afterActionForce());
     btn('Flee', () => this.finish('flee')).classList.add('dim');
@@ -402,7 +677,7 @@ export class Battle {
     if (sk.at === 'self') { this.sel = { mode: 'target', sk, tiles: [{ x: u.x, z: u.z }] }; this.cursor = { x: u.x, z: u.z }; }
     else this.sel = { mode: 'target', sk, tiles: this.rangeTiles(sk, u.x, u.z) };
     this.r.clearHighlights();
-    this.r.highlight(this.sel.tiles, sk.kind === 'heal' || sk.kind === 'buff' || sk.kind === 'item' || sk.kind === 'summon' ? 'heal' : 'attack');
+    this.r.highlight(this.sel.tiles, this.good(sk) || sk.kind === 'summon' || sk.kind === 'trap' || sk.kind === 'revive' || sk.blink || sk.at === 'fallen' ? 'heal' : 'attack');
     this.backButton(`${sk.name}: ${sk.desc || 'choose a target.'}`);
     this.preview(this.cursor.x, this.cursor.z);
   }
@@ -419,13 +694,23 @@ export class Battle {
     this.infoEl.innerHTML = '';
     const u = this.active, s = this.sel;
     if (s.mode !== 'target' || !s.tiles.some((t) => t.x === x && t.z === z)) return;
-    this.r.highlight(this.aoeTiles(s.sk, x, z), 'aoe', 'aoe');
-    const hit = this.affected(u, s.sk, x, z);
-    const lines = hit.map((t) => {
-      if (s.sk.kind === 'phys' || s.sk.kind === 'magic') { const d = this.damage(u, t, s.sk, true); const n = d.n * (s.sk.hits || 1); return `${esc(t.name)}: <b class="dmg">-${n}</b>${d.side ? ' (' + d.side + ')' : ''}${n >= t.hp ? ' <b>kills</b>' : ''}`; }
-      if (s.sk.kind === 'heal') return `${esc(t.name)}: <b class="heal">+${Math.min(this.healing(u, s.sk), t.maxhp - t.hp)}</b>`;
-      return `${esc(t.name)}${s.sk.st ? ': ' + STATUS[s.sk.st[0]].name + ' ' + Math.round(s.sk.st[2] * 100) + '%' : ''}`;
+    const sk = s.sk;
+    this.r.highlight(this.shapeTiles(u, sk, x, z), 'aoe', 'aoe');
+    const hit = this.affected(u, sk, x, z);
+    const lines = hit.map((t, i) => {
+      const mult = this.falloff(hit, i);
+      if (sk.kind === 'phys' || sk.kind === 'magic') {
+        const d = this.damage(u, t, sk, true, u, mult), n = d.n * (sk.hits || 1);
+        return `${esc(t.name)}: <b class="dmg">-${n}</b>${d.side ? ' (' + d.side + ')' : ''}${n >= t.hp ? ' <b>kills</b>' : ''}${sk.push ? ` · knocked ${sk.push}` : sk.pull ? ' · dragged' : ''}${sk.delay ? ' · delayed' : ''}`;
+      }
+      if (sk.kind === 'heal') return `${esc(t.name)}: <b class="heal">+${Math.min(Math.round(this.healing(u, sk) * mult), t.maxhp - t.hp)}</b>`;
+      if (sk.kind === 'revive' || sk.at === 'fallen') return `${esc(t.name)}: <b class="heal">back on their feet</b>`;
+      if (sk.kind === 'cleanse') return `${esc(t.name)}: cleared${sk.pow ? ` <b class="heal">+${Math.min(this.healing(u, sk), t.maxhp - t.hp)}</b>` : ''}`;
+      if (sk.kind === 'tempo') return `${esc(t.name)}: acts sooner`;
+      return `${esc(t.name)}${sk.st ? ': ' + STATUS[sk.st[0]].name + ' ' + Math.round(sk.st[2] * 100) + '%' : ''}${sk.delay ? ' · delayed' : ''}`;
     });
+    if (sk.kind === 'trap') lines.push('A trap goes here.');
+    if (sk.blink && this.validTarget(u, sk, x, z)) lines.unshift(`${esc(u.name)} steps here.`);
     if (lines.length) this.infoEl.innerHTML = lines.join('<br>');
   }
   // a tile was chosen (by click, tap, or the d-pad and A)
@@ -448,7 +733,7 @@ export class Battle {
     }
   }
   inspect(o) {
-    const st = o.st.map((s) => `<span style="color:${STATUS[s.id].color}">${STATUS[s.id].name} ${s.turns}</span>`).join(' ');
+    const st = o.st.map((s) => `<span style="color:${STATUS[s.id].color}">${STATUS[s.id].name} ${s.turns}${s.amt ? ' (' + s.amt + ')' : ''}</span>`).join(' ');
     this.infoEl.innerHTML = `<b>${esc(o.name)}</b> Lv ${o.lvl}<br>Life ${o.hp}/${o.maxhp}${o.maxmp ? ` · ${o.rage ? 'Rage' : 'Mana'} ${o.mp}/${o.maxmp}` : ''}<br>Atk ${o.s.atk} · Mag ${o.s.mag} · Arm ${o.s.def} · Ward ${o.s.res} · Spd ${o.s.spd}<br>Move ${o.s.move} · Jump ${o.s.jump}${st ? '<br>' + st : ''}${o.zdef ? `<br><i>${esc(o.zdef.blurb)}</i>` : ''}`;
   }
 
@@ -484,12 +769,15 @@ export class Battle {
   }
 
   // ---- the AI: used by the dead, by summons, and by the party when Auto is on ----
+  // Every skill from every tile in reach, at every target it could take, scored; the best is done.
   plan(u) {
     const foes = this.foesOf(u), friends = this.friendsOf(u);
     const R = u.moved ? [{ x: u.x, z: u.z, d: 0, prev: null }] : [...this.reach(u).values()].filter((t) => !t.pass || (t.x === u.x && t.z === u.z));
     const skills = [];
-    if (!u.acted) { if (u.basic) skills.push(u.basic); for (const sk of u.skills) if (u.side === 'foe' || u.summon || sk.cost <= u.mp) skills.push(sk); }
+    if (!u.acted) { if (u.basic) skills.push(u.basic); for (const sk of u.skills) if (u.side === 'foe' || u.summon || (sk.cost <= u.mp && (!sk.hpCost || u.hp > lifeCost(u, sk)))) skills.push(sk); }
     const nearFoe = (x, z) => foes.reduce((m, f) => Math.min(m, manhattan(x, z, f.x, f.z)), 99);
+    const inRange = (sk, t, x, z) => { const d = manhattan(t.x, t.z, x, z); return d >= sk.r[0] && d <= sk.r[1]; };
+    const freeTile = (c) => this.open(c.x, c.z) && !this.unitAt(c.x, c.z) && !this.trapAt(c.x, c.z);
     let best = { score: 0 };
     const real = { x: u.x, z: u.z };
     for (const t of R) {
@@ -499,22 +787,46 @@ export class Battle {
         if (sk.at === 'self') centres = [t];
         else if (sk.kind === 'summon') {
           if (this.units.some((o) => o.alive && o.owner === u.id && o.kind === sk.summon) || !foes.length) continue;
-          const c = this.rangeTiles(sk, t.x, t.z).filter((c) => this.open(c.x, c.z) && !this.unitAt(c.x, c.z) && !(c.x === t.x && c.z === t.z)).sort((a, b) => nearFoe(a.x, a.z) - nearFoe(b.x, b.z))[0];
+          const c = this.rangeTiles(sk, t.x, t.z).filter((c) => freeTile(c) && !(c.x === t.x && c.z === t.z)).sort((a, b) => nearFoe(a.x, a.z) - nearFoe(b.x, b.z))[0];
           if (c && 14 - t.d * 0.05 > best.score) best = { score: 14 - t.d * 0.05, tile: t, sk, x: c.x, z: c.z };
           continue;
-        } else centres = (sk.at === 'ally' ? friends : foes).filter((o) => { const d = manhattan(t.x, t.z, o === u ? t.x : o.x, o === u ? t.z : o.z); return d >= sk.r[0] && d <= sk.r[1]; }).map((o) => (o === u ? t : o));
+        } else if (sk.kind === 'trap') {
+          // in the way: the free tile in reach nearest one of them, but not one they're already beside
+          if (!foes.length) continue;
+          const mine = this.traps.filter((p) => p.owner === u.id).length;
+          const c = this.rangeTiles(sk, t.x, t.z).filter((c) => freeTile(c) && !(c.x === t.x && c.z === t.z) && nearFoe(c.x, c.z) >= 1).sort((a, b) => nearFoe(a.x, a.z) - nearFoe(b.x, b.z))[0];
+          const score = c ? 8 - mine * 3 - nearFoe(c.x, c.z) * 0.4 - t.d * 0.05 : 0;
+          if (score > best.score) best = { score, tile: t, sk, x: c.x, z: c.z };
+          continue;
+        } else if (sk.blink) centres = this.rangeTiles(sk, t.x, t.z).filter(freeTile);
+        else if (sk.shape === 'line' || sk.shape === 'cone') { const n = Math.max(1, sk.r[0]); centres = DIRS.map(([dx, dz]) => ({ x: t.x + dx * n, z: t.z + dz * n })).filter((c) => this.inBounds(c.x, c.z)); }
+        else if (sk.at === 'fallen') centres = this.units.filter((o) => !o.alive && o.hero && o.side === u.side && !this.unitAt(o.x, o.z) && inRange(sk, t, o.x, o.z));
+        else centres = (sk.at === 'ally' ? friends : foes).filter((o) => !(o === u && sk.kind === 'tempo') && inRange(sk, t, o === u ? t.x : o.x, o === u ? t.z : o.z)).map((o) => (o === u ? t : o));
         for (const c of centres) {
           u.x = t.x; u.z = t.z;                             // judge it as if already standing there
           let score = 0;
-          for (const o of this.affected(u, sk, c.x, c.z)) {
-            if (sk.kind === 'phys' || sk.kind === 'magic') { const n = this.damage(u, o, sk, true).n * (sk.hits || 1); score += Math.min(n, o.hp) + (n >= o.hp ? 14 : 0) + (sk.st ? 2 : 0); }
-            else if (sk.kind === 'heal') { const miss = o.maxhp - o.hp; if (miss > o.maxhp * 0.25) score += Math.min(miss, this.healing(u, sk)) * 1.1; }
-            else if (sk.st && !this.has(o, sk.st[0])) score += (sk.st[0] === 'stun' || sk.st[0] === 'root' ? 9 : 6) * (foes.length ? 1 : 0);
-          }
+          const hit = this.affected(u, sk, c.x, c.z);
+          hit.forEach((o, i) => {
+            if (sk.kind === 'phys' || sk.kind === 'magic') {
+              const n = this.damage(u, o, sk, true, u, this.falloff(hit, i)).n * (sk.hits || 1);
+              score += Math.min(n, o.hp) + (n >= o.hp ? 14 : 0) + (sk.st ? 2 : 0) + (sk.st2 ? 3 : 0) + (sk.push || sk.pull ? 3 : 0) + (sk.delay ? 3 : 0) + (this.has(o, 'taunt') ? 10 : 0);
+            } else if (sk.kind === 'heal') { const miss = o.maxhp - o.hp; if (miss > o.maxhp * 0.25) score += Math.min(miss, this.healing(u, sk)) * 1.1; }
+            else if (sk.kind === 'cleanse') {
+              score += o.st.filter((s) => STATUS[s.id]?.bad).length * 5;
+              if (sk.pow) { const miss = o.maxhp - o.hp; if (miss > o.maxhp * 0.25) score += Math.min(miss, this.healing(u, sk)) * 0.8; }
+            } else if (sk.kind === 'revive') score += 40;
+            else if (sk.kind === 'tempo') { if (o.ct < 90 && foes.length) score += 8 + (90 - o.ct) * 0.04; }
+            else {
+              if (sk.st && !this.has(o, sk.st[0])) score += (sk.st[0] === 'stun' || sk.st[0] === 'root' ? 9 : STATUS[sk.st[0]]?.doom ? 10 : 6) * (foes.length ? 1 : 0);
+              if (sk.st2 && !this.has(o, sk.st2[0]) && foes.length) score += 3;
+              if (sk.delay && foes.length) score += 5;
+            }
+          });
           if (sk.allyHeal) for (const a of this.aoeTiles(sk, c.x, c.z)) { const o = this.unitAt(a.x, a.z); if (o && o.side === u.side && o.hp < o.maxhp * 0.7) score += 4; }
+          if (sk.self && !this.has(u, sk.self[0]) && score > 0) score += 3;
           u.x = real.x; u.z = real.z;
           if (score <= 0) continue;
-          score += (sk.r[1] > 1 ? Math.min(gap, 4) * 0.4 : 0) - t.d * 0.05 - (sk.cost || 0) * 0.05;
+          score += (sk.r[1] > 1 ? Math.min(gap, 4) * 0.4 : 0) - t.d * 0.05 - (sk.cost || 0) * 0.05 - (sk.hpCost ? u.maxhp * sk.hpCost * 0.3 : 0);
           if (score > best.score) best = { score, tile: t, sk, x: c.x, z: c.z };
         }
       }
@@ -528,8 +840,13 @@ export class Battle {
   async aiTurn(u) {
     this.r.setTurnRing(u.x, u.z);
     await this.wait(240);
-    const p = this.plan(u);
-    if (p.tile && (p.tile.x !== u.x || p.tile.z !== u.z) && !u.moved) { this.r.setTurnRing(null); await this.moveTo(u, p.tile); }
+    let p = this.plan(u);
+    if (p.tile && (p.tile.x !== u.x || p.tile.z !== u.z) && !u.moved) {
+      this.r.setTurnRing(null);
+      await this.moveTo(u, p.tile);
+      if (u.x !== p.tile.x || u.z !== p.tile.z) p = u.alive && !this.over ? this.plan(u) : {};   // a trap stopped them short
+    }
+    if (!u.alive) return;
     if (p.sk && !this.over) await this.act(u, p.sk, p.x, p.z);
     else if (!p.sk && !u.acted && !u.moved) await this.wait(120);
     // a second look: having acted first, there may still be a move worth making (and the other way round)
@@ -545,10 +862,12 @@ export class Battle {
     const st = this.st, lines = [];
     const heroes = this.units.filter((u) => u.hero);
     for (const u of heroes) { u.hero.hp = u.alive ? u.hp : 0; if (!u.rage) u.hero.mp = u.mp; }
-    let title, sub;
+    let title, sub, hold = 0;
     if (how === 'win') {
       sfx.win(); music.stinger('triumph'); title = 'The dead lie still'; sub = `${this.slain.length} put down`;
-      for (const u of heroes) if (u.alive) { setRest(u.model, 'idle'); setAnim(u.model, 'cheer'); }
+      this.r.fx.stop(0.18); this.r.fx.flash('#fff3d0', 0.45); this.show.end();
+      this.show.splash('Victory', sub, 'win'); hold = 1300;
+      for (const u of heroes) if (u.alive) { setRest(u.model, 'idle'); setAnim(u.model, 'cheer'); this.show.cheer(u); }
       let gold = 0; const got = [];
       for (const f of this.slain) {
         const loot = rollLoot(f.lvl); gold += loot.gold;
@@ -560,24 +879,30 @@ export class Battle {
       if (got.length) lines.push('Found: ' + got.join(', '));
       for (const u of heroes) {
         const ups = gainXp(u.hero, u.alive ? this.xp : Math.round(this.xp / 2));
-        if (ups) { lines.push(`<b style="color:${u.color}">${esc(u.name)}</b> reaches level ${u.hero.lvl}.`); sfx.level(); }
+        if (ups) { lines.push(`<b style="color:${u.color}">${esc(u.name)}</b> reaches level ${u.hero.lvl}.`); sfx.level(); setTimeout(() => this.show.levelUp(u), 700); }
         if (u.hero.hp <= 0) u.hero.hp = Math.max(1, Math.round(heroStats(u.hero).hp * 0.25));
       }
       const who = heroes.find((u) => u.alive && HEROES[u.hero.heroId]);
       if (who) { const w = HEROES[who.hero.heroId].win; lines.push(`<i>“${esc(w[Math.floor(Math.random() * w.length)])}”</i> — ${esc(who.name)}`); }
+      this.say(`<b>The dead lie still.</b> ${this.xp} experience, ${gold} gold.`, 'sys');
     } else if (how === 'lose') {
       sfx.lose(); music.stinger('fell'); title = 'The pines keep what they take'; sub = 'You wake at The Last Toll';
+      this.show.end();
       const lost = Math.round(st.gold * 0.2); st.gold -= lost;
       lines.push(`Somebody carried you back to the Hollow. It cost you <b>${lost}</b> gold and most of your pride.`);
-    } else { sfx.sheath(); title = 'You run'; sub = 'The dead do not hurry'; lines.push('You get clear. They are still standing where you left them.'); }
+    } else { sfx.sheath(); this.show.end(); title = 'You run'; sub = 'The dead do not hurry'; lines.push('You get clear. They are still standing where you left them.'); }
     this.resultEl.innerHTML = `<h2>${title}</h2><p class="sub">${sub}</p>${lines.map((l) => `<p>${l}</p>`).join('')}`;
     const b = el('button', 'btn', 'Continue');
     const done = () => { if (this.closed) return; this.closed = true; this.close(how); };
-    b.onclick = done; this.resultEl.append(b); this.resultEl.classList.add('show');
-    if (st.auto) setTimeout(done, 2200);
+    b.onclick = done; this.resultEl.append(b);
+    setTimeout(() => this.resultEl.classList.add('show'), hold);
+    if (st.auto) setTimeout(done, 2200 + hold);
   }
   close(how) {
+    this.show.clear();
+    for (const u of this.units) if (u.model.userData.wyrmBase) u.model.scale.setScalar(u.model.userData.wyrmBase);
     for (const u of this.units) if (u.side === 'party') this.r.units.remove(u.model);
+    this.chron.remove();
     this.hud.remove();
     const L = this.units.find((u) => u.id === this.st.party[0]);
     this.g.endBattle(how, how === 'win' ? { x: L.x, z: L.z } : this.origin, this.slain.map((f) => f.id));
@@ -587,10 +912,13 @@ export class Battle {
   buildHud() {
     this.hud = el('div', 'bt-hud');
     this.orderEl = el('div', 'bt-order'); this.menuEl = el('div', 'bt-menu'); this.infoEl = el('div', 'bt-info');
-    this.logEl = el('div', 'bt-log'); this.bars = el('div', 'bt-bars'); this.floats = el('div', 'bt-floats'); this.resultEl = el('div', 'bt-result panel');
-    this.hud.append(this.bars, this.floats, this.orderEl, this.logEl, this.infoEl, this.menuEl, this.resultEl);
+    this.bars = el('div', 'bt-bars'); this.floats = el('div', 'bt-floats'); this.resultEl = el('div', 'bt-result panel');
+    this.hud.append(this.bars, this.floats, this.orderEl);
+    this.chron = new CombatLog(this.hud);
+    this.hud.append(this.infoEl, this.menuEl, this.resultEl);
     document.getElementById('ui').append(this.hud);
     for (const u of this.units) this.addBar(u);
+    this.show = new Show(this);
   }
   addBar(u) { u.bar = el('div', 'ubar ' + u.side, '<i></i><b></b>'); this.bars.append(u.bar); }
   drawOrder() {
@@ -614,8 +942,19 @@ export class Battle {
   confirm() { if (this.cursor) this.tile(this.cursor.x, this.cursor.z); }
 
   update(dt) {
+    this.show.tick(dt);
     for (const u of this.units) {
       animate(u.model, dt);
+      // the wyrm: a quarter as big again while it lasts
+      if (u.alive) {
+        const m = u.model, ud = m.userData;
+        if (this.has(u, 'wyrm') && !ud.wyrmBase) ud.wyrmBase = m.scale.x;
+        if (ud.wyrmBase) {
+          const want = ud.wyrmBase * (this.has(u, 'wyrm') ? 1.25 : 1);
+          m.scale.setScalar(m.scale.x + (want - m.scale.x) * Math.min(1, dt * 6));
+          if (!this.has(u, 'wyrm') && Math.abs(m.scale.x - want) < 0.002) { m.scale.setScalar(want); ud.wyrmBase = 0; }
+        }
+      }
       if (!u.bar) continue;
       if (!u.alive) { u.bar.style.display = 'none'; continue; }
       const p = this.r.project(u.model.position.x, u.model.position.y + (u.model.userData.height || 1.5) + 0.12, u.model.position.z);
@@ -626,8 +965,8 @@ export class Battle {
     // how each of them stands while waiting: reeling if stunned, bent double if nearly done for, braced if guarding
     if (!this.over) for (const u of this.units) if (u.alive) setRest(u.model, this.has(u, 'stun') ? 'stunned' : u.hp < u.maxhp * 0.3 ? 'wounded' : this.has(u, 'guard') ? 'guard' : 'idle');
     const a = this.active, mode = this.sel.mode;
-    const focus = (mode === 'target' || mode === 'move' || mode === 'place' || mode === 'menu') && this.cursor ? { x: this.cursor.x, y: this.w.y(this.cursor.x, this.cursor.z), z: this.cursor.z } : a ? a.model.position : this.origin;
-    this.r.follow(focus.x, focus.y || 0, focus.z, dt * 0.6);
+    const focus = this.camAt ? this.camAt : (mode === 'target' || mode === 'move' || mode === 'place' || mode === 'menu') && this.cursor ? { x: this.cursor.x, y: this.w.y(this.cursor.x, this.cursor.z), z: this.cursor.z } : a ? a.model.position : this.origin;
+    this.r.follow(focus.x, focus.y || 0, focus.z, dt * (this.camAt ? 1.4 : 0.6));
     if (this.cursor && mode !== 'wait' && mode !== 'over') this.r.setCursor(this.cursor.x, this.cursor.z); else this.r.setCursor(null);
     if (a && a.alive && mode !== 'place' && mode !== 'over') this.r.setTurnRing(Math.round(a.model.position.x), Math.round(a.model.position.z));
     this.r.updateFade(this.units.filter((u) => u.alive).map((u) => ({ x: u.model.position.x, z: u.model.position.z, y: u.model.position.y })), this.b);

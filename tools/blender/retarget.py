@@ -162,8 +162,10 @@ class Target:
         return out
 
     def lock(self, p):
-        """On its tile: the root keeps its height, its sideways and forward travel pinned to the idle's."""
-        q, l = p[H]; p = dict(p); p[H] = (q, Vector((self.home.x, l.y, self.home.z))); return p
+        """On its tile: the root keeps its height, its sideways and forward travel pinned to the idle's. Taken in the
+        armature's own vertical, as the hips bone of a hunched rig (the brute's) leans and its local y is not up."""
+        q, l = p[H]; R = self.restQ[H]; d = R @ (l - self.home)
+        p = dict(p); p[H] = (q, self.home + R.inverted() @ (self.Z * d.dot(self.Z))); return p
 
     def aligner(self, action, f0):
         c = self.I0[H][0] @ self.grab(action, f0)[H][0].inverted()
@@ -176,6 +178,7 @@ class Target:
     def body(self):
         bl = self.arm.data.bones; P = lambda n: bl['mixamorig:' + n].head_local
         self.U = (P('Head') - P('Hips')).normalized()
+        self.Z = Vector((0, 0, 1))                         # the tile's up, in armature space; U leans with a hunched body
         lf = P('LeftUpLeg') - P('RightUpLeg'); self.Lf = (lf - self.U * lf.dot(self.U)).normalized()
         self.F = self.U.cross(self.Lf).normalized()
         if self.F.dot(P('LeftToeBase') - P('LeftFoot')) < 0: self.F = -self.F
@@ -198,11 +201,11 @@ class Target:
         return Q, X
 
     def lowest(self, p):
-        return min(x.dot(self.U) for n, x in self.fk(p)[1].items() if n in self.FEET)
+        return min(x.dot(self.Z) for n, x in self.fk(p)[1].items() if n in self.FEET)
 
     def ground(self, p):
         """The root raised or lowered so the lowest foot is on the floor again (after bending the knees)."""
-        q, l = p[H]; p = dict(p); p[H] = (q, l + self.restQ[H].inverted() @ (self.U * (self.floor - self.lowest(p)))); return p
+        q, l = p[H]; p = dict(p); p[H] = (q, l + self.restQ[H].inverted() @ (self.Z * (self.floor - self.lowest(p)))); return p
 
     def spin(self, p, n, R):
         """Bone n turned by R in armature space; what hangs from it follows."""
@@ -251,7 +254,7 @@ class Target:
 
     def turned(self, p, deg):
         """The whole figure turned about the up axis (a spin), on its tile."""
-        return self.spin(p, H, Quaternion(self.U, math.radians(deg)))
+        return self.spin(p, H, Quaternion(self.Z, math.radians(deg)))
 
     # ---- held things ----
     # A weapon is a model of its own (MODELS.md section 4: upright along +Z, grip at the origin) which the game hangs on a
@@ -378,8 +381,8 @@ class Target:
         leg = lambda p, s, up, low: self.limb(p, s, up, low, leg=True)
         idle = lambda f: g('M_Idle_02', f % 44.8)
         # the arms hang 10 degrees off the body (15 on the bulky ones, to clear pauldrons and hip plates), elbows a little bent
-        AR = arms or (15 if self.key.startswith(('homunculus', 'paladin', 'barbarian', 'death_knight', 'lancer', 'dragon_knight', 'totem_master')) else
-                      22 if self.key.startswith('slime_lord') else 10)        # the slime lords: round as a cask
+        AR = arms or (15 if self.key.startswith(('homunculus', 'paladin', 'barbarian', 'death_knight', 'lancer', 'dragon_knight', 'totem_master', 'zombie_brute')) else
+                      22 if self.key.startswith(('slime_lord', 'zombie_bonesack')) else 10)        # the slime lords and the bonesack: round as a cask
         self.held = None
 
         def both(p, up, low):
@@ -413,7 +416,7 @@ class Target:
             # the shield gripped above its middle, so at the idle its foot is 7 cm off the floor, whatever the figure's height
             at = palm('Left') + face(B0, 30) * 0.03 * self.tall
             foot = -min(v.co.z for v in bpy.data.objects['w_shield_tower'].data.vertices) + 0.07   # metres, grip to floor
-            at += self.U * (self.floor + foot / self.arm.matrix_world.to_scale()[0] - at.dot(self.U))
+            at += self.Z * (self.floor + foot / self.arm.matrix_world.to_scale()[0] - at.dot(self.Z))
             self.calibrate(B0, 'Left', 'w_shield_tower', fr(B0)[0], -face(B0, 30), at)
             STEADY = {'Walk', 'Run', 'Hop', 'Hit', 'Stunned', 'Wounded', 'Talk', 'Shield_Bash'}    # the lance arm kept still
 
@@ -424,6 +427,40 @@ class Target:
                 p = self.hold(p, 'Right', d, self.knuckles(p, 'Right', d))
                 return self.hold(p, 'Left', fr(p)[0], -face(p, 90 if name in ('Guard_Up', 'Shield_Bash') and mid else 30))
             self.held = held
+
+        if cls.startswith('zombie_'):
+            # The dead stand as they died, each kind in a slump of its own. It goes on the idle, so every clip starts and
+            # ends in it. Per kind: the spine's pitch and the neck's (each bone; negative: back), the head's droop to its
+            # left, each arm (th, ph, elbow; left, then right), and how far the knees are bent.
+            kind = cls[len('zombie_'):]
+            SP, NK, DROOP, ZA, KN = {
+                'shambler': (4, 8, 12, ((40, 75, 30), (28, 65, 20)), 0.25),        # the head lolled over, the arms hanging forward, one lower
+                'gnawer': (8, -10, 0, ((42, 80, 32), (42, 80, 32)), 0.45),       # stooped, the head up, long arms out before it
+                'lurker': (10, -13, 0, ((58, 75, 55), (58, 75, 55)), 0.8),       # low on its haunches, the claws forward
+                'bonesack': (-3, -7, 0, ((38, 12, 18), (38, 12, 18)), 0.25),     # leaning back off the belly, the head tipped back, arms out round it
+                'brute': (5, -6, 0, ((30, 40, 30), (30, 40, 30)), 0.35)}[kind]   # hunched, the head jutting, the arms hanging heavy
+            tl = lambda p, bones, how, d: tilt(p, bones, how, d) if d else p
+            # Their knees bend both alike, down onto the haunches with the soles kept flat (the library's crouch is a
+            # stance, one foot forward), and every clip below, the common ones too, crouches this way.
+            SQ = idle(0); _, X = self.fk(SQ)
+            for s in SIDES:
+                ft, toe = 'mixamorig:%sFoot' % s, 'mixamorig:%sToeBase' % s
+                SQ = self.aim(leg(SQ, s, (70, 80), 120), ft, toe, (X[toe] - X[ft]).normalized())
+            crouch = lambda p, w: G(mix(p, SQ, w, LEGS))
+
+            def slump(p, sway=0, yaw=0, swing=0, knees=KN):
+                p = tl(tl(tl(p, SPINE, 'fwd', SP), SPINE, 'left', sway), SPINE, 'yaw', yaw)
+                p = tl(tl(p, NECK, 'fwd', NK), NECK, 'left', DROOP + sway)
+                for s, (th, ph, el), k in zip(SIDES, ZA, (1, -1)): p = arm(p, s, (th + swing * k, ph), el)
+                return crouch(p, knees)
+            BI = lambda f=0: L(slump(idle(f), 1.2 * math.sin(f * 2 * math.pi / 45))); B0 = BI(0)
+
+            def fling(p, k, up=25, back=60, bend=18):                          # the arms thrown out and back from where they hang
+                for s, (th, ph, el) in zip(SIDES, ZA): p = arm(p, s, (th + up * k, ph - back * k), el + bend * k)
+                return p
+
+            def aloft(p, h):                                                   # the lowest foot h of the height off the floor
+                p = G(p); q, l = p[H]; p[H] = (q, l + self.restQ[H].inverted() @ (self.Z * h * self.tall)); return p
 
         def blow(name, src, s0, s1, n, legs=0.7, df=2, tail=8):
             # the upper body from the source, the legs partly, the hips never turning
@@ -681,6 +718,57 @@ class Target:
             names += ['Rake']
         elif cls == 'squire':                     # Squire Knight: a thrust, as the order teaches
             jab(); names += ['Thrust']
+        # ---- the dead in the pines: the slump above, a gait and blows of their own ----
+        elif cls.startswith('zombie_'):
+            # The gait: the stride (the gnawer's a run) under the slump, the knees a little less bent than standing, the
+            # body rocking (sway), turning (yaw) and the arms swinging, each by kind.
+            gnaw = kind == 'gnawer'
+            src, n, ln, f0 = ('M_Running', 16, 15.2, 0) if gnaw else ('own_walk', 13, 24.8, self.w0)
+            sw, yw, am = {'shambler': (3, 0, 6), 'gnawer': (0, 0, 16), 'lurker': (0, 3, 8), 'bonesack': (5, 0, 4), 'brute': (2, 5, 8)}[kind]
+
+            def stride(i):
+                s = math.sin(2 * math.pi * i / (n - 1))
+                return L(slump(g(src, f0 + ln * i / (n - 1)), sw * s, yw * s, am * s, KN * 0.5))
+            W('Walk', [(i * (1 if gnaw else 2), stride(i)) for i in range(n)])
+
+            def jolt(k):                                                       # Hit: thrown back from the slump
+                return L(crouch(fling(tilt(tilt(B0, SPINE, 'fwd', -5 * k), NECK, 'fwd', -7 * k), 0.8 * k), 0.15 * k))
+            W('Hit', [(0, B0), (2, jolt(1)), (5, jolt(0.85)), (9, jolt(0.4)), (15, BI(15))])
+
+            def roar(k):                                                       # the chest thrown out, the head back, the arms flung wide
+                return L(crouch(fling(tilt(tilt(B0, SPINE, 'fwd', -4 * k), NECK, 'fwd', -12 * k), k, 50, 75, 25), 0.2 * k))
+            W('Roar', [(0, B0), (5, roar(0.6)), (9, roar(1)), (13, roar(0.9)), (17, roar(1)), (21, roar(0.9)), (25, roar(1)), (36, BI(36))])
+            own = ['Roar']
+            if kind in ('shambler', 'lurker', 'bonesack'):                     # Rake: both hands up, then raking down (the ghoul's)
+                up_ = L(crouch(tilt(both(B0, (135, 80), (160, 120)), SPINE, 'fwd', -2), 0.15))
+                down = L(crouch(tilt(tilt(both(B0, (50, 95), 20), SPINE, 'fwd', 8), NECK, 'fwd', -4), 0.35))
+                W('Rake', [(0, B0), (4, up_), (7, down), (10, down), (20, BI(20))]); own.append('Rake')
+            if kind == 'gnawer':                                               # Bite: both hands out to seize, pulled in, the head down into it, a tear
+                reach = L(crouch(tilt(both(B0, (85, 80), (95, 85)), SPINE, 'fwd', 3), 0.3))
+                bite = L(crouch(tilt(tilt(both(B0, (70, 88), (60, 150)), SPINE, 'fwd', 7), NECK, 'fwd', 14), 0.45))
+                W('Bite', [(0, B0), (3, reach), (6, bite), (9, bite), (11, L(tilt(bite, NECK, 'yaw', 12))), (13, L(tilt(bite, NECK, 'yaw', -12))),
+                           (16, bite), (26, BI(26))]); own.append('Bite')
+            if kind == 'lurker':                                               # Pounce: down on its haunches, then through the air claws first
+                coil = L(crouch(tilt(both(B0, (25, -40), 35), SPINE, 'fwd', 5), 0.6))
+                push = B0                                                      # off the ground: legs driven out behind, claws reaching
+                for s in SIDES: push = leg(push, s, (25, -90), 15)
+                push = L(aloft(tilt(tilt(both(push, (125, 85), 15), SPINE, 'fwd', 8), NECK, 'fwd', -8), 0.06))
+                tuck = B0                                                      # in the air: knees drawn up, claws out to strike
+                for s in SIDES: tuck = leg(tuck, s, (75, 85), 110)
+                tuck = L(aloft(tilt(both(tuck, (100, 85), 30), SPINE, 'fwd', 4), 0.16))
+                land = L(crouch(tilt(tilt(both(B0, (55, 88), 25), SPINE, 'fwd', 6), NECK, 'fwd', -3), 0.6))
+                W('Pounce', [(0, B0), (4, coil), (7, push), (10, tuck), (14, land), (20, land), (30, BI(30))]); own.append('Pounce')
+            if kind == 'bonesack':                                             # Retch: hands clutched at the belly, heaving, the head thrust out
+
+                def heave(k):
+                    p = tilt(tilt(tilt(B0, SPINE, 'fwd', 4 + 6 * k), ['mixamorig:Neck'], 'fwd', 16 * k), ['mixamorig:Head'], 'fwd', -12 * k)
+                    return L(crouch(both(p, (25, 120), (80, 175)), 0.15 + 0.2 * k))
+                W('Retch', [(0, B0), (4, heave(0.3)), (8, heave(1)), (12, heave(0.4)), (16, heave(1.1)), (20, heave(0.5)), (24, heave(1.2)),
+                            (30, heave(1.2)), (40, BI(40))]); own.append('Retch')
+            if kind == 'brute':                                                # Slam: both fists into the ground; Chain Sweep: round once, the arms out
+                smite('Slam', deep=1); whirl('Sweep', turns=1, up=80); own += ['Slam', 'Sweep']
+            # nothing of the living's: no running upright, no cheering with a fist, no talk, no potions
+            names = [x for x in names if x not in ('Run', 'Victory', 'Talk', 'Drink', 'Point', 'Flex')] + own
         elif cls == 'doorkeeper':                 # Lisandra: her own seventeen clips, which live in the library, carried over as they are
             own = ['Idle', 'Walk_Bent', 'Run_Bent', 'Hop', 'Bolt', 'Cast', 'Snap', 'Lantern_Up', 'Wave', 'Hit', 'Dead_Fall',
                    'Revive', 'Wounded', 'Stunned', 'Victory', 'Talk', 'Drink']

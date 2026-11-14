@@ -49,6 +49,26 @@ const SKILL_ART = {
   ballad_of_valor: 'empower', dragon_scales: 'stoneskin', swirling_blades: 'blades',
   lance_jab: 'lance', lance_thrust: 'lance', lance_charge: 'lance',
   healing_totem: 'monolith', searing_totem: 'monolith', slime_ball: 'orb',
+  // the tactics game's own
+  shield_bash: 'aegis', lay_on_hands: 'renew', radiant_spark: 'chain', judgment_beam: 'lance',
+  piercing_arrow: 'lance', net_shot: 'stasis', spike_trap: 'spikes', pinning_shot: 'stillness',
+  ice_lance: 'frost', teleport: 'thunderclap', living_bomb: 'bomb', blizzard: 'rime',
+  blood_drain: 'drain', doom: 'plague', bone_armor: 'stoneskin', bone_spear: 'lance',
+  taunt: 'empower', hurl: 'quake', executioner: 'shatter', wrath_of_the_berserker: 'inferno',
+  twin_thrust: 'lance', skewer: 'lance', frost_breath: 'frost', comet_dive: 'meteor',
+  spirit_chain: 'chain', hex: 'stillness', spirit_walk: 'wisp', thunderhead_totem: 'monolith',
+  death_grip: 'drain', icebound_fortitude: 'rime', blood_boil: 'nova', remorseless_winter: 'rime',
+  starlight_step: 'starfall', repulse: 'nova', gravity_well: 'well', supernova: 'starfall',
+  eye_gouge: 'missiles', puppeteer: 'stasis', pandemic: 'plague', nevermore: 'missiles',
+  song_of_swiftness: 'empower', sound_wave: 'thunderclap', encore: 'renew', anthem_of_heroes: 'sanctuary',
+  engulf: 'orb', slime_armor: 'stoneskin', bounce: 'orb', devour: 'drain',
+  ricochet: 'blades', riposte: 'aegis', gust: 'blades', thousand_cuts: 'blades',
+  shield_slam: 'aegis', hold_the_line: 'aegis', lance_of_light: 'lance', bastion_of_ten: 'sanctuary',
+  tail_swipe: 'inferno', dragon_leap: 'wyrm', primal_roar: 'wyrm', dragon_form: 'wyrm',
+  buckshot: 'missiles', landmine: 'bomb', rail_gun: 'firebeam', orbital_strike: 'meteor',
+  the_lock: 'stasis', candlelight: 'wisp', the_long_watch: 'stillness', open_the_door: 'lance',
+  throwing_stars: 'missiles', shadow_step: 'blades', smoke_bomb: 'stasis', caltrops: 'spikes',
+  venom_edge: 'plague', vanish: 'stillness', hundred_cuts: 'blades', last_cut: 'shatter',
 };
 const SCHOOL = { fire: 'school_fire', cold: 'school_ice', storm: 'school_lightning', arcane: 'school_arcane', shadow: 'school_arcane', holy: 'school_utility', light: 'school_utility' };
 const KIND_IC = { heal: 'role_heal', buff: 'guard', phys: 'role_dps' };

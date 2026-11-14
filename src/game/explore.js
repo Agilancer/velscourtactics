@@ -1,9 +1,10 @@
 // Walking the world: the leader moves a tile at a time, the rest of the party follows in a chain,
 // each copying what the one ahead did a step ago, jumps included. Townsfolk stand about; the dead watch.
-import { TOWN, N, T } from '../world/map.js';
+import { TOWN, N, T, REGIONS, recruitSpots } from '../world/map.js';
 import { DPAD } from '../core/input.js';
 import { makePerson, makeZombie, withOverride, hasModel, shadowDisc, label, setAnim, animate } from '../gfx/models.js';
 import { setGear } from '../gfx/gear.js';
+import { setDye } from '../gfx/dye.js';
 import { lookFor, shieldFor, foeGear } from '../data/gear.js';
 import { CLASSES } from '../data/classes.js';
 import { FOLK, HEROES, ROAD_END, LISANDRA_CHAT } from '../data/cast.js';
@@ -44,16 +45,21 @@ export function bodyKey(h) {
   for (let t = worn + 1; t <= 5; t++) if (hasModel(`${base}_t${t}`)) return `${base}_t${t}`;
   return base;
 }
-// What a hero carries: the weapon's own look, and the shield their class bears at their armour's tier.
+// What a hero carries: the weapon's own look, and the shield their class bears at their armour's tier (a knife fighter's
+// off hand has the knife's twin).
 export function outfit(h) {
   if (CLASSES[h.cls]?.hidden) return null;                // Lisandra carries her lantern, nothing else
   const seed = [...(h.name || h.cls)].reduce((a, c) => a + c.charCodeAt(0), 0);
-  return { main: lookFor(h.equip?.weapon, h.cls), off: shieldFor(h.cls, h.equip?.armor?.tier || 0, seed) };
+  const main = lookFor(h.equip?.weapon, h.cls);
+  return { main, off: main?.hold === 'dagger' ? { ...main, left: true } : shieldFor(h.cls, h.equip?.armor?.tier || 0, seed) };
 }
-const outfitSig = (h) => `${bodyKey(h)}|${h.equip?.weapon?.uid}|${h.equip?.armor?.tier}`;
+// a new body, or new gear in the hands, or new colours on the body (armour and helm: gfx/dye.js), when any of these change
+const outfitSig = (h) => `${bodyKey(h)}|${h.equip?.weapon?.uid}|${h.equip?.armor?.uid}|${h.equip?.helm?.uid}`;
+export const paletteOf = (h) => (h.heroId && HEROES[h.heroId]?.palette) || null;
 export function heroModel(h) {
   const m = withOverride(bodyKey(h), makePerson({ cls: h.cls, g: h.g }));
   setGear(m, outfit(h));
+  setDye(m, h, paletteOf(h));
   m.userData.outfit = outfitSig(h);
   return m;
 }
@@ -83,14 +89,20 @@ export class Explore {
       const name = who.name || hero.name, title = who.title || hero.title;
       const look = who.look || { cls: hero.cls, g: hero.g };
       let x, z;
-      if (typeof f.at === 'string') { const b = world.buildings.find((b) => b.id === f.at); x = b.front.x; z = b.front.z; } else [x, z] = f.at;
+      if (f.land) {                                       // out in a land, by its road (landSpots)
+        const reg = REGIONS.findIndex((R) => R.id === f.land), all = FOLK.filter((o) => o.land === f.land);
+        [x, z] = this.landSpots(reg, all.length)[all.indexOf(f)] || [world.start.x, world.start.z];
+      } else if (typeof f.at === 'string') { const b = world.buildings.find((b) => b.id === f.at); x = b.front.x; z = b.front.z; } else [x, z] = f.at;
       [x, z] = this.nearestFree(x, z);
       // townsfolk wear bm's bodies where the manifest has one for them (folk_<id>, tools/bm/folk.py)
       const model = gone || !f.hero ? withOverride(who.model || 'folk_' + (gone ? f.id + '_sub' : f.id), makePerson({ ...look, small: f.small })) : withOverride(hero.model || `${hero.cls}_${hero.g}`, makePerson(look));
-      // a recruit waiting to be asked has the plainest of their class's weapons on them
-      if (f.hero && !gone) setGear(model, outfit({ cls: hero.cls, name, equip: { weapon: { kind: CLASSES[hero.cls].weapon[0], tier: 0 } } }));
+      // a recruit waiting to be asked has the plainest of their class's weapons on them, and their own colours
+      if (f.hero && !gone) {
+        setGear(model, outfit({ cls: hero.cls, name, equip: { weapon: { kind: CLASSES[hero.cls].weapon[0], tier: 0 } } }));
+        setDye(model, null, hero.palette || null);
+      }
       model.position.set(x, world.y(x, z), z);
-      model.rotation.y = typeof f.at === 'string' ? 0 : Math.PI / 4;
+      model.rotation.y = typeof f.at === 'string' ? 0 : f.land ? ((x * 7 + z * 3) % 8) * Math.PI / 4 : Math.PI / 4;
       model.add(shadowDisc());
       const canJoin = f.hero && !gone;
       const tag = label(name, { size: 34, color: f.shop ? '#ffe2a0' : canJoin ? '#9fd6ff' : '#e9dcc4' });
@@ -100,6 +112,11 @@ export class Explore {
       const npc = { f, id: f.id, name, title, x, z, model, shop: f.shop, hero: canJoin ? f.hero : null, lines: who.lines || [hero?.ask], li: 0 };
       this.npcs.push(npc); this.npcAt.set(key(x, z), npc);
     }
+  }
+  // where the recruits of a land stand (world/map.js recruitSpots), worked out once a world
+  landSpots(reg, n) {
+    this._spots ||= {};
+    return (this._spots[reg + ':' + n] ||= recruitSpots(this.g.world, reg, n));
   }
   nearestFree(x, z) {
     const w = this.g.world;

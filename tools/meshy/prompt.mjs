@@ -3,6 +3,7 @@
 //   node tools/meshy/prompt.mjs paladin_m       the 3D prompt (subject line + style block)
 //   node tools/meshy/prompt.mjs paladin_f image the picture prompt, for the text-to-image step
 //   node tools/meshy/prompt.mjs paladin_m 3     with tier-3 armour appended (classes only)
+//   node tools/meshy/prompt.mjs well            a scenery piece (one block; there is no separate picture prompt)
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -31,20 +32,23 @@ export function subject(key, tier) {
   if (P.zombies[key]) return { text: P.zombies[key], style: 'monster' };
   if (P.summons[key]) return { text: P.summons[key], style: key === 'squire' ? 'character' : ['skeleton', 'ghoul'].includes(key) ? 'monster' : 'creature' };
   if (P.weapons[key]) return { text: P.weapons[key], style: 'weapon' };
+  if (P.scenery[key]) return { text: P.scenery[key], style: 'scenery' };
   return null;
 }
 
 export function prompt(key, { image = false, tier = 0 } = {}) {
   const s = subject(key, tier);
   if (!s) return null;
-  if (s.style === 'weapon') return P.style.weapon.replace('{subject}', s.text);
+  // weapons and scenery are one block with the subject inside it, and already say how they're seen
+  if (s.style === 'weapon' || s.style === 'scenery') return P.style[s.style].replace('{subject}', s.text);
   const body = `${s.text}. ${P.style[s.style]}`;
-  return image ? `${body} ${P.style.image}` : body;
+  // a creature isn't asked for an A-pose: it stands square on its own legs
+  return image ? `${body} ${s.style === 'creature' ? P.style.creature_image : P.style.image}` : body;
 }
 
 export const keys = () => [
   ...Object.keys(P.named), ...Object.keys(P.classes).flatMap((c) => [c + '_m', c + '_f']),
-  ...Object.keys(P.zombies), ...Object.keys(P.summons), ...Object.keys(P.weapons),
+  ...Object.keys(P.zombies), ...Object.keys(P.summons), ...Object.keys(P.weapons), ...Object.keys(P.scenery),
 ];
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
