@@ -59,7 +59,7 @@ function loadProp(key) {
     const geo = geos.length > 1 ? mergeGeometries(geos, true) : geos[0];
     if (!geo.groups.length) geo.addGroup(0, (geo.index || geo.attributes.position).count, 0);
     geo.computeBoundingBox(); geo.computeBoundingSphere();
-    const mats = parts.map((o) => new THREE.MeshLambertMaterial({ map: o.material.map }));
+    const mats = parts.map((o) => new THREE.MeshLambertMaterial({ map: o.material.map, name: o.material.name }));
     return { geo, mats, size: geo.boundingBox.getSize(new THREE.Vector3()) };
   }).catch((e) => { console.warn('no model for', key, e); return null; }));
   return propCache.get(key);
@@ -272,7 +272,7 @@ export class Renderer {
   // doors from bm's building textures ----
   buildTown() {
     const w = this.world;
-    const DOOR_AT = { townhouse: -0.95, cottage: 0.44, inn: 0, forge: 0 };   // each model's door, from its middle along x
+    const DOOR_AT = { townhouse: -0.95, cottage: 0.44, shophouse: 0, cottage_2: -0.32, inn: 0, forge: 0 };   // each model's door, from its middle along x
     const TINTS = [0xffffff, 0xf2e6d6, 0xe2e6ee, 0xeee2cc, 0xe6eadc, 0xf6ece6];
     const ghostOf = (m) => { const c = m.clone(); c.transparent = true; c.opacity = 0.25; c.depthWrite = false; return c; };
     w.buildings.forEach((b, n) => {
@@ -369,21 +369,34 @@ export class Renderer {
     for (const m of [walls, roof, door]) wear(m, m.material);
   }
 
-  // the ruins' walls and the standing stones (w.props), one instanced mesh per texture, and the places' names
+  // the ruins' walls and the standing stones (w.props), one instanced mesh per land: its own broken block or stone
+  // (`look`, assets/props), a block filling its tile and turned a quarter at a time, a stone as tall as it stands and
+  // narrower the shorter it is; a box or a cone in the land's texture while there's no model. And the places' names.
   buildRuins() {
     const w = this.world, by = {};
-    for (const p of w.props) (by[p.kind + '|' + p.tex] ||= []).push(p);
-    const m4 = new THREE.Matrix4(), rr = rng32(7);
+    for (const p of w.props) (by[`${p.kind}|${p.tex}|${p.look || ''}`] ||= []).push(p);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), at = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
     for (const k in by) {
-      const [kind, tex] = k.split('|'), list = by[k];
-      const geo = kind === 'wall' ? new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0) : new THREE.CylinderGeometry(0.1, 0.46, 1, 6).translate(0, 0.5, 0);
-      const im = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ map: this.tex(tex) }), list.length);
-      list.forEach((p, n) => {
-        m4.makeRotationY(kind === 'wall' ? 0 : rr() * 6.28).scale(new THREE.Vector3(1, p.h, 1)).setPosition(p.x, w.y(p.x, p.z), p.z);
-        im.setMatrixAt(n, m4);
+      const [kind, tex, look] = k.split('|'), list = by[k], rr = rng32(7 + list.length);
+      const turns = list.map(() => (kind === 'wall' ? Math.floor(rr() * 4) * Math.PI / 2 : rr() * 6.28));
+      const lay = (geo, mats, size) => {
+        const im = new THREE.InstancedMesh(geo, mats, list.length);
+        list.forEach((p, n) => {
+          size(p, sc); q.setFromAxisAngle(Y, turns[n]); at.set(p.x, w.y(p.x, p.z), p.z);
+          im.setMatrixAt(n, m4.compose(at, q, sc));
+        });
+        im.frustumCulled = false;
+        this.scene.add(im);
+      };
+      const old = () => lay(kind === 'wall' ? new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0) : new THREE.CylinderGeometry(0.1, 0.46, 1, 6).translate(0, 0.5, 0),
+        new THREE.MeshLambertMaterial({ map: this.tex(tex) }), (p, s) => s.set(1, p.h, 1));
+      if (!look) { old(); continue; }
+      loadProp(look).then((m) => {
+        if (!m) return old();
+        const z = m.size, side = Math.max(z.x, z.z);
+        lay(m.geo, m.mats, kind === 'wall' ? (p, s) => s.set(1 / z.x, p.h / z.y, 1 / z.z)
+          : (p, s) => { const t = 0.92 * (0.55 + 0.45 * clamp((p.h - 1.2) / 2.4, 0, 1)) / side; s.set(t, p.h / z.y, t); });
       });
-      im.frustumCulled = false;
-      this.scene.add(im);
     }
     for (const p of w.places) { const l = label(p.name, { size: 40, color: '#ffe2a0' }); l.position.set(p.cx, 4.6, p.cz); this.scene.add(l); }
   }
@@ -445,13 +458,14 @@ export class Renderer {
       add(MOUND, M(p.x + (r() - 0.5) * 0.2, 0, p.z + (r() - 0.5) * 0.2, r() * 6, 1.5, 0.45 + r() * 0.5, 1.5), bone ? 'bones' : 'rubble');
       if (r() < 0.45) add(BOX, M(p.x + (r() - 0.5) * 0.5, 0, p.z + (r() - 0.5) * 0.5, r() * 3, 0.5, 0.3, 0.7), 'block');
     }
-    // sarcophagi down the side walls; the one nearest the gate on the east has lost its lid
-    const candles = [];
+    // sarcophagi down the side walls; the one nearest the gate on the east has lost its lid. Boxes and slabs until the
+    // model (assets/props/sarcophagus: a chest and a lid) comes, which is turned so its old wax is under the candles.
+    const candles = [], sarcB = {};
     for (const s of c.sarcophagi) {
       const cz = s.z + (s.len - 1) / 2, ajar = s.x > c.x && s.z > c.z;
-      add(BOX, M(s.x, 0, cz, 0, 0.82, 0.62, s.len - 0.12), (nn) => (nn.y > 0.5 ? 'void' : 'block'));
-      if (ajar) add(BOX, M(s.x + 0.14, 0.62, cz + 0.22, 0.34, 0.94, 0.13, s.len - 0.02), 'slab', 0.5);   // pushed aside from within
-      else add(BOX, M(s.x, 0.62, cz, 0, 0.94, 0.13, s.len - 0.02), 'slab', 0.5);
+      add(BOX, M(s.x, 0, cz, 0, 0.82, 0.62, s.len - 0.12), (nn) => (nn.y > 0.5 ? 'void' : 'block'), 0, sarcB);
+      if (ajar) add(BOX, M(s.x + 0.14, 0.62, cz + 0.22, 0.34, 0.94, 0.13, s.len - 0.02), 'slab', 0.5, sarcB);   // pushed aside from within
+      else add(BOX, M(s.x, 0.62, cz, 0, 0.94, 0.13, s.len - 0.02), 'slab', 0.5, sarcB);
       candles.push([s.x, 0.75, s.z - 0.1 + (s.z < c.z ? 0 : s.len - 0.8)]);
     }
     // bones stacked the old way against the back wall: femur ends out, skulls on top
@@ -490,6 +504,27 @@ export class Renderer {
     const gateG = new THREE.Group();
     const gateMeshes = meshes(postB, gateG);
     crypt.add(gateG);
+    const sarcG = new THREE.Group();
+    meshes(sarcB, sarcG);
+    crypt.add(sarcG);
+    loadProp('sarcophagus').then((p) => {
+      if (!p) return;
+      crypt.remove(sarcG);
+      sarcG.traverse((o) => o.geometry?.dispose());
+      const none = new THREE.MeshBasicMaterial({ visible: false }), lidAt = p.mats.findIndex((x) => /lid/.test(x.name));
+      const chestM = p.mats.map((x, k) => (k === lidAt ? none : x)), lidM = p.mats.map((x, k) => (k === lidAt ? x : none));
+      for (const s of c.sarcophagi) {
+        const cz = s.z + (s.len - 1) / 2, ajar = s.x > c.x && s.z > c.z, turn = s.z < c.z ? 0 : Math.PI;
+        const chest = new THREE.Mesh(p.geo, chestM), lid = new THREE.Mesh(p.geo, lidM);
+        for (const m of [chest, lid]) { m.position.set(s.x, 0, cz); m.rotation.y = turn; m.scale.set(0.94 / p.size.x, 0.75 / p.size.y, (s.len - 0.1) / p.size.z); }
+        if (ajar) {
+          lid.position.x += 0.14; lid.position.z += 0.22; lid.rotation.y += 0.34;          // pushed aside from within
+          const dark = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.4, (s.len - 0.1) * 0.77).translate(0, 0.34, 0), matFor('void'));
+          dark.position.set(s.x, 0, cz); crypt.add(dark);                                  // and nothing to see inside but the dark
+        }
+        for (const m of [chest, lid]) { m.updateMatrix(); m.matrixAutoUpdate = false; crypt.add(m); }
+      }
+    });
 
     // candles: wax, a flame, and a soft glow round each cluster, and two warm lights that breathe
     const wax = [], flames = [];

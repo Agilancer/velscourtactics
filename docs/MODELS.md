@@ -68,7 +68,7 @@ male cut broader shoulders, as the DS game does.
 | `lancer_m/f` | An unbreakable knight-captain, heavy pale-steel full plate, bucket helm with a flat crest, broad pauldrons, tower-shield bracket on the left arm, banner pole socket on the back |
 | `dragon_knight_m/f` | A wyrm-blooded knight, crimson scale armour with black trim, horned open helm, scaled gauntlets ending in claws, ember-orange lining to the cloak |
 | `gunner_m/f` | A powder-stained engineer, brass goggles on a leather cap, long oilskin coat, bandolier of charges, heavy tool belt, scorched gloves |
-| `ninja_m/f` | A quiet killer from the far roads, charcoal wrapped jacket with a wine-red sash, deep hood and a cloth mask, lacquered leather plates on forearms and shins, a pouch of iron stars, a short hooked knife in each hand (not made: the men wear bm's three ninja bodies, the women three of bm's archer bodies dyed `night`) |
+| `ninja_m/f` | A quiet killer from the far roads, charcoal wrapped jacket with a wine-red sash, deep hood and a cloth mask, lacquered leather plates on forearms and shins, a closed pouch of throwing irons, two short hooked knives sheathed at the small of the back (made in the eighth batch; at tiers 3 and 5 they still wear bm's bodies) |
 
 ### The five who matter (remember to send me these)
 
@@ -170,10 +170,11 @@ Monsters get the style block too, minus "5-heads-tall" and "neutral expression".
 ## 6. Townsfolk and scenery
 
 `garrick`, `orrin`, `zafir`, `fortunato`, `tamsin`, `aggie`, the apprentices, `kit`, `jory`, `hob`, `agnes`
-(see `src/data/cast.js` for who each is), and the eight recruits, who can use the class models.
-The scenery is in (the sixth and seventh batches, section 12): pine, oak, a tree for each land (snow pine, dead
-tree, charred tree, palm), the well, the bounty board, a signpost, a market stall, fence and stone wall pieces, a
-cottage, a townhouse, the inn and the forge. Still wanted: more house shapes, and the townsfolk.
+(see `src/data/cast.js` for who each is). The eight recruits have bodies of their own (the eighth batch).
+The scenery is in (the sixth to eighth batches, section 12): pine, oak, a tree for each land (snow pine, dead
+tree, charred tree, palm), the well, the bounty board, a signpost, a market stall, fence and stone wall pieces, two
+cottages, a townhouse, a shop house, the inn and the forge, each land's broken wall and standing stone, and the
+crypt's sarcophagus. Still wanted: the townsfolk.
 
 ## 7. The first batch: what to make first
 
@@ -638,7 +639,55 @@ keep a few small stones at the foot, which are part of the root mesh and hardly 
 `gunner_m` (1.82, `gunner_f`'s: `Shoot`, `Fan`, `Lob`, `Deploy`). The gunner's crossed bandoliers make an X of
 gear on the chest, which was judged not to be a device. `bodyKey` prefers a bm tier body at or under the armour
 worn, so `boomerang_knight_f` shows at tiers 1 and 2 only, and `gunner_m` not at all while `gunner_m_t1` is in the
-manifest.
+manifest (it was taken out in the eighth batch).
+
+### The eighth batch: the ninja, the eight recruits, the lords' places, two houses and a sarcophagus
+
+Twenty models for about 530 credits (560 were asked for): the ninja's two class bodies, a body for each of the eight
+recruits, each land's broken wall and standing stone, a second townhouse and cottage, and the crypt's sarcophagus.
+The same route as the sixth batch (pictures in `art/concepts/v2/`); the Blender working file is now
+`v2 ornate (ninety-eight) - tactics.blend` in the meshy folder.
+
+**The ninja** (`ninja_m`, `ninja_f`) has a branch of its own in `retarget.py`, built on named hand positions (wind,
+cut, through, jab, cock, fling): `Slash` (attack, Venom Edge), `Cuts` (Hundred Cuts, Last Cut: both hands in turn,
+then a double jab), `Stars` (Throwing Stars, Caltrops: three flat throws), `Smoke` (Smoke Bomb, Vanish: the ball
+raised, a dash, a crouch behind the arm) and `Step` (Shadow Step: low, then a cut out of it). The picture asked for
+the knives sheathed at the small of the back, since an A-pose 3D step drops held weapons; in the game the knives come
+from the gear. They cross in an X on the back, gear like the gunner's bandoliers. `ninja_m_t1` and `ninja_f_t1`
+(bm bodies) are out of the manifest, so these show at tiers 1 and 2.
+
+**The recruits** are named keys (`HEROES[id].model` in `cast.js`, so `bodyKey` takes them before any class body) and
+wear their class body's clips: built with `T.build(<their class>)`. Their `height`s put each head where the class
+bodies' are, so a hat, a crest or a crow on top makes the figure taller rather than the person smaller:
+
+| Key | Class (clips as) | `height` |
+|---|---|---|
+| `wren` | ranger (`ranger_f`) | 1.7 |
+| `ismene` | wizard (`wizard_f`) | 1.74 |
+| `mortimer` | necromancer (`necromancer_m`) | 1.89 |
+| `brakka` | barbarian (`barbarian_f`) | 1.96 |
+| `kestrel` | dragoon (`dragoon_m`) | 1.94 |
+| `maudlin` | carrion witch (`carrion_witch_f`) | 1.51 |
+| `jasper` | bard (`bard_m`) | 1.92 |
+| `flint` | gunner (`gunner_m`) | 1.86 |
+
+Flint's breastplate first had tooling that read as letters: it was blurred out of the picture before the 3D step,
+and the tooling Meshy painted back in its place (scrolls that might pass for runes) was painted out of the texture
+in Blender, the dark strokes on his front's leather faces only. Jasper's papers are blank and Mortimer's tape is
+gone in the 3D.
+
+**The scenery** takes a third style block, `style.wild` (`prompt.mjs` uses it for the ruins, the stones and the
+sarcophagus): weathered stone, no carving, no figures, no crosses.
+
+| Key | Size (wide x deep x tall, tiles) | In the world |
+|---|---|---|
+| `ruin_waste`, `ruin_badlands`, `ruin_fen`, `ruin_ash` | 1 x 1 x 1.3 to 2, 1,800 triangles | each land's place (`ruin` in `REGIONS`): every block of its broken wall, scaled to fill its tile and as tall as the wall there, turned a quarter at a time |
+| `spire_ice`, `spire_hoodoo`, `spire_basalt` | 0.92 across, 1.2 to 2 tall, 1,500 triangles | each land's standing stones (`stone` in `REGIONS`; the Fen has none), as tall as before and narrower the shorter they are |
+| `shophouse` | 4.8 x 4.6 x 5.7 | Thicker Than Hope and Fortunato's Wheel; its door is in the middle |
+| `cottage_2` | 4.8 x 3.8 x 3.5 | Reed Saddlery and The Curator's Bench: a stone cottage with a lean-to |
+| `sarcophagus` | 0.94 x 1.9 x 0.75, chest and lid as two materials | the crypt's four, turned so the old wax on the lid is under the candles; the lidless one by the gate draws the chest, the lid pushed aside, and the dark inside |
+
+`buildRuins` and `buildCrypt` keep the boxes and cones for a missing file.
 
 ### Looking at a model in the running game
 

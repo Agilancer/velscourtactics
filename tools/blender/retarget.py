@@ -382,7 +382,7 @@ class Target:
         idle = lambda f: g('M_Idle_02', f % 44.8)
         # the arms hang 10 degrees off the body (15 on the bulky ones, to clear pauldrons and hip plates), elbows a little bent
         AR = arms or (15 if self.key.startswith(('homunculus', 'paladin', 'barbarian', 'death_knight', 'lancer', 'dragon_knight', 'totem_master', 'zombie_brute',
-                                                 'zombie_slagback', 'zombie_stoker', 'zombie_warden')) else
+                                                 'zombie_slagback', 'zombie_stoker', 'zombie_warden', 'brakka', 'flint')) else
                       22 if self.key.startswith(('slime_lord', 'zombie_bonesack', 'zombie_leechmother')) else 10)   # the slime lords, the bonesack, the leech mother: round as a cask
         self.held = None
 
@@ -722,6 +722,32 @@ class Target:
             set_ = L(both(crouch(tilt(B0, SPINE, 'fwd', 18), 1.0), (40, 92), 25))             # Gun Turret: down on the knees, set before the feet
             W('Deploy', [(0, B0), (6, L(both(crouch(B0, 0.5), (60, 90), 60))), (12, set_), (24, set_), (36, BI(36))])
             names += ['Shoot', 'Fan', 'Lob', 'Deploy']
+        elif cls == 'ninja':                      # a short hooked knife in each hand: cuts, stars, smoke
+            # Each hand by name: 'wind' high across the body (the knife over the far shoulder), 'cut' out low at its own side,
+            # 'thru' carried on down and back, 'jab' straight out at the foe, 'cock' level across the chest, 'fling' thrown flat out.
+            POS = {'wind': ((125, 165), 125), 'cut': ((70, 35), (60, 15)), 'thru': ((45, -25), 20), 'jab': ((85, 88), (87, 88)),
+                   'cock': ((90, 170), 135), 'fling': ((90, 60), (90, 50))}
+
+            def nj(yaw=0, k=0.3, R=None, Lh=None):                            # the chest turned (to its left), the knees bent k
+                p = B0
+                if R: p = arm(p, 'Right', *POS[R])
+                if Lh: p = arm(p, 'Left', *POS[Lh])
+                return L(crouch(tilt(p, SPINE, 'yaw', yaw), k))
+            W('Slash', [(0, B0), (3, nj(10, 0.2, R='wind')), (6, nj(-10, 0.35, R='cut')), (9, nj(-12, 0.35, R='thru')),
+                        (12, nj(-12, 0.3, R='thru')), (21, BI(21))])                                    # plain attack, Venom Edge: backhand, high to low
+            W('Cuts', [(0, B0), (2, nj(10, 0.3, R='wind')), (4, nj(-10, 0.35, R='cut', Lh='wind')), (6, nj(10, 0.35, R='wind', Lh='cut')),
+                       (8, nj(-10, 0.35, R='cut', Lh='wind')), (10, nj(10, 0.35, R='wind', Lh='cut')), (13, nj(0, 0.4, R='jab', Lh='thru')),
+                       (17, nj(0, 0.4, R='jab', Lh='thru')), (27, BI(27))])                             # Hundred Cuts, the Last Cut: hand over hand, then home
+            W('Stars', [(0, B0), (3, nj(12, 0.2, R='cock')), (5, nj(-8, 0.25, R='fling')), (7, nj(10, 0.2, R='cock')), (9, nj(-8, 0.25, R='fling')),
+                        (11, nj(10, 0.2, R='cock')), (13, nj(-8, 0.25, R='fling')), (16, nj(-8, 0.25, R='fling')), (25, BI(25))])   # Throwing Stars (three), Caltrops
+            raise_ball = L(crouch(arm(B0, 'Right', (140, 85), (150, 95)), 0.1))                         # Smoke Bomb, Vanish: the ball up,
+            dash = L(crouch(tilt(arm(B0, 'Right', (25, 95), 10), SPINE, 'fwd', 14), 0.8))               # dashed down at the feet,
+            cover = L(crouch(tilt(arm(arm(B0, 'Left', (95, 150), (150, 175)), 'Right', (40, -40), 30), SPINE, 'fwd', 10), 0.9))   # low in it, an arm over the face
+            W('Smoke', [(0, B0), (4, raise_ball), (7, dash), (10, cover), (22, cover), (32, BI(32))])
+            low = L(crouch(tilt(both(B0, (55, -80), 20), SPINE, 'fwd', 22), 0.7))                      # Shadow Step: pitched forward, the arms trailing,
+            W('Step', [(0, B0), (3, low), (9, low), (12, nj(10, 0.45, R='wind')), (15, nj(-12, 0.45, R='cut')), (18, nj(-12, 0.4, R='thru')),
+                       (28, BI(28))])                                                                    # and out of it already cutting
+            names += ['Slash', 'Cuts', 'Stars', 'Smoke', 'Step']
         # ---- the summons: the common set and a blow of their own ----
         elif cls == 'skeleton':                   # Raise Skeleton: an old guard, still swinging
             swing(); names += ['Swing']
