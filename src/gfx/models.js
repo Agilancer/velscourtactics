@@ -191,20 +191,40 @@ export function makeSummon(model) {
 }
 
 // ---- animation: one state machine for every stand-in ----
-// states: idle | walk | attack | cast | hit | dead | cheer
-export function setAnim(model, state, hold = 0) {
+// The seven every model has: idle | walk | attack | cast | hit | dead | cheer.
+// A real model may have more (jump, run, wounded, stunned, revive, talk, item, and one per skill);
+// where it has none, or on a stand-in, the state falls back along this table (null: carry on as you were).
+const FALLBACK = { jump: null, run: 'walk', wounded: 'idle', stunned: 'idle', revive: 'idle', talk: 'idle', item: 'cast' };
+const LOOPS = new Set(['idle', 'walk', 'run', 'wounded', 'stunned', 'talk', 'cheer']);
+const STANDIN = new Set(['idle', 'walk', 'attack', 'cast', 'hit', 'dead', 'cheer']);
+export function setAnim(model, state, hold = 0, fallback) {
   const a = (model.userData.anim ||= { state: 'idle', t: 0, hold: 0 });
-  if (a.state === 'dead' && state !== 'idle') return;
-  if (a.state === state && state === 'walk') return;
-  a.state = state; a.t = 0; a.hold = hold;
-  const mx = model.userData.mixer;
-  if (mx) playClip(model, state);
+  if (a.state === 'dead' && state !== 'idle' && state !== 'revive') return;
+  const clips = model.userData.clips;
+  // find something this model can actually play
+  for (let n = 0; n < 4 && !(clips ? clips[state] : STANDIN.has(state)); n++) {
+    const next = state in FALLBACK ? FALLBACK[state] : (fallback || 'idle');
+    if (next === null) return;
+    state = next; fallback = null;
+  }
+  if (state === 'idle' && clips && model.userData.rest && clips[model.userData.rest]) state = model.userData.rest;
+  if (a.state === state && LOOPS.has(state)) return;
+  a.state = state; a.t = 0; a.hold = clips ? 0 : hold;
+  if (model.userData.mixer) playClip(model, state);
+}
+// What a model does when it has nothing else to do: 'idle', or 'wounded' or 'stunned' while that lasts.
+export function setRest(model, state) {
+  const was = model.userData.rest || 'idle';
+  if (was === state) return;
+  model.userData.rest = state === 'idle' ? null : state;
+  const a = model.userData.anim;
+  if (a && (a.state === 'idle' || a.state === was)) { a.state = ''; setAnim(model, 'idle'); }
 }
 
 export function animate(model, dt) {
   const a = (model.userData.anim ||= { state: 'idle', t: Math.random() * 6, hold: 0 });
   a.t += dt;
-  if (model.userData.mixer) { model.userData.mixer.update(dt); if (a.hold && a.t > a.hold) setAnim(model, 'idle'); return; }
+  if (model.userData.mixer) { model.userData.mixer.update(dt); model.userData.post?.(a.state); return; }
   const p = model.userData.parts;
   if (!p) return;
   const lean = model.userData.lean || 0, zomb = model.userData.zombie;
@@ -235,13 +255,39 @@ export async function loadManifest() {
   try { const r = await fetch('assets/models/manifest.json'); manifest = r.ok ? await r.json() : {}; } catch { manifest = {}; }
 }
 function playClip(model, state) {
-  const d = model.userData.clips; if (!d) return;
-  const clip = d[state] || d.idle; if (!clip) return;
-  const mx = model.userData.mixer, act = mx.clipAction(clip);
-  const once = ['attack', 'cast', 'hit', 'dead', 'cheer'].includes(state);
-  mx.stopAllAction(); act.reset(); act.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); act.clampWhenFinished = state === 'dead'; act.play();
+  const u = model.userData, clip = u.clips[state] || u.clips.idle;
+  if (!clip) return;
+  const act = u.mixer.clipAction(clip), once = !LOOPS.has(state);
+  act.reset(); act.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); act.clampWhenFinished = once;
+  act.timeScale = (u.speed && u.speed[state]) || 1;
+  if (u.playing && u.playing !== act) act.crossFadeFrom(u.playing, 0.12, false);
+  act.play(); u.playing = act;
+}
+// The same geometry with every vertex's normal averaged over all vertices at its position.
+function smoothed(geo) {
+  const g = geo.clone(), pos = g.attributes.position, nor = g.attributes.normal.clone(), sum = new Map();
+  const key = (i) => `${pos.getX(i).toFixed(4)},${pos.getY(i).toFixed(4)},${pos.getZ(i).toFixed(4)}`;
+  for (let i = 0; i < pos.count; i++) { const k = key(i), a = sum.get(k) || [0, 0, 0]; a[0] += nor.getX(i); a[1] += nor.getY(i); a[2] += nor.getZ(i); sum.set(k, a); }
+  for (let i = 0; i < pos.count; i++) { const a = sum.get(key(i)), l = Math.hypot(a[0], a[1], a[2]) || 1; nor.setXYZ(i, a[0] / l, a[1] / l, a[2] / l); }
+  g.setAttribute('normal', nor);
+  return g;
+}
+// Keeps a clip on its tile: the root bone's sideways and forward travel is flattened, its height kept.
+function inPlace(clip, home) {
+  for (const tr of clip.tracks) {
+    if (!/Hips\.position$/.test(tr.name)) continue;
+    const v = tr.values, h = home || [v[0], v[1], v[2]];
+    for (let i = 0; i < v.length; i += 3) { v[i] = h[0]; v[i + 2] = h[2]; }
+    return h;
+  }
+  return home;
 }
 // Wraps a stand-in: if the manifest names a .glb for this key, the stand-in is replaced once it loads.
+// Manifest entry: { file, height, turn, anims: {state: clipName}, speed: {state: n}, inPlace, matte, lift,
+//   bones: {boneNameEnding: scale}   proportions, nearer the compact tactics look (legs shorter, head bigger)
+//   outline: thickness               a dark hull round the figure so it reads against the ground
+//   normal: strength                 how hard the baked normal map bites
+//   glow: { bone, at: [x,y,z], color, size, light, held: {state: bone} }   a lit thing she carries }
 export function withOverride(key, standIn) {
   const def = manifest && manifest[key];
   if (!def) return standIn;
@@ -250,18 +296,89 @@ export function withOverride(key, standIn) {
   holder.userData = { ...standIn.userData };
   const use = (gltf) => {
     const obj = cloneSkinned(gltf.scene);
+    obj.updateMatrixWorld(true);
     const bb = new THREE.Box3().setFromObject(obj), h = bb.max.y - bb.min.y || 1;
     const want = def.height || standIn.userData.height || 1.6;
     obj.scale.setScalar(want / h); obj.position.y = -bb.min.y * (want / h);
     obj.rotation.y = def.turn || 0;
+    obj.traverse((o) => {
+      if (!o.isMesh) return;
+      o.frustumCulled = false;                           // a skinned mesh's bounds are its rest pose's
+      o.material = o.material.clone();
+      // exports often arrive marked as blended; a body is solid unless the manifest says otherwise
+      if (!def.blend) { o.material.transparent = false; o.material.depthWrite = true; o.material.opacity = 1; o.material.alphaTest = 0; }
+      // There is no environment to reflect, so metal would go black: Meshy's bakes are read as matte paint.
+      if (def.matte !== false) { o.material.metalness = 0; o.material.metalnessMap = null; o.material.roughness = 1; o.material.roughnessMap = null; }
+      // lift: how much of the model's own colour glows back, so dark costumes still read at this distance
+      if (def.lift) { o.material.emissive = new THREE.Color(0xffffff); o.material.emissiveMap = o.material.map; o.material.emissiveIntensity = def.lift; }
+    });
+    const bones = {};
+    obj.traverse((o) => { if (o.isBone) bones[o.name] = o; });
+    const find = (end) => Object.keys(bones).filter((n) => n.endsWith(end)).map((n) => bones[n]);
+    // proportions: scale some bones every frame (the clips don't key scale), and put the feet back on the ground
+    const scaled = [];
+    for (const [end, k] of Object.entries(def.bones || {})) for (const b of find(end)) scaled.push([b, k]);
+    const leg = (def.bones && (def.bones.LeftUpLeg || def.bones.UpLeg)) || 1;
+    if (leg !== 1) { const up = find('LeftUpLeg')[0]; if (up) obj.position.y -= up.getWorldPosition(new THREE.Vector3()).y * (1 - leg); }
+    obj.traverse((o) => {
+      if (!o.isSkinnedMesh) return;
+      if (def.normal != null && o.material.normalScale) o.material.normalScale.setScalar(def.normal);
+      if (def.outline && !o.userData.hull) {
+        const m = new THREE.MeshBasicMaterial({ color: def.outlineColor || 0x14121f, side: THREE.BackSide });
+        m.onBeforeCompile = (sh) => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>\n transformed += normalize(normal) * ${def.outline.toFixed(4)};`); };
+        const hull = new THREE.SkinnedMesh(smoothed(o.geometry), m);
+        hull.bind(o.skeleton, o.bindMatrix); hull.frustumCulled = false; hull.userData.hull = true;
+        hull.position.copy(o.position); hull.quaternion.copy(o.quaternion); hull.scale.copy(o.scale);
+        o.parent.add(hull);
+      }
+    });
+    let glow = null;
+    if (def.glow) {
+      const g = def.glow, c = document.createElement('canvas'); c.width = c.height = 64;
+      const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+      glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), color: g.color || '#ffb347', blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: g.opacity ?? 0.55 }));
+      glow.scale.setScalar(g.size || 0.5); glow.renderOrder = 5;
+      const lamp = g.light ? new THREE.PointLight(g.color || '#ffb347', g.light, 3.2, 1.4) : null;
+      if (lamp) glow.add(lamp);
+      holder.add(glow);
+      glow.userData = { home: find(g.bone || 'Hips')[0], at: new THREE.Vector3(...(g.at || [0, 0, 0])), held: Object.fromEntries(Object.entries(g.held || {}).map(([st, b]) => [st, find(b)[0]])), size: g.size || 0.5, opacity: g.opacity ?? 0.55, lamp, light: g.light || 0 };
+    }
+    const v = new THREE.Vector3();
+    holder.userData.post = (state) => {
+      for (const [b, k] of scaled) { if (k.length) b.scale.set(k[0], k[1], k[2]); else b.scale.setScalar(k); }
+      if (!glow) return;
+      const u = glow.userData, hand = u.held[state], b = hand || u.home;
+      if (!b) return;
+      b.updateWorldMatrix(true, false);
+      v.copy(hand ? v.set(0, 0, 0) : u.at); b.localToWorld(v); holder.worldToLocal(v);
+      glow.position.lerp(v, hand || glow.userData.was ? 0.35 : 1); glow.userData.was = !!hand;
+      const want = u.size * (hand ? 2.2 : 1) * (1 + 0.06 * Math.sin(performance.now() / 130));
+      glow.scale.setScalar(glow.scale.x + (want - glow.scale.x) * 0.2);
+      const lit = state === 'dead' ? 0.2 : 1;                      // the lantern gutters when she falls
+      glow.material.opacity += (u.opacity * lit - glow.material.opacity) * 0.1;
+      if (u.lamp) u.lamp.intensity += (u.light * lit - u.lamp.intensity) * 0.1;
+    };
     holder.remove(standIn); holder.add(obj);
     holder.userData.parts = null;
+    holder.userData.height = want;
     holder.userData.mixer = new THREE.AnimationMixer(obj);
+    holder.userData.speed = def.speed || {};
     const clips = {};
-    for (const [state, name] of Object.entries(def.anims || {})) clips[state] = gltf.animations.find((c) => c.name === name);
+    let home = null;
+    const prep = (c) => { if (def.inPlace) { const k = c.clone(); home = inPlace(k, home); return k; } return c; };
+    const order = Object.entries(def.anims || {}).sort((a, b) => (a[0] === 'idle' ? -1 : b[0] === 'idle' ? 1 : 0));
+    for (const [state, name] of order) { const c = gltf.animations.find((c) => c.name === name); if (c) clips[state] = prep(c); else console.warn('model', key, 'has no clip named', name); }
     if (!clips.idle && gltf.animations[0]) clips.idle = gltf.animations[0];
     holder.userData.clips = clips;
-    playClip(holder, holder.userData.anim?.state || 'idle');
+    holder.userData.mixer.addEventListener('finished', () => {
+      const a = holder.userData.anim;
+      if (a && a.state !== 'dead' && !LOOPS.has(a.state)) { a.state = ''; setAnim(holder, 'idle'); }
+    });
+    const st = holder.userData.anim?.state || 'idle';
+    if (holder.userData.anim) holder.userData.anim.state = '';
+    setAnim(holder, st);
   };
   if (!loaded.has(def.file)) loaded.set(def.file, new Promise((res, rej) => new GLTFLoader().load('assets/models/' + def.file, res, undefined, rej)));
   loaded.get(def.file).then(use).catch((e) => console.warn('model', key, 'failed to load; keeping the stand-in', e));

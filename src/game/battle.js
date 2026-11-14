@@ -8,7 +8,7 @@ import { zombieStats } from '../data/enemies.js';
 import { HEROES } from '../data/cast.js';
 import { heroStats, heroSkills, basicAttack, gainXp, noteKill, partyHeroes } from './party.js';
 import { heroModel } from './explore.js';
-import { makeSummon, shadowDisc, setAnim, animate } from '../gfx/models.js';
+import { makeSummon, shadowDisc, setAnim, setRest, animate } from '../gfx/models.js';
 import { DPAD } from '../core/input.js';
 import { sfx } from '../core/audio.js';
 
@@ -234,7 +234,7 @@ export class Battle {
       }
     }
     const spell = sk.kind !== 'phys';
-    setAnim(u.model, spell ? 'cast' : 'attack', 0.5);
+    setAnim(u.model, sk.item ? 'item' : sk.anim || (spell ? 'cast' : 'attack'), 0.5, spell ? 'cast' : 'attack');
     (sk.kind === 'heal' || sk.kind === 'buff' || sk.kind === 'item' ? sfx.heal : spell ? sfx.cast : sfx.ui)();
     await this.wait(260);
     if (sk.kind === 'summon') { const s = this.addSummon(u, sk.summon, tx, tz); this.faceTo(s, tx + u.face[0], tz + u.face[1]); this.float(s, s.name, 'good'); }
@@ -242,7 +242,7 @@ export class Battle {
       for (const t of this.affected(u, sk, tx, tz)) {
         if (sk.item === 'potion') this.mend(t, Math.round(t.maxhp * 0.45));
         else if (sk.item === 'ether') { t.mp = Math.min(t.maxmp, t.mp + Math.round(t.maxmp * 0.45)); this.float(t, 'Mana', 'good'); }
-        else { t.alive = true; t.hp = Math.round(t.maxhp / 3); t.hero.hp = t.hp; t.ct = 0; setAnim(t.model, 'idle'); this.float(t, 'Up!', 'heal'); }
+        else { t.alive = true; t.hp = Math.round(t.maxhp / 3); t.hero.hp = t.hp; t.ct = 0; setAnim(t.model, 'revive'); this.float(t, 'Up!', 'heal'); }
       }
     } else {
       for (let h = 0; h < (sk.hits || 1); h++) {
@@ -520,7 +520,7 @@ export class Battle {
     let title, sub;
     if (how === 'win') {
       sfx.win(); title = 'The dead lie still'; sub = `${this.slain.length} put down`;
-      for (const u of heroes) if (u.alive) setAnim(u.model, 'cheer');
+      for (const u of heroes) if (u.alive) { setRest(u.model, 'idle'); setAnim(u.model, 'cheer'); }
       let gold = 0; const got = [];
       for (const f of this.slain) {
         const loot = rollLoot(f.lvl); gold += loot.gold;
@@ -595,6 +595,8 @@ export class Battle {
       u.bar.firstChild.style.width = (100 * u.hp / u.maxhp) + '%';
       u.bar.lastChild.style.width = u.maxmp ? (100 * u.mp / u.maxmp) + '%' : '0';
     }
+    // how each of them stands while waiting: reeling if stunned, bent double if nearly done for
+    if (!this.over) for (const u of this.units) if (u.alive) setRest(u.model, this.has(u, 'stun') ? 'stunned' : u.hp < u.maxhp * 0.3 ? 'wounded' : 'idle');
     const a = this.active, mode = this.sel.mode;
     const focus = (mode === 'target' || mode === 'move' || mode === 'place' || mode === 'menu') && this.cursor ? { x: this.cursor.x, y: this.w.y(this.cursor.x, this.cursor.z), z: this.cursor.z } : a ? a.model.position : this.origin;
     this.r.follow(focus.x, focus.y || 0, focus.z, dt * 0.6);

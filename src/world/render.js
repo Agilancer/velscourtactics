@@ -37,6 +37,10 @@ export class Renderer {
     const sun = new THREE.DirectionalLight(0xffe0b0, 1.5);
     sun.position.set(8, 14, 3);
     this.scene.add(sun);
+    // a cold light from behind and to the left, so figures get an edge against the dark ground
+    const rim = new THREE.DirectionalLight(0x9fb4d4, 0.9);
+    rim.position.set(-8, 7, -6);
+    this.scene.add(rim);
 
     this.buildGround();
     this.buildTrees();

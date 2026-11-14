@@ -68,7 +68,7 @@ male cut broader shoulders, as the DS game does.
 
 ### The five who matter (remember to send me these)
 
-**I still need these five from you.** Until they arrive, each wears a class stand-in.
+**Lisandra is in (section 10). I still need the other four from you.** Until they arrive, each wears a class stand-in.
 
 | Key | Who | Subject line |
 |---|---|---|
@@ -245,21 +245,74 @@ Wolf: `idle`, `run`, `bite`, `hit`, `dead`. Slime: `idle`, `hop`, `lunge`, `dead
 ## 9. Putting a finished model in the game
 
 1. Save the file as `assets/models/<key>.glb` (animations inside the same file).
-2. Add it to `assets/models/manifest.json`:
+2. Add it to `assets/models/manifest.json`. Lisandra's entry is the worked example:
 
 ```json
 {
   "lisandra": {
     "file": "lisandra.glb",
-    "height": 1.6,
-    "turn": 0,
-    "anims": { "idle": "Idle", "walk": "Walking", "attack": "Staff_Jab", "cast": "Cast_Two_Hand", "hit": "Hit", "dead": "Death", "cheer": "Victory" }
+    "height": 1.7,
+    "inPlace": true,
+    "lift": 0.15,
+    "normal": 0.5,
+    "outline": 0.018,
+    "bones": { "Spine": [1.15, 1, 1.15], "Head": 1.4, "LeftUpLeg": 0.85, "RightUpLeg": 0.85, "LeftHand": 1.15, "RightHand": 1.15 },
+    "glow": { "bone": "Hips", "at": [16.9, -33.9, 13.9], "color": "#e8922e", "size": 0.24, "opacity": 0.55, "light": 2.2, "held": { "lantern": "LeftHand" } },
+    "anims": { "idle": "Idle", "walk": "Walk_Bent", "attack": "Bolt", "cast": "Cast", "hit": "Hit", "dead": "Dead_Fall", "cheer": "Victory" },
+    "speed": { "walk": 1.4 }
   }
 }
 ```
 
-`height` is in tiles (a person is about 1.6), `turn` is radians if the model faces the wrong way, and
-`anims` maps the game's seven states to the clip names inside your file. A model with no entry keeps
-its stand-in, so they can arrive one at a time. The loader has been tried once, with bm's
-`assets/monsters/zombie/zombie_1.glb` (a rigged model with its clips inside): it loaded, scaled and
-animated. It has not been tried with a Meshy export yet; the first one you send is that test.
+| Field | What it does |
+|---|---|
+| `height` | how tall she stands, in tiles (a stand-in is 1.6) |
+| `turn` | radians, if the model faces the wrong way |
+| `anims` | the game's state names mapped to the clip names inside the file |
+| `speed` | playback speed per state |
+| `inPlace` | flattens the root bone's sideways and forward travel, so Mixamo clips stay on their tile |
+| `lift` | how much of the model's own colour glows back; dark costumes need a little |
+| `normal` | normal map strength; Meshy's bakes sparkle at this distance unless it is turned down |
+| `outline` | thickness of the dark hull round the figure, in the model's own units |
+| `bones` | scales for bones whose names end with the key: bigger head and hat, shorter legs, the compact tactics look |
+| `glow` | a lit thing she carries: a glow and a small light at a bone, which moves to another bone in the states listed in `held` |
+| `matte` | `false` keeps the file's metalness (there is no environment to reflect, so the default reads metal as paint) |
+
+A model with no entry keeps its stand-in, so they can arrive one at a time.
+
+### The states a model can have
+
+Every model needs the first seven. The rest fall back if missing (in brackets).
+
+`idle`, `walk`, `attack`, `cast`, `hit`, `dead`, `cheer`; then `run` (walk), `jump` (keeps walking),
+`wounded` (idle; played under 30% life), `stunned` (idle), `revive` (idle), `talk` (idle; played while
+that character is speaking), `item` (cast). A skill can name its own state with `anim` in
+`src/data/classes.js` (Lisandra's are `cast_bolt`, `snap`, `lantern`, `wave`); a model without it plays
+`cast` or `attack`.
+
+## 10. Lisandra, as done
+
+Source: `LISANDRA OLD.glb` (Meshy, Mixamo rig, 51 MB). The game copy is `assets/models/lisandra.glb`
+(2.2 MB: textures at 1024 as JPEG, sword clips dropped). The Blender working file with every clip is
+saved beside the source as `LISANDRA OLD - tactics.blend`.
+
+Her seventeen clips were composed in Blender from poses of the clips the model came with (a pose from one
+clip for some bones, blended, retimed or reversed), all on one bent idle so nothing snaps:
+
+`Idle`, `Walk_Bent`, `Run_Bent`, `Hop`, `Bolt` (Old Tricks and her plain attack), `Snap` (The Snap),
+`Lantern_Up` (Lantern Light; the glow moves to her raised hand), `Wave` (Wave of Candles), `Cast`, `Hit`,
+`Stunned`, `Wounded`, `Dead_Fall`, `Revive`, `Victory`, `Talk`, `Drink`.
+
+The texture was regraded for this camera: lifted out of the dark, the hat pushed to night indigo, the
+mantle to wine, the pale cloth to dirty parchment.
+
+Two critics reviewed her twice, one on animation and one on how she sits in the game. Scores went from
+4 and 4 to 6 and 6.5, and the second round of fixes went in after that without a third review. What they
+still wanted and has not been done: a guard or dodge reaction, a distinct charge-and-hold for the generic
+cast, and darker gloves.
+
+### Looking at a model in the running game
+
+`python tools/serve.py 8417` serves the game and saves any picture the page posts:
+`game.r.render(); fetch('/shot?name=x', {method: 'POST', body: game.r.gl.domElement.toDataURL()})`
+writes `tools/build/shots/x.png`, and `python tools/sheet.py <tag>` tiles a set of them into one sheet.

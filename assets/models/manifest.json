@@ -1,1 +1,20 @@
-{}
+{
+  "lisandra": {
+    "file": "lisandra.glb",
+    "height": 1.7,
+    "inPlace": true,
+    "lift": 0.15,
+    "normal": 0.5,
+    "outline": 0.018,
+    "bones": { "Spine": [1.15, 1, 1.15], "Head": 1.4, "LeftUpLeg": 0.85, "RightUpLeg": 0.85, "LeftHand": 1.15, "RightHand": 1.15 },
+    "glow": { "bone": "Hips", "at": [16.9, -33.9, 13.9], "color": "#e8922e", "size": 0.24, "opacity": 0.55, "light": 2.2, "held": { "lantern": "LeftHand" } },
+    "anims": {
+      "idle": "Idle", "walk": "Walk_Bent", "run": "Run_Bent", "jump": "Hop",
+      "attack": "Bolt", "cast": "Cast",
+      "cast_bolt": "Bolt", "snap": "Snap", "lantern": "Lantern_Up", "wave": "Wave",
+      "hit": "Hit", "dead": "Dead_Fall", "revive": "Revive",
+      "wounded": "Wounded", "stunned": "Stunned", "cheer": "Victory", "talk": "Talk", "item": "Drink"
+    },
+    "speed": { "walk": 1.4, "jump": 2.2, "cast": 1.3, "wave": 1.5, "hit": 1.3, "dead": 1.3 }
+  }
+}
