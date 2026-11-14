@@ -78,6 +78,13 @@ more; step them onto a trap and they stop there.
 The fight's log sits bottom left (across the top on a phone): drag its corner to size it, fold it with the arrow,
 and the gear sets the letter size, how dark the window is and its size. Those settings stay in your browser.
 
+On a phone, either way up, the screen is kept for the game. Party, Bag, Quests, Auto, the fight's speed, the
+D-pad setting and Sound fold into a drawer behind the round button at the top right, and the quests in hand are listed
+in it rather than down the side of the screen. The button shows a light when a quest can be claimed and says AUTO
+while auto-play has the party. The party is a column of slim bars at the top left (tap them for the Party screen). In a
+fight the d-pad, the A and B buttons and the party column go away: you tap the tiles, and the log starts folded to its
+last line.
+
 ## What is in it
 
 - **Herrington Hollow**: eleven buildings, a well, a bounty board, ringed with trees, four roads out.

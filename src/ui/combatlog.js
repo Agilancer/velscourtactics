@@ -5,7 +5,8 @@ import { el } from '../core/util.js';
 
 const KEY = 'velscour-tactics-log';
 const KEEP = 240;
-const narrow = () => window.matchMedia('(max-width: 760px)').matches;
+// a phone either way up: the same test as the phone layout in css/style.css
+const narrow = () => window.matchMedia('(max-width: 760px), (max-height: 520px)').matches;
 const DEFAULTS = { desk: { w: 470, h: 210, font: 15, shade: 0.82, min: false }, mob: { w: 0, h: 92, font: 13, shade: 0.82, min: true } };
 const GEAR = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1L11 21h4l.4-2.7a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5L19.4 13zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>';
 
@@ -67,7 +68,8 @@ export class CombatLog {
     const p = this.p, m = narrow(), s = this.el.style;
     s.setProperty('--lg-font', p.font + 'px');
     s.setProperty('--lg-shade', p.shade);
-    // on a phone it runs across the top under the turn order and grows downward; elsewhere it sits bottom left
+    // on a phone it runs along the top under the turn order and grows downward (its width is the stylesheet's);
+    // elsewhere it sits bottom left
     s.width = m ? '' : Math.round(Math.max(240, Math.min(p.w, innerWidth - 24))) + 'px';
     // a short screen (a phone on its side) keeps more of the field in view
     this.body.style.height = Math.round(Math.max(54, Math.min(p.h, innerHeight * (m ? 0.5 : innerHeight < 560 ? 0.36 : 0.8)))) + 'px';
