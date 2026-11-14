@@ -183,8 +183,9 @@ export class UI {
     const u = g.battle?.units.find((o) => o.alive && o.name.split(' ')[0] === key);
     if (u) return at(u.model);
     if (g.battle) return null;
-    const a = g.explore?.actors.find((o) => o.model.visible && o.hero.name.split(' ')[0] === key);
-    if (a) return at(a.model);
+    // (whoever of the party hasn't stepped out from behind the leader yet speaks from where the leader is)
+    const a = g.explore?.actors.find((o) => o.hero.name.split(' ')[0] === key);
+    if (a) return at(a.model.visible ? a.model : g.explore.leader.model);
     const n = g.explore?.npcs.find((o) => o.name === who || o.name.split(' ')[0] === key);
     return n ? at(n.model, 0.5) : null;
   }
@@ -225,7 +226,7 @@ export class UI {
       const prev = g.mode; g.mode = 'talk';
       let i = 0, timer = null, spoke = null, held = null;
       const voice = (who) => { if (spoke) g.explore?.speak(spoke, false); spoke = who; if (who && prev === 'explore') g.explore?.speak(who, true); };
-      const end = (v) => { voice(null); clearTimeout(timer); this.bubbles.drop(held); bar.classList.add('hide'); this.onAct = this.onTap = null; if (g.mode === 'talk') g.mode = prev === 'talk' ? 'explore' : prev; res(v); };
+      const end = (v) => { voice(null); clearTimeout(timer); this.bubbles.drop(held); bar.classList.add('hide'); this.onAct = this.onTap = null; if (g.mode === 'talk') g.mode = prev === 'talk' ? 'explore' : prev; if (g.mode === 'explore') g.explore?.updatePrompt(); res(v); };
       const show = () => {
         const [who, raw] = lines[i], last = i === lines.length - 1, text = raw.replace('{name}', g.st?.name || '');
         voice(who);
@@ -233,7 +234,7 @@ export class UI {
         this.chat.line(who ? 'say' : 'story', who.split(' ')[0], text);
         this.bubbles.drop(held);
         held = this.bubbles.hold(this.headOf(who), text, who, { inside: !who, more: !opts, key: 'talk', onTap: opts ? null : () => next() });
-        bar.innerHTML = ''; bar.classList.remove('hide');
+        bar.innerHTML = ''; bar.classList.remove('hide'); $('#prompt').classList.add('hide');
         if (opts) opts.forEach(([label, v], k) => { const b = el('button', 'btn' + (k === 0 ? ' go' : ''), esc(label)); b.onclick = () => { sfx.ui(); end(v); }; bar.append(b); });
         else { const b = el('button', 'btn next', `${last ? 'Close' : 'Next'} <kbd>A</kbd>`); b.onclick = () => { sfx.ui(); next(); }; bar.append(b); }
         this.onAct = () => bar.firstChild.click();

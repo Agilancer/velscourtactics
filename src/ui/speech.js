@@ -77,8 +77,9 @@ export class SpeechBubble {
     const ways = [];
     if (!spot) {
       // low in the middle, where a caption would be
-      const y0 = inY(H * 0.7 - h);
-      for (const y of alongY(y0)) for (const x of alongX(inX(W / 2 - w / 2))) ways.push({ x, y, w, h, tail: null });
+      // (and over whatever is in the way there, rather than under it: the foot of the screen is the thumbs')
+      const y0 = inY(H * 0.7 - h), x0 = inX(W / 2 - w / 2);
+      for (const y of [y0, ...avoid.map((o) => inY(o.top - 8 - h)), ...avoid.map((o) => inY(o.bottom + 8))]) ways.push({ x: x0, y, w, h, tail: null });
     } else {
       const [sx, sy, ppu] = spot;
       const crown = sy - ABOVE * ppu, face = FACE * ppu, mouth = sy + 0.28 * ppu;

@@ -86,3 +86,14 @@ export function boonSum(st) {
   for (const id of st.boons || []) { const b = boonById(id); if (b?.add) for (const k in b.add) sum[k] = (sum[k] || 0) + b.add[k]; }
   return sum;
 }
+
+// ---- the kinds a fight can be (game/encounter.js makes each of them happen): the plate's title and what it asks ----
+export const GOALS = {
+  rout: { title: '', text: '' },
+  ambush: { title: 'Ambush', text: 'They saw you first.' },
+  courier: { title: 'Stop the runner', text: 'It has the pack’s takings. Put it down before it reaches the trees.' },
+  rescue: { title: 'Get them home', text: 'Somebody from the Hollow is in the middle of this. Keep them breathing.' },
+  holdout: { title: 'Hold the ground', text: 'More are coming. Outlast them.' },
+  gate: { title: 'The dead at the gate', text: 'They have come to the Hollow. Not one gets past.' },
+};
+

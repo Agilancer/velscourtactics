@@ -60,20 +60,78 @@ scream, from BigSoundBank.com, sound 0477.
 |---|---|---|
 | Walk | arrows or WASD | d-pad |
 | Jump (needed for ledges two half-steps high) | Space | B |
-| Talk, open, confirm | Enter or E | A |
+| Talk, open, confirm, next line | Enter or E | A, or a tap on the world |
 | Back | Esc | |
-| Party screen | Tab | Party |
+| The book, at Party | Tab | Party (or a tap on anyone in the party list) |
 | Auto-play | P | Auto |
+| Call it (your one call in a fight under auto-play) | C | Call it |
 | Fight speed, 1x or 2x (remembered) | F | 1x / 2x, in a fight |
 | Zoom | mouse wheel (or a trackpad pinch) | pinch with two fingers |
 
-The grid's four directions are the screen's four diagonals, so the d-pad has two settings (the
-**D-pad A / B** button): in A, Left goes down-left; in B, Left goes up-left. The other three follow.
+The grid's four directions are the screen's four diagonals, so the d-pad has two settings (Settings, **D-pad A / B**):
+in A, Left goes down-left; in B, Left goes up-left. The other three follow.
+
+## The screen
+
+`src/ui/ui.js` and `css/hud.css`, laid out for a phone first:
+
+- **The party** down the top left: a medal, a name, life and mana. A tap on one opens their sheet.
+- **The purse** top right: the day, how bold the dead have grown (a tap opens the scores), the gold; the quests under it.
+- **The buttons**: Party, Journal, Orders, Auto, Settings. A row along the top on a big screen; a rail of round ones
+  down the right edge on a phone. Under them, a line says what auto-play is about and why (a tap opens its orders).
+- **Red dots** (`src/game/chronicle.js`: `st.fresh`, `dotCounts`): anything that has arrived since the player last
+  looked wears one, all the way down: the button, the leaf, the tab, the hero, the item. Looking at the thing clears it.
+  A green arrow means something in the bag is better than what's on.
+- **Words** are said in speech bubbles over heads and kept in a chat log, both brought over from bm
+  (`src/ui/speech.js`, `src/ui/chatlog.js`): paper and ink, a tail to the speaker, never over another bubble or the log,
+  never off the screen; with no tail and a name on it when the speaker is out of sight. A conversation is one bubble at a
+  time over whoever is speaking (the story's own voice sits low in the middle), a tap anywhere goes on, and what can be
+  answered is a row of buttons at the foot. The log fades line by line; a tap on it opens the chronicle.
+- **A fork** (`UI.choose`): a few cards to pick from. Under auto-play a clock runs and the first is taken when it is up.
+
+**The book** has four leaves:
+
+- **Party**: everyone along the top; for whoever is picked a paper doll (their own body on a turntable, drag it round;
+  helm, weapon and a ring down the left, charm, armor and a ring down the right), their numbers, and the bag as a grid
+  of squares (`src/ui/partyui.js`). Tap a thing in the bag and the slots it could go in light up and the numbers show
+  what it would change; tap a lit slot (or Wear, or double-click) and it's on. Tabs: Bag, Skills, Stance, The line
+  (marching order and who waits at the inn).
+- **Journal**: Quests; the Chronicle (everything that has happened, day by day, with a line where you had read to);
+  Scores (how bold the dead are, the ones with a price on them, the boons kept).
+- **Orders**: what auto-play is about (below).
+- **Settings**: sound, speech bubbles, the camera in a fight, fight speed, the d-pad, the keys.
+
+## Auto-play
+
+Auto-play plays the whole game. What the player decides while it does (`src/game/doctrine.js`):
+
+- **Orders**: the errands in the order they are taken up (rest, the board, recruiting, spending, settling a score,
+  chests, the hunt), any of them switched off; where the hunt goes (wherever is fair, one land, or the lords); how bold
+  (how far above the party's level is still a fair fight); when to turn back; what the gold is for (better kit, the
+  forge, draughts only, or nothing). `Auto.goals()` in `src/game/auto.js` reads them.
+- **A stance** for each hero (Party, Stance): Steady, Reckless, Guarded, Shield, Sparing. Weights on the fight's AI.
+- **Call it**: one call a fight (focus one of the dead, all out, hold the line). It lasts a round and comes back
+  after a few turns.
+- **Boons**: a lord's fall offers three; one is kept.
+
+What it shows for it: under the turn order, what whoever is up means to do ("flanking the Grave Caller", "setting up a
+Shatter", "saving mana"); the camera leaning in on a crit, a kill, a body through a wall, and slowing for the last of
+them; how the fight looks before it starts (a formality … grave); the party talking to itself (`src/game/banter.js`,
+lines in `BANTER` in `src/data/cast.js`); and the chronicle, for whoever left it running.
 
 In a fight: place your party on the green tiles, press Begin, then each turn is a Move and an act in
 either order. Click or tap a tile, or steer the cursor with the d-pad and press A. Height, facing
 (hits from behind and the side do more) and reach all count. Knock them into a wall or a body and it hurts
 more; step them onto a trap and they stop there.
+
+Not every fight is a rout (`src/game/encounter.js`): an ambush (they go first), a runner to stop before it reaches the
+trees with the pack's takings, somebody from the Hollow to get home alive, ground to hold while more come. A lord winds
+up its great blow a turn ahead on marked red ground (get off it), calls its court at two thirds and turns the ground
+itself at a third. Combos (`COMBOS` in `src/data/classes.js`): a blow of cold leaves rime and the next plain blow
+shatters it; fire on the poisoned, the Light on the cursed, storm on the slowed. The dead may do it to you.
+
+Lose a fight and whichever of the dead did the most of it gets a name, a level and a price from the Watch: a score to
+settle. Every day a lord stands the dead grow bolder (stronger in the pines); at the worst they come to the gate.
 
 The fight's log sits bottom left (across the top on a phone): drag its corner to size it, fold it with the arrow,
 and the gear sets the letter size, how dark the window is and its size. Those settings stay in your browser.

@@ -47,7 +47,7 @@ function shoveGain(b, u, o, dir, n) {
     if (!b.open(X, Z) || (blocker && blocker !== u) || b.w.height(X, Z) - b.w.height(x, z) > 1) return Math.min(o.hp, o.maxhp * 0.08 * (n - i)) + (blocker && blocker.side === o.side ? 3 : 0);
     x = X; z = Z;
     const trap = b.trapAt(x, z);
-    if (trap && trap.side !== o.side) return 12;
+    if (trap && trap.side !== o.side) return 12.5;          // (the half marks it as a trap, for intent())
     const drop = b.w.height(x - dir[0], z - dir[1]) - b.w.height(x, z);
     if (drop >= 3) return Math.min(o.hp, o.maxhp * 0.05 * drop);
   }
@@ -190,7 +190,7 @@ export function intent(b, u, p) {
       else if (kills) out = `finishing ${who}`;
       else if (d.combo) out = `${d.combo.name}: ${who}`;
       else if (b.call?.left > 0 && b.call.focus === t && u.side === 'party') out = `on your call: ${who}`;
-      else if (slam >= 12) out = `knocking ${who} onto a trap`;
+      else if (slam === 12.5) out = `knocking ${who} onto a trap`;
       else if (slam > 0) out = `driving ${who} into the wall`;
       else if (hit.length >= 3) out = `catching ${hit.length} of them at once`;
       else if (d.side === 'back') out = `taking ${who} from behind`;

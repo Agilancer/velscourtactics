@@ -16,18 +16,10 @@ import { setGear } from '../gfx/gear.js';
 import { foeKey } from './explore.js';
 import { lead, addToBag } from './party.js';
 import { note } from './chronicle.js';
+import { GOALS } from './doctrine.js';
 import { sfx } from '../core/audio.js';
 
 const K = (x, z) => x + ',' + z;
-export const GOALS = {
-  rout: { title: '', text: '' },
-  ambush: { title: 'Ambush', text: 'They saw you first.' },
-  courier: { title: 'Stop the runner', text: 'It has the pack’s takings. Put it down before it reaches the trees.' },
-  rescue: { title: 'Get them home', text: 'Somebody from the Hollow is in the middle of this. Keep them breathing.' },
-  holdout: { title: 'Hold the ground', text: 'More are coming. Outlast them.' },
-  gate: { title: 'The dead at the gate', text: 'They have come to the Hollow. Not one gets past.' },
-};
-
 /** What kind of fight this pack makes of it. Lords, the keeper and anything with a score to settle are fought plain. */
 export function pickKind(st, foes) {
   if (foes.some((f) => f.z.lord || f.z.boss || f.rival) || (st.stats?.fights || 0) < 2) return 'rout';

@@ -836,7 +836,7 @@ export class Battle {
 
   // ---- placing the party before it starts ----
   showPlacement() {
-    this.sel = { mode: 'place', pick: this.units.find((u) => u.side === 'party') };
+    this.sel = { mode: 'place', pick: this.units.find((u) => u.hero) };
     setAnim(this.sel.pick.model, 'point');            // the leader sets the line
     this.drawPlacement();
     this.g.ui.banner('Place your party', 'Tap one of yours, then a green tile');
@@ -846,7 +846,7 @@ export class Battle {
     this.r.clearHighlights(); this.r.highlight(this.spots, 'place');
     m.innerHTML = '';
     m.append(el('div', 'bt-hint', 'The dead have seen you. Set your line: choose one of yours, then a green tile.'));
-    for (const u of this.units.filter((u) => u.side === 'party')) {
+    for (const u of this.units.filter((u) => u.hero)) {
       const b = el('button', 'bt-btn' + (s.pick === u ? ' sel' : ''), `${esc(u.name)}<small>${esc(CLASSES[u.hero.cls].name)}</small>`);
       b.onclick = () => { s.pick = u; this.cursor = { x: u.x, z: u.z }; this.drawPlacement(); };
       m.append(b);
@@ -856,10 +856,10 @@ export class Battle {
   }
   placeAt(x, z) {
     const s = this.sel, o = this.unitAt(x, z);
-    if (o && o.side === 'party' && o !== s.pick && !this.spots.some((t) => t.x === x && t.z === z && s.pick)) { s.pick = o; return this.drawPlacement(); }
-    if (!this.spots.some((t) => t.x === x && t.z === z)) { if (o && o.side === 'party') { s.pick = o; this.drawPlacement(); } return; }
+    if (o && o.hero && o !== s.pick && !this.spots.some((t) => t.x === x && t.z === z && s.pick)) { s.pick = o; return this.drawPlacement(); }
+    if (!this.spots.some((t) => t.x === x && t.z === z)) { if (o && o.hero) { s.pick = o; this.drawPlacement(); } return; }
     if (!s.pick) return;
-    if (o && o.side === 'party' && o !== s.pick) { o.x = s.pick.x; o.z = s.pick.z; this.place(o); }
+    if (o && o.hero && o !== s.pick) { o.x = s.pick.x; o.z = s.pick.z; this.place(o); }
     else if (o && o !== s.pick) return sfx.deny();
     s.pick.x = x; s.pick.z = z; this.place(s.pick);
     sfx.ui(); this.drawPlacement();

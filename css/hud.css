@@ -158,8 +158,8 @@ button { -webkit-tap-highlight-color: transparent; }
 .panel .body { flex: 1; min-height: 0; }
 
 /* ---- the Party screen ---- */
-.body.party2 { display: grid; grid-template-columns: 372px 1fr; grid-template-rows: auto 1fr; gap: 8px 16px; align-content: start; }
-.herorail { grid-column: 1 / -1; display: flex; gap: 6px; overflow-x: auto; padding: 6px 4px 6px; scrollbar-width: none; touch-action: pan-x; align-items: center; }
+.body.party2 { display: grid; grid-template-columns: 372px 1fr; grid-auto-rows: max-content; gap: 8px 16px; align-content: start; }
+.herorail { grid-column: 1 / -1; display: flex; gap: 6px; overflow-x: auto; overflow-y: hidden; min-height: 50px; padding: 6px 4px 6px; scrollbar-width: none; touch-action: pan-x; align-items: center; }
 .herorail::-webkit-scrollbar { display: none; }
 .hchip { position: relative; flex: 0 0 auto; display: flex; align-items: center; gap: 7px; padding: 4px 10px 4px 5px; border-radius: 22px; background: rgba(0, 0, 0, .4); border: 1px solid #3a2814; color: var(--text); text-align: left; }
 .hchip.on { border-color: var(--gold); background: linear-gradient(90deg, rgba(106, 74, 20, .55), rgba(28, 18, 10, .7)); box-shadow: 0 0 10px -2px var(--gold); }
@@ -263,7 +263,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; color: var(--dim); } .keys kbd { margin-right: 8px; }
 
 /* ---- the fight's additions: what whoever is up means to do, the call, the threat, the objective ---- */
-.bt-intent { position: absolute; left: 50%; top: 112px; transform: translateX(-50%); z-index: 3; padding: 2px 14px 3px; border-radius: 13px; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
+.bt-intent { position: absolute; left: 50%; top: 204px; transform: translateX(-50%); z-index: 3; padding: 2px 14px 3px; border-radius: 13px; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
   background: rgba(8, 6, 4, .78); box-shadow: 0 0 0 1px var(--line); font-size: .84rem; color: var(--text); animation: rise .2s ease-out; }
 .bt-intent:empty { display: none; }
 .bt-intent b { font-family: var(--font-head); font-size: .8rem; }
@@ -271,7 +271,7 @@ button { -webkit-tap-highlight-color: transparent; }
   border: 5px solid transparent; border-image: var(--k-panel) 72 fill / 14px / 0 round; }
 .bt-goal:empty { display: none; }
 .bt-goal b { display: block; font: 700 .78rem var(--font-head); color: var(--gold-lt); letter-spacing: .05em; } .bt-goal span { color: var(--dim); }
-.bt-call { position: absolute; right: 210px; bottom: calc(var(--sb) + 30px); z-index: 6; display: flex; gap: 6px; align-items: center; pointer-events: auto !important; }
+.bt-call { position: absolute; right: 236px; bottom: calc(var(--sb) + 30px); z-index: 6; display: flex; gap: 6px; align-items: center; pointer-events: auto !important; }
 .bt-call * { pointer-events: auto; }
 .bt-call .btn { font-size: .92rem; border-width: 9px 18px; border-image-width: 11px 20px; padding: 2px 10px; }
 .bt-call .btn.main { border-image-source: var(--k-btn-on); color: #fff6dc; animation: auto-glow 2s ease-in-out infinite; }
@@ -295,7 +295,7 @@ button { -webkit-tap-highlight-color: transparent; }
   #status { right: calc(var(--sr) + 50px); top: calc(var(--st) + 2px); }
   #purse { gap: 7px; padding: 0 7px 1px; border-width: 3px; border-image-width: 9px; font-size: .7rem; } #gold { font-size: .82rem; }
   #gold .ic { width: 1.3em; height: 1.3em; vertical-align: -.3em; }
-  #tracker { display: none; }
+  #tracker, #hud.fight #status { display: none; }
   #nav { left: auto; right: var(--sr); top: var(--st); transform: none; flex-direction: column; gap: 5px; align-items: center; }
   #nav button { width: 44px; height: 44px; padding: 0; border: 0; border-image: none; border-radius: 50%; background: var(--k-round) center / 100% 100% no-repeat; justify-content: center; }
   #nav button:hover { background-image: var(--k-round); } #nav button.on, #nav button:active { background-image: var(--k-round-on); }
@@ -307,7 +307,7 @@ button { -webkit-tap-highlight-color: transparent; }
   #hud.fight #autobar { display: none; }
   .chatlog { left: var(--sl); bottom: calc(var(--sb) + 132px); width: min(330px, 78vw); font-size: 12.5px; padding: 4px 8px 4px 6px; }
   .sp-bubble { max-width: min(300px, 74vw); } .sp-bub { padding: 5px 10px 6px; border-radius: 12px; } .sp-bubble p { font-size: 13.5px; }
-  #reply { bottom: calc(var(--sb) + 8px); } #reply .btn { font-size: .86rem; border-width: 8px 15px; border-image-width: 9px 16px; padding: 3px 6px; }
+  #reply { bottom: calc(var(--sb) + 134px); } #reply .btn { font-size: .86rem; border-width: 8px 15px; border-image-width: 9px 16px; padding: 3px 6px; }
   #reply .btn kbd { display: none; }
   .forks { grid-template-columns: 1fr; } .fork .pickcard { flex-direction: row; text-align: left; padding: 8px 10px; }
   .fork h2 { font-size: 1.1rem; } .fork .sub { margin-bottom: 8px; font-size: .86rem; }
@@ -339,6 +339,7 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 /* on its side: the rail's labels go (no height for them), the doll sits beside the bag again */
 @media (max-height: 520px) and (orientation: landscape) {
+  #reply { bottom: calc(var(--sb) + 8px); }
   #nav { gap: 4px; } #nav button { width: 38px; height: 38px; } #nav button span { display: none; }
   .body.party2 { grid-template-columns: 300px 1fr; } .dstage { min-height: 150px; }
   .chatlog { left: calc(var(--sl) + 130px); bottom: var(--sb); width: min(360px, 42vw); }

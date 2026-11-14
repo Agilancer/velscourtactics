@@ -17,7 +17,7 @@ import { QUESTS, ZOMBIES, KIND, RIVAL_NAMES } from './data/enemies.js';
 import { CLASSES } from './data/classes.js';
 import { WEAPONS, CONSUMABLES, makeItem, itemName, itemValue, enhanceCost, tierForLevel, RARITY } from './data/items.js';
 import { PARTY_MAX, SLOTS, newState, load, save, recruit, restAll, startQuest, questReady, heroStats, gainXp, lead, partyHeroes, upgradeSlot, itemWorth, addToBag, setBoons } from './game/party.js';
-import { note, fresh } from './game/chronicle.js';
+import { note, fresh, unread } from './game/chronicle.js';
 import { sound, sfx } from './core/audio.js';
 import { music } from './core/music.js';
 import { ambience } from './core/ambience.js';
@@ -68,6 +68,12 @@ class Game {
       else if (a === 'continue' && load()) { title.hide(); this.continueGame(); }
     };
     title.ready({ continue: !!load() });
+    // back from somewhere else: say how much went on (the chronicle has it all)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden || !this.st) return;
+      const n = unread(this.st);
+      if (n >= 3) this.ui.chat.line('system', '', `While you were away: ${n} things happened. Tap here to read them.`);
+    });
     let last = performance.now();
     const frame = (now) => { const dt = Math.min(0.05, (now - last) / 1000); last = now; this.update(dt); requestAnimationFrame(frame); };
     requestAnimationFrame(frame);
@@ -157,6 +163,7 @@ class Game {
     this.ui.chat.line('auto', '', this.st.auto ? 'Auto-play has the party. Its orders are under Orders.' : 'Auto-play stands down.');
     this.ui.refresh(); save(this.st);
     if (this.st.auto) { if (this.mode === 'menu') this.ui.close(); if (this.battle) this.battle.takeOver(); if (this.mode === 'talk') this.ui.onAct?.(); }
+    else this.battle?.drawCall();
   }
   autoPause() { if (this.st?.auto) this.auto.hold(); }
   // Wear whatever in the bag is plainly better.
