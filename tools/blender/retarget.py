@@ -378,7 +378,8 @@ class Target:
         leg = lambda p, s, up, low: self.limb(p, s, up, low, leg=True)
         idle = lambda f: g('M_Idle_02', f % 44.8)
         # the arms hang 10 degrees off the body (15 on the bulky ones, to clear pauldrons and hip plates), elbows a little bent
-        AR = arms or (15 if self.key.startswith(('homunculus', 'paladin', 'barbarian', 'death_knight', 'lancer')) else 10)
+        AR = arms or (15 if self.key.startswith(('homunculus', 'paladin', 'barbarian', 'death_knight', 'lancer', 'dragon_knight', 'totem_master')) else
+                      22 if self.key.startswith('slime_lord') else 10)        # the slime lords: round as a cask
         self.held = None
 
         def both(p, up, low):
@@ -535,6 +536,11 @@ class Target:
             keys += [(5 + i * 2, self.turned(pose, 60 * i)) for i in range(steps + 1)]
             W(name, keys + [(5 + steps * 2 + 4, pose), (5 + steps * 2 + 12, BI(5 + steps * 2 + 12))])
 
+        def breath(name='Breath'):                                             # hands cupped at the mouth, then thrown out with it
+            cup = L(tilt(tilt(both(B0, (55, 100), (150, 175)), SPINE, 'fwd', -3), NECK, 'fwd', -4))
+            fire = L(crouch(tilt(tilt(both(B0, (82, 85), (85, 88)), SPINE, 'fwd', 7), NECK, 'fwd', 10), 0.3))
+            W(name, [(0, B0), (5, cup), (8, fire), (22, fire), (32, BI(32))])
+
         def raise_(name='Raise'):                                              # a hand down to the ground, then up with it
             low = L(both(crouch(tilt(B0, SPINE, 'fwd', 8), 0.4), (35, 90), 15))
             high = mix(mix(B0, UPBOTH, 0.9, RARM), UPBOTH, 0.3, HEAD)
@@ -574,10 +580,7 @@ class Target:
             W('Curse', [(0, B0), (6, curse(0)), (12, curse(1)), (18, curse(0)), (26, curse(1)), (36, BI(36))])
             names += ['Bolt', 'Raise', 'Curse']
         elif cls == 'dragoon':                    # spear
-            jab(); leap()                                                     # Lance Jab and plain attack; Jump and Dragon Dive land
-            cup = L(tilt(tilt(both(B0, (55, 100), (150, 175)), SPINE, 'fwd', -3), NECK, 'fwd', -4))
-            fire = L(crouch(tilt(tilt(both(B0, (82, 85), (85, 88)), SPINE, 'fwd', 7), NECK, 'fwd', 10), 0.3))
-            W('Breath', [(0, B0), (5, cup), (8, fire), (22, fire), (32, BI(32))])                                               # Dragon Breath: hands at the mouth, then thrown out
+            jab(); leap(); breath()                                           # Lance Jab and plain attack; Jump and Dragon Dive land; Dragon Breath
             names += ['Thrust', 'Leap', 'Breath']
         elif cls == 'death_knight':               # sword
             swing(); smite(); bolt(); raise_()                                # Frost Strike and plain attack, Obliterate, Death Coil, Raise Ghoul
@@ -622,6 +625,62 @@ class Target:
             whirl()                                                           # Swirling Blades
             whirl('Typhoon', turns=2, up=125)                                 # Typhoon: twice round, the arms high
             names += ['Throw', 'Twin', 'Whirl', 'Typhoon']
+        elif cls == 'totem_master':               # staff: an ancestor's blow, posts driven into the ground
+            bolt(); smite('Slam', deep=1)                                     # Spirit Strike and plain attack; Earth Shock: both fists into the ground
+            post = L(both(B0, (70, 90), (110, 160)))                          # Healing and Searing Totem: the post lifted before the chest,
+            over = L(tilt(both(B0, (155, 88), (170, 150)), SPINE, 'fwd', -3))  # raised overhead,
+            drive = L(crouch(tilt(both(B0, (30, 90), 10), SPINE, 'fwd', 14), 1.0))   # and driven down into the ground, held there
+            W('Plant', [(0, B0), (6, post), (11, over), (15, drive), (26, drive), (38, BI(38))])
+            names += ['Bolt', 'Slam', 'Plant']
+        elif cls == 'slime_lord':                 # mace, and the whole body
+            swing(); bolt(); leap('Slam'); wave()                             # plain attack, Slime Ball (thrown), Body Slam, Acid Splash
+            def wobble(k, s):                                                 # Slimeling: shaken all over, then a lump let go at the side
+                p = tilt(tilt(B0, SPINE, 'left', 5 * s), SPINE, 'fwd', 4 * k)
+                return L(crouch(both(p, (AR + 25 * k, 0), 20 + 20 * k), 0.4 * k))
+            drop = L(crouch(arm(B0, 'Left', (50, -10), 10), 0.2))
+            W('Split', [(0, B0), (4, wobble(1, 1)), (8, wobble(1, -1)), (12, wobble(1, 1)), (16, wobble(0.6, -1)), (20, drop), (32, BI(32))])
+            names += ['Swing', 'Bolt', 'Slam', 'Split', 'Wave']
+        elif cls == 'dragon_knight':              # sword, and the wyrm in the blood
+            swing(); breath()                                                 # Flame Slash and plain attack; Fire Breath
+            W('Scales', [(0, B0), (6, ward(1)), (14, ward(1)), (19, L(fl)), (28, L(fl)), (38, BI(38))])   # Dragon Scales: arms crossed, then thrown wide
+            raised('Call', RARM)                                              # Summon Whelp: the arm up for it to come down to
+            names += ['Swing', 'Breath', 'Scales', 'Call']
+        elif cls == 'gunner':                     # a pistol in the right hand
+            # The pistol is gear.js's flintlock, put in the hand once on the idle, pointing ahead and a little down. Raising the
+            # arm to aim would point it at the sky, so in the thick of Shoot and Fan the hand is turned to lay it along the forearm.
+            self.calibrate(B0, 'Right', 'flintlock', (self.F - 0.36 * self.U).normalized(), self.U, self.fk(B0)[1]['mixamorig:RightHand'])
+
+            def held(name, i, n, p):
+                if name not in ('Shoot', 'Fan') or not 0 < i < n - 1: return p
+                _, X = self.fk(p)
+                return self.hold(p, 'Right', (X['mixamorig:RightHand'] - X['mixamorig:RightForeArm']).normalized(), self.U)
+            self.held = held
+
+            def aimed(p, yaw=-8, kick=0):                                     # side-on, the arm out level at the foe; kick: the muzzle thrown up
+                p = tilt(p, SPINE, 'yaw', yaw)
+                return L(crouch(arm(p, 'Right', (88 + 12 * kick, 88), (88 + 25 * kick, 88)), 0.15))
+            W('Shoot', [(0, B0), (4, aimed(B0)), (7, aimed(B0)), (8, aimed(B0, kick=1)), (11, aimed(B0)), (21, BI(21))])   # Pistol Shot, plain attack
+            fan = lambda yaw, kick: aimed(arm(B0, 'Left', (55, 110), (95, 170)), yaw, kick)   # Bullet Hell: the left hand fanning the hammer,
+            keys = [(0, B0), (4, fan(-22, 0))]                                                 # four shots swept across
+            for i, y in enumerate((-22, -8, 6, 20)): keys += [(6 + i * 5, fan(y, 0)), (7 + i * 5, fan(y, 1))]
+            W('Fan', keys + [(27, fan(20, 0)), (37, BI(37))])
+            low = L(crouch(tilt(arm(B0, 'Right', (40, -75), 15), SPINE, 'fwd', 6), 0.4))       # Grenade: swung back low, and underarm up and out
+            rel = L(crouch(tilt(arm(B0, 'Right', (115, 88), 12), SPINE, 'fwd', -2), 0.15))
+            fol = L(tilt(arm(B0, 'Right', (140, 92), 18), SPINE, 'fwd', -4))
+            W('Lob', [(0, B0), (4, low), (8, rel), (11, fol), (14, fol), (24, BI(24))])
+            set_ = L(both(crouch(tilt(B0, SPINE, 'fwd', 18), 1.0), (40, 92), 25))             # Gun Turret: down on the knees, set before the feet
+            W('Deploy', [(0, B0), (6, L(both(crouch(B0, 0.5), (60, 90), 60))), (12, set_), (24, set_), (36, BI(36))])
+            names += ['Shoot', 'Fan', 'Lob', 'Deploy']
+        # ---- the summons: the common set and a blow of their own ----
+        elif cls == 'skeleton':                   # Raise Skeleton: an old guard, still swinging
+            swing(); names += ['Swing']
+        elif cls == 'ghoul':                      # Raise Ghoul: both hands up, then raking down
+            up_ = L(crouch(tilt(both(B0, (135, 80), (160, 120)), SPINE, 'fwd', -2), 0.25))
+            down = L(crouch(tilt(tilt(both(B0, (50, 95), 20), SPINE, 'fwd', 14), NECK, 'fwd', -6), 0.5))
+            W('Rake', [(0, B0), (4, up_), (7, down), (10, down), (20, BI(20))])
+            names += ['Rake']
+        elif cls == 'squire':                     # Squire Knight: a thrust, as the order teaches
+            jab(); names += ['Thrust']
         elif cls == 'doorkeeper':                 # Lisandra: her own seventeen clips, which live in the library, carried over as they are
             own = ['Idle', 'Walk_Bent', 'Run_Bent', 'Hop', 'Bolt', 'Cast', 'Snap', 'Lantern_Up', 'Wave', 'Hit', 'Dead_Fall',
                    'Revive', 'Wounded', 'Stunned', 'Victory', 'Talk', 'Drink']

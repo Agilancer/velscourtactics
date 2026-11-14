@@ -15,7 +15,7 @@ function classSubject(cls, g) {
   const want = g === 'f' ? 'woman' : 'man';
   if (/\b(man|woman)\b/.test(s)) s = s.replace(/\b(man|woman)\b/, want);
   else s = s.replace(/^(An? [^,;]+)/, `$1, a ${want}`);
-  if (g === 'f') s = s.replace('bearded ', '').replace(/\bhis\b/g, 'her').replace(/\bhandsome\b/, 'striking');
+  if (g === 'f') s = s.replace('bearded ', '').replace(/\bking\b/, 'queen').replace(/\bhis\b/g, 'her').replace(/\bhandsome\b/, 'striking');
   else s = s.replace(/\bher\b/g, 'his').replace(/\bhuntress\b/g, 'hunter');
   return s + `; the ${g === 'f' ? 'female' : 'male'} cut of this class costume, same colours`;
 }
@@ -29,7 +29,7 @@ export function subject(key, tier) {
   }
   if (P.named[key]) return { text: P.named[key], style: 'character' };
   if (P.zombies[key]) return { text: P.zombies[key], style: 'monster' };
-  if (P.summons[key]) return { text: P.summons[key], style: ['skeleton', 'ghoul', 'squire'].includes(key) ? 'monster' : 'creature' };
+  if (P.summons[key]) return { text: P.summons[key], style: key === 'squire' ? 'character' : ['skeleton', 'ghoul'].includes(key) ? 'monster' : 'creature' };
   if (P.weapons[key]) return { text: P.weapons[key], style: 'weapon' };
   return null;
 }
