@@ -23,7 +23,7 @@ from mathutils import Vector
 H = 'mixamorig:Hips'
 # Meshy's bone names -> the library's
 RENAME = {'Hips': 'Hips', 'Spine02': 'Spine', 'Spine01': 'Spine1', 'Spine': 'Spine2', 'neck': 'Neck', 'Head': 'Head', 'head_end': 'HeadTop_End'}
-SRC = ['Idle_02', 'Attack', 'Charged_Slash', 'Left_Slash', 'Right_Hand_Sword_Slash', 'Thrust_Slash', 'Hit_Reaction', 'Dead',
+SRC = ['Idle_02', 'Attack', 'Axe_Spin_Attack', 'Charged_Slash', 'Left_Slash', 'Right_Hand_Sword_Slash', 'Thrust_Slash', 'Hit_Reaction', 'Dead',
        'Charged_Spell_Cast', 'mage_soell_cast_1', 'mage_soell_cast_6', 'Running', 'Walking']
 SHOTS = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
     globals().get('__file__', r"C:\Users\agila\.codex\.chatgpt-projects\g-p-6acb04ed5a908191836d71a249b8135a\work\velscourtactics\tools\blender\retarget.py"))))), 'tools', 'build', 'shots')
@@ -239,6 +239,58 @@ class Target:
             down = mix(mix(B0, CROUCH, 0.7, LEGS + SPINE), ARMDOWN, 1.0, ARMS)
             W('Meteor', [(0, B0), (8, L(upb)), (20, L(mix(upb, UPBOTH, 1.0, ARMS))), (25, L(down)), (33, L(down)), (44, BI(44))])       # Meteor: pulled down out of the sky
             names += ['Bolt', 'Wave', 'Meteor']
+        # something lifted out of the ground: down on a knee with a hand low, then up with it
+        def raise_(name='Raise'):
+            low = mix(mix(B0, CROUCH, 0.8, LEGS + SPINE), ARMDOWN, 1.0, ARMS)
+            high = mix(mix(B0, UPBOTH, 0.9, RARM), UPBOTH, 0.3, HEAD)
+            W(name, [(0, B0), (7, L(low)), (13, L(low)), (22, L(high)), (30, L(high)), (40, BI(40))])
+        # a spin with the arms out, the whole body turning
+        def spin(name='Whirl'):
+            al = self.aligner('M_Axe_Spin_Attack', 8)
+            W(name, [(0, B0)] + [(2 + i * 2, L(al(g('M_Axe_Spin_Attack', 8 + i * 44 / 12)))) for i in range(13)] + [(34, BI(34))])
+        # overhead, then down into a low lunge: a leap's landing, a charge
+        def leap(name='Leap'):
+            al = self.aligner('M_Attack', 6)
+            W(name, [(0, B0)] + [(2 + i * 2, L(al(g('M_Attack', 6 + i * 54 / 11)))) for i in range(12)] + [(32, BI(32))])
+
+        if cls == 'barbarian':                    # two axes
+            blow('Swing', 'M_Right_Hand_Sword_Slash', 4, 32, 8)                 # plain attack
+            blow('Bash', 'M_Left_Slash', 14, 56, 9, legs=0.5)                   # Bash: the other axe
+            leap()                                                                # Leap
+            spin()                                                                # Whirlwind
+            blow('Slam', 'M_Charged_Slash', 8, 48, 10, legs=0.8)                # Earthquake
+            names += ['Swing', 'Bash', 'Leap', 'Whirl', 'Slam']
+        elif cls == 'necromancer':                # wand
+            bolt()                                                                # Bone Spike, plain attack
+            raise_()                                                              # Raise Skeleton
+            hexp = mix(mix(mix(B0, CROUCH, 1.0, LARM + RARM), WND, 0.3, HEAD), CROUCH, 0.25, SPINE)
+            W('Curse', [(0, B0), (10, L(hexp)), (26, L(hexp)), (38, BI(38))])                                                         # Weaken: a slow point with both hands
+            names += ['Bolt', 'Raise', 'Curse']
+        elif cls == 'dragoon':                    # spear
+            blow('Thrust', 'M_Thrust_Slash', 24, 58, 9)                          # Lance Jab, plain attack
+            leap()                                                                # Jump and Dragon Dive: the landing
+            lean = mix(mix(mix(B0, CROUCH, 0.7, SPINE + LEGS), HR, 0.6, ARMS), CROUCH, 0.5, HEAD)
+            W('Breath', [(0, B0), (5, L(mix(B0, UPBOTH, 0.3, SPINE + HEAD))), (10, L(lean)), (24, L(lean)), (34, BI(34))])              # Dragon Breath: head and chest thrown forward
+            names += ['Thrust', 'Leap', 'Breath']
+        elif cls == 'death_knight':               # sword
+            blow('Swing', 'M_Right_Hand_Sword_Slash', 4, 32, 8)                 # Frost Strike, plain attack
+            blow('Smite', 'M_Charged_Slash', 8, 48, 10, legs=0.8)               # Obliterate
+            bolt()                                                                # Death Coil
+            raise_()                                                              # Raise Ghoul
+            names += ['Swing', 'Smite', 'Bolt', 'Raise']
+        elif cls == 'carrion_witch':              # staff
+            bolt()                                                                # Rot Bolt, plain attack
+            wave()                                                                # Crow Swarm: the cloak thrown open
+            pin = mix(mix(B0, CLASP, 1.0, ARMS), WND, 0.4, HEAD); jab = mix(pin, ARMDOWN, 0.25, RARM)
+            W('Hex', [(0, B0), (7, L(pin)), (11, L(jab)), (14, L(pin)), (18, L(jab)), (22, L(pin)), (32, BI(32))])                      # Voodoo Doll: a pin in the poppet
+            names += ['Bolt', 'Wave', 'Hex']
+        elif cls == 'bard':                       # lute: hands at the chest, the right one strumming
+            hold = mix(B0, CLASP, 1.0, ARMS); st = mix(hold, ARMDOWN, 0.35, RARM)
+            W('Strum', [(0, B0), (5, L(hold)), (8, L(st)), (11, L(hold)), (14, L(st)), (17, L(hold)), (26, BI(26))])                    # Plucked Note, plain attack
+            sway = lambda p, f: mix(p, idle(f), 0.6, SPINE)
+            W('Ballad', [(0, B0), (5, L(hold))] + [(8 + i * 3, L(sway(st if i % 2 == 0 else hold, 8 + i * 3))) for i in range(10)] + [(46, BI(46))])   # Ballad of Valor, Lullaby
+            raised('Bless', RARM)                                                 # Hymn of Mending
+            names += ['Strum', 'Ballad', 'Bless']
         self.names = names
         return names
 
