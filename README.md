@@ -64,6 +64,7 @@ scream, from BigSoundBank.com, sound 0477.
 | Back | Esc | |
 | Party screen | Tab | Party |
 | Auto-play | P | Auto |
+| Fight speed, 1x or 2x (remembered) | F | 1x / 2x, in a fight |
 | Zoom | mouse wheel (or a trackpad pinch) | pinch with two fingers |
 
 The grid's four directions are the screen's four diagonals, so the d-pad has two settings (the

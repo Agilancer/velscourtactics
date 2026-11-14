@@ -25,7 +25,7 @@ export class UI {
         <div id="topright"><div id="gold" title="Gold"></div><div id="tracker"></div></div>
         <div id="bar">
           <button data-open="party"><i class="ic ic-party"></i>Party</button><button data-open="bag"><i class="ic ic-pack"></i>Bag</button><button data-open="quests"><i class="ic ic-journal"></i>Quests</button>
-          <button id="b-auto" title="Auto-play (P)">Auto</button><button id="b-dpad" title="Which diagonal the d-pad's Left means"></button><button id="b-mute">Sound</button>
+          <button id="b-auto" title="Auto-play (P)">Auto</button><button id="b-pace" title="Fight speed (F)"></button><button id="b-dpad" title="Which diagonal the d-pad's Left means"></button><button id="b-mute">Sound</button>
         </div>
         <div id="autostat" class="hide"></div>
         <div id="prompt" class="hide"></div>
@@ -43,6 +43,7 @@ export class UI {
     g.input.bindPad(this.root);
     for (const b of this.root.querySelectorAll('[data-open]')) b.onclick = () => this.openPanel(b.dataset.open);
     $('#b-auto').onclick = () => g.toggleAuto();
+    $('#b-pace').onclick = () => g.toggleSpeed();
     $('#b-dpad').onclick = () => { g.st.dpad = g.st.dpad === 'A' ? 'B' : 'A'; this.toast(`D-pad: ${DPAD_HINT[g.st.dpad]}.`); this.refresh(); };
     $('#b-mute').onclick = () => { setMuted(!sound.muted); $('#b-mute').classList.toggle('muted', sound.muted); if (!sound.muted) sfx.ui(); };
     $('#b-mute').classList.toggle('muted', sound.muted);
@@ -111,6 +112,8 @@ export class UI {
     $('#tracker').innerHTML = act.map((q) => { const r = questReady(st, q); return `<div class="${r ? 'ready' : ''}"><i class="ic ic-${r ? 'qready' : 'qbusy'}"></i>${esc(q.name)} <b>${questProgress(st, q)}/${questNeed(q)}</b></div>`; }).join('');
     $('#b-auto').classList.toggle('on', !!st.auto);
     $('#b-dpad').textContent = `D-pad ${st.dpad}`;
+    $('#b-pace').textContent = `${this.g.fightSpeed}x`;
+    $('#b-pace').classList.toggle('on', this.g.fightSpeed === 2);
   }
   setPrompt(text) { const p = $('#prompt'); p.classList.toggle('hide', !text); if (text) p.innerHTML = `<kbd>A</kbd> ${esc(text)}`; }
   setAuto(text) { const p = $('#autostat'); p.classList.toggle('hide', !text); if (text) p.textContent = 'Auto: ' + text; }

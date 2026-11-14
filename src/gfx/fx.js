@@ -253,6 +253,7 @@ export class FX {
     this.zoomTo = 1; this.zoomNow = 1; this.zoomW = 6;
     this.shakeA = 0; this.shakeOff = new THREE.Vector3();
     this.stopT = 0;
+    this.pace = 1;           // the fight's clock against the real one (Game.pace); update's dt already runs on it
     this.flashEl = document.createElement('div');
     this.flashEl.style.cssText = 'position:fixed;inset:0;pointer-events:none;opacity:0;mix-blend-mode:screen;z-index:1';
     (r.gl.domElement.nextSibling ? r.gl.domElement.parentNode.insertBefore(this.flashEl, r.gl.domElement.nextSibling) : document.body.append(this.flashEl));
@@ -550,7 +551,7 @@ export class FX {
         this.spray(p, 12, { speed: 3, life: 0.5, size: 0.12, size1: 0.02, color: P.mid, cell: CELL.glow, drag: 3 });
         break;
       case 'sound':
-        for (let i = 0; i < 3; i++) setTimeout(() => this.spray(p, 1, { speed: 0.01, life: 0.6, size: 0.4 + i * 0.5, size1: 1.6 + i * 0.6, color: P.mid, cell: CELL.ring }), i * 70);
+        for (let i = 0; i < 3; i++) setTimeout(() => this.spray(p, 1, { speed: 0.01, life: 0.6, size: 0.4 + i * 0.5, size1: 1.6 + i * 0.6, color: P.mid, cell: CELL.ring }), i * 70 / this.pace);
         this.spray(p, 8 * s, { speed: 1.8, life: 1, size: 0.3, color: P.core, color1: P.edge, g: -1.2, drag: 2, cell: CELL.note, up: 0.7 });
         break;
       default:

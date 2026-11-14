@@ -101,6 +101,8 @@ button .ic-gold { width: 1.15em; height: 1.15em; margin: 0 .12em 0 .2em; vertica
 #bar button { border-width: 6px 12px; border-image-width: 7px 13px; padding: 0 2px; font-size: .76rem; white-space: nowrap; }
 #bar button .ic { width: 1.35em; height: 1.35em; margin: -2px .25em -2px -2px; vertical-align: -.36em; }
 #bar button.on { border-image-source: var(--k-btn-on); color: var(--gold-lt); }
+#hud:not(.fight) #b-pace { display: none; }   /* the fight's speed: only in a fight */
+#b-pace { min-width: 3.4em; }
 #b-mute.muted { text-decoration: line-through; color: var(--dim); border-image-source: var(--k-btn); }
 #hud.fight #bar [data-open], #hud.fight #pad, #hud.fight #btns .bj small { opacity: .0; pointer-events: none; }
 #hud.fight #pad { opacity: 1; pointer-events: auto; }

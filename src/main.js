@@ -33,6 +33,9 @@ class Game {
     this.st = null; this.explore = null; this.battle = null;
     this.auto = new Auto(this);
     this.hudT = 0;
+    // the fight's speed button: 2x is the pace the fights were built at, 1x half that (remembered, like Sound)
+    this.fightSpeed = 1;
+    try { if (localStorage.getItem('vt.pace') === '2') this.fightSpeed = 2; } catch { /* no storage: 1x */ }
     // a slow look round the Hollow behind the title
     this.r.follow(this.world.well.x, 0, this.world.well.z, 0, true);
 
@@ -41,6 +44,7 @@ class Game {
     this.input.on('back', () => { if (this.mode === 'menu') this.ui.close(); else if (this.mode === 'battle') this.battle.back(); });
     this.input.on('menu', () => { if (this.mode === 'explore') this.ui.openPanel('party'); else if (this.mode === 'menu') this.ui.close(); });
     this.input.on('auto', () => this.toggleAuto());
+    this.input.on('speed', () => { if (this.battle) this.toggleSpeed(); });
     this.input.on('dir', (d) => { if (this.mode === 'battle') this.battle.dir(d); });
     // the map under a mouse or a finger: two fingers pinch the view in and out, one taps (src/core/pinch.js)
     this.touches = new Touches(this.canvas, {
@@ -65,16 +69,27 @@ class Game {
 
   tween(dur, fn) { return new Promise((res) => this.tweens.push({ t: 0, dur: dur / (this.st?.auto ? 1.6 : 1), fn, res })); }
 
+  /** How fast a fight's clock runs against the real one: 1 at 2x, 0.5 at 1x, and 1 outside a fight. Every wait,
+   * tween, animation and effect in a fight goes by it (Battle.wait and Battle.later for the timers). */
+  get pace() { return this.battle ? this.fightSpeed / 2 : 1; }
+  toggleSpeed() {
+    this.fightSpeed = this.fightSpeed === 2 ? 1 : 2; sfx.ui();
+    try { localStorage.setItem('vt.pace', String(this.fightSpeed)); } catch { /* no storage */ }
+    this.ui.refresh();
+  }
+
   update(dt) {
-    const real = dt;
+    const real = dt, pace = this.pace;
     dt *= this.r.fx.timeScale();      // a heavy blow holds the frame for a moment
-    for (const tw of this.tweens) { tw.t = Math.min(1, tw.t + dt / tw.dur); tw.fn(tw.t); if (tw.t >= 1) tw.res(); }
+    const fdt = dt * pace;            // the fight's clock
+    for (const tw of this.tweens) { tw.t = Math.min(1, tw.t + fdt / tw.dur); tw.fn(tw.t); if (tw.t >= 1) tw.res(); }
     this.tweens = this.tweens.filter((tw) => tw.t < 1);
     if (this.mode === 'title') { const t = performance.now() / 9000; this.r.follow(this.world.well.x + Math.cos(t) * 9, 0, this.world.well.z + Math.sin(t) * 7, dt); }
-    else if (this.battle) this.battle.update(dt);
+    else if (this.battle) this.battle.update(fdt, dt);
     else if (this.explore) { this.auto.update(dt); this.explore.update(dt); if (this.mode === 'explore') this.cryptWatch(); }
     this.r.tick(dt);
-    this.r.fx.update(real);
+    this.r.fx.pace = pace;
+    this.r.fx.update(real * pace);
     this.r.fx.shaken(() => this.r.render());
     dt = real;
     const set = this.place(), fight = this.mode === 'battle' || this.mode === 'alert';
