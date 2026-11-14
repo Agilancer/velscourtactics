@@ -7,7 +7,7 @@ import { RARITY, TIERS, WEAPONS, ARMORS, GEMS, GEM_GRADES, GEM_PRICE, CONSUMABLE
 import { QUESTS } from '../data/enemies.js';
 import { PARTY_MAX, SLOTS, SLOT_NAMES, heroStats, heroSkills, canEquip, slotsFor, xpNeed, lead, partyHeroes, questProgress, questNeed, questReady, startQuest, save } from '../game/party.js';
 import { makePerson } from '../gfx/models.js';
-import { sfx, setMuted } from '../core/audio.js';
+import { sound, sfx, setMuted } from '../core/audio.js';
 
 const itemHtml = (it, extra = '') => `<b style="color:${RARITY[it.rarity].color}">${esc(itemName(it))}</b><small>${TIERS[it.tier].name} ${RARITY[it.rarity].name}${extra}</small><span>${itemLines(it).join(' · ')}</span>`;
 
@@ -39,21 +39,14 @@ export class UI {
     for (const b of this.root.querySelectorAll('[data-open]')) b.onclick = () => this.openPanel(b.dataset.open);
     $('#b-auto').onclick = () => g.toggleAuto();
     $('#b-dpad').onclick = () => { g.st.dpad = g.st.dpad === 'A' ? 'B' : 'A'; this.toast(`D-pad: ${DPAD_HINT[g.st.dpad]}.`); this.refresh(); };
-    $('#b-mute').onclick = () => { this.muted = !this.muted; setMuted(this.muted); $('#b-mute').classList.toggle('off', this.muted); };
+    $('#b-mute').onclick = () => { setMuted(!sound.muted); $('#b-mute').classList.toggle('muted', sound.muted); if (!sound.muted) sfx.ui(); };
+    $('#b-mute').classList.toggle('muted', sound.muted);
     $('#modal .x').onclick = () => this.close();
     $('#modal').addEventListener('pointerdown', (e) => { if (e.target.id === 'modal') this.close(); });
     this.sel = null; this.tab = null;
   }
 
-  // ---------- title and character creation ----------
-  title(hasSave) {
-    const s = $('#screen'); s.className = 'title';
-    s.innerHTML = `<div class="logo"><small>Blastorama Gaming presents</small><h1>VELSCOUR</h1><h3>TACTICS</h3><p>A world built upon something that should have stayed dead.</p></div>
-      <div class="col"><button class="btn big" id="t-new">New Game</button>${hasSave ? '<button class="btn big" id="t-cont">Continue</button>' : ''}
-      <p class="keys">Arrows / WASD or the d-pad to walk · Space to jump · Enter to act · P for auto-play · wheel to zoom</p></div>`;
-    $('#t-new').onclick = () => { sfx.ui(); this.create(); };
-    if (hasSave) $('#t-cont').onclick = () => { sfx.ui(); s.className = 'hide'; this.g.continueGame(); };
-  }
+  // ---------- character creation (the title is title.js's) ----------
   create() {
     const s = $('#screen'); s.className = 'create';
     const pickd = { cls: 'paladin', g: 'm' };
@@ -152,13 +145,14 @@ export class UI {
   open(title, draw) {
     const g = this.g;
     if (g.mode !== 'explore' && g.mode !== 'menu') return;
+    this.inShop = false;
     g.mode = 'menu';
     $('#modal').classList.remove('hide');
     $('#modal h2').textContent = title;
     this.draw = () => { const b = $('#modal .body'), y = b.scrollTop; b.innerHTML = ''; draw(b); b.scrollTop = y; this.refresh(); };
     this.draw();
   }
-  close() { if ($('#modal').classList.contains('hide')) return false; $('#modal').classList.add('hide'); this.draw = null; if (this.g.mode === 'menu') this.g.mode = 'explore'; save(this.g.st); return true; }
+  close() { if ($('#modal').classList.contains('hide')) return false; $('#modal').classList.add('hide'); if (this.inShop) { this.inShop = false; sfx.door(false); } this.draw = null; if (this.g.mode === 'menu') this.g.mode = 'explore'; save(this.g.st); return true; }
   isOpen() { return !$('#modal').classList.contains('hide'); }
   openPanel(which) { sfx.ui(); ({ party: () => this.partyPanel(), bag: () => this.bagPanel(), quests: () => this.questPanel() })[which](); }
 
@@ -208,7 +202,7 @@ export class UI {
         const it = h.equip[slot];
         const r = this.row(`<em>${SLOT_NAMES[slot]}</em> ${it ? itemHtml(it) : '<small>nothing</small>'}`, [
           ['Change', () => { this.picking = this.picking === slot ? null : slot; }],
-          ...(it ? [['Take off', () => { if (this.room()) { st.bag.push(it); h.equip[slot] = null; this.g.fixHp(h); } }]] : []),
+          ...(it ? [['Take off', () => { if (this.room()) { st.bag.push(it); h.equip[slot] = null; this.g.fixHp(h); if (slot === 'weapon') sfx.sheath(); else sfx.ui(); } }]] : []),
         ]);
         right.append(r);
         if (it && it.sockets) {
@@ -223,13 +217,13 @@ export class UI {
           if (this.socketing?.it === it) {
             const have = Object.keys(st.gems).filter((k) => st.gems[k] > 0);
             if (!have.length) right.append(el('div', 'note', 'You have no gems. Zafir sells them; the dead sometimes carry them.'));
-            for (const k of have) right.append(this.row(`<b style="color:${gemInfo(k).color}">${esc(gemInfo(k).full)}</b><small>x${st.gems[k]}</small><span>+${gemInfo(k).val} ${STAT_NAMES[gemInfo(k).stat]}</span>`, [['Set', () => { it.gems[this.socketing.i] = k; st.gems[k]--; this.socketing = null; this.g.fixHp(h); sfx.coin(); }]]));
+            for (const k of have) right.append(this.row(`<b style="color:${gemInfo(k).color}">${esc(gemInfo(k).full)}</b><small>x${st.gems[k]}</small><span>+${gemInfo(k).val} ${STAT_NAMES[gemInfo(k).stat]}</span>`, [['Set', () => { it.gems[this.socketing.i] = k; st.gems[k]--; this.socketing = null; this.g.fixHp(h); sfx.forge(true); }]]));
           }
         }
         if (this.picking === slot) {
           const fits = st.bag.filter((x) => slotsFor(x).includes(slot) && canEquip(h, x));
           if (!fits.length) right.append(el('div', 'note', 'Nothing in the bag fits here.'));
-          for (const x of fits) right.append(this.row(itemHtml(x), [['Wear', () => { st.bag.splice(st.bag.indexOf(x), 1); if (it) st.bag.push(it); h.equip[slot] = x; this.picking = null; this.g.fixHp(h); sfx.ui(); }]]));
+          for (const x of fits) right.append(this.row(itemHtml(x), [['Wear', () => { st.bag.splice(st.bag.indexOf(x), 1); if (it) st.bag.push(it); h.equip[slot] = x; this.picking = null; this.g.fixHp(h); sfx.equip(x); }]]));
         }
       }
       right.append(el('h4', '', 'Skills'));
@@ -315,7 +309,7 @@ export class UI {
         for (const sp of Object.values(SPELLS)) {
           const known = h.spells.includes(sp.id), low = h.lvl < sp.lvl, full = h.spells.length >= 3;
           b.append(this.row(`<b>${esc(sp.name)}</b><small>${sp.cost} mp · reach ${sp.r[1]}${sp.aoe ? ' · blast ' + sp.aoe : ''} · needs level ${sp.lvl}</small><span>${esc(sp.desc)}</span>`,
-            [[known ? 'Known' : low ? `Level ${sp.lvl}` : full ? 'Full' : `Learn ${sp.price}`, () => { if (this.pay(sp.price)) h.spells.push(sp.id); }, known || low || full]]));
+            [[known ? 'Known' : low ? `Level ${sp.lvl}` : full ? 'Full' : `Learn ${sp.price}`, () => { if (this.pay(sp.price)) { h.spells.push(sp.id); sfx.chime(); } }, known || low || full]]));
         }
       },
       gems: (b) => { for (const k in GEMS) for (let gr = 0; gr < 3; gr++) { if (gr > tierForLevel(lead(st).lvl)) continue; const id = k + gr, gi = gemInfo(id); b.append(this.row(`<b style="color:${gi.color}">${GEM_GRADES[gr]} ${gi.name}</b><small>you have ${st.gems[id] || 0}</small><span>+${gi.val} ${STAT_NAMES[gi.stat]}</span>`, [[`Buy ${GEM_PRICE[gr]}`, () => { if (this.pay(GEM_PRICE[gr])) st.gems[id] = (st.gems[id] || 0) + 1; }]])); } },
@@ -327,14 +321,15 @@ export class UI {
         b.append(this.row('<b>A bed</b><small>four copper, paid before</small><span>Everyone wakes whole. So does everything in the pines.</span>', [['Rest 4', () => { if (this.pay(4)) { this.close(); g.rest(); } }]]));
         for (const k in CONSUMABLES) b.append(this.row(`<b>${CONSUMABLES[k].name}</b><small>you have ${st.consum[k] || 0}</small><span>${CONSUMABLES[k].desc}</span>`, [[`Buy ${CONSUMABLES[k].price}`, () => { if (this.pay(CONSUMABLES[k].price)) st.consum[k] = (st.consum[k] || 0) + 1; }]]));
       },
-      enhance: (b) => { b.append(el('div', 'note', 'Hammer and faith: each + adds a tenth to what the piece does. Ten at most.')); gearList(b, (it) => [[it.plus >= 10 ? 'Finished' : `+${it.plus + 1} for ${enhanceCost(it)}`, () => { if (this.pay(enhanceCost(it))) { it.plus++; g.fixAll(); } }, it.plus >= 10]]); },
+      enhance: (b) => { b.append(el('div', 'note', 'Hammer and faith: each + adds a tenth to what the piece does. Ten at most.')); gearList(b, (it) => [[it.plus >= 10 ? 'Finished' : `+${it.plus + 1} for ${enhanceCost(it)}`, () => { if (this.pay(enhanceCost(it))) { it.plus++; g.fixAll(); sfx.forge(); } }, it.plus >= 10]]); },
       enchant: (b) => { b.append(el('div', 'note', 'Adds a new property, or renegotiates the ones already there.')); gearList(b, (it) => [
-        [it.affixes.length >= 4 ? 'Full' : `Add ${enchantCost(it)}`, () => { if (this.pay(enchantCost(it))) { addAffix(it); it.rarity = Math.max(it.rarity, Math.min(4, it.affixes.length)); g.fixAll(); } }, it.affixes.length >= 4],
-        [`Reroll ${Math.round(enchantCost(it) * 0.6)}`, () => { if (this.pay(Math.round(enchantCost(it) * 0.6))) { const n = it.affixes.length; it.affixes = []; for (let i = 0; i < n; i++) addAffix(it); g.fixAll(); } }, !it.affixes.length]]); },
+        [it.affixes.length >= 4 ? 'Full' : `Add ${enchantCost(it)}`, () => { if (this.pay(enchantCost(it))) { addAffix(it); it.rarity = Math.max(it.rarity, Math.min(4, it.affixes.length)); g.fixAll(); sfx.enchant(); } }, it.affixes.length >= 4],
+        [`Reroll ${Math.round(enchantCost(it) * 0.6)}`, () => { if (this.pay(Math.round(enchantCost(it) * 0.6))) { const n = it.affixes.length; it.affixes = []; for (let i = 0; i < n; i++) addAffix(it); g.fixAll(); sfx.enchant(); } }, !it.affixes.length]]); },
       socket: (b) => { b.append(el('div', 'note', 'A socket is a promise. Better gear takes more of them.')); gearList(b, (it) => [
-        [it.sockets >= maxSockets(it) ? 'No room' : `Drill ${socketCost(it)}`, () => { if (this.pay(socketCost(it))) it.sockets++; }, it.sockets >= maxSockets(it)],
-        ['Pry out 30', () => { if (this.pay(30)) { for (const gm of it.gems) if (gm) st.gems[gm] = (st.gems[gm] || 0) + 1; it.gems = []; g.fixAll(); } }, !it.gems.some(Boolean)]]); },
+        [it.sockets >= maxSockets(it) ? 'No room' : `Drill ${socketCost(it)}`, () => { if (this.pay(socketCost(it))) { it.sockets++; sfx.forge(true); } }, it.sockets >= maxSockets(it)],
+        ['Pry out 30', () => { if (this.pay(30)) { for (const gm of it.gems) if (gm) st.gems[gm] = (st.gems[gm] || 0) + 1; it.gems = []; g.fixAll(); sfx.forge(true); } }, !it.gems.some(Boolean)]]); },
     };
     this.open(`${npc.name} · ${npc.title}`, (b) => { b.className = 'body'; draws[kind](b); });
+    if (this.isOpen()) { this.inShop = true; sfx.door(true); }
   }
 }
