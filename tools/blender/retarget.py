@@ -381,8 +381,9 @@ class Target:
         leg = lambda p, s, up, low: self.limb(p, s, up, low, leg=True)
         idle = lambda f: g('M_Idle_02', f % 44.8)
         # the arms hang 10 degrees off the body (15 on the bulky ones, to clear pauldrons and hip plates), elbows a little bent
-        AR = arms or (15 if self.key.startswith(('homunculus', 'paladin', 'barbarian', 'death_knight', 'lancer', 'dragon_knight', 'totem_master', 'zombie_brute')) else
-                      22 if self.key.startswith(('slime_lord', 'zombie_bonesack')) else 10)        # the slime lords and the bonesack: round as a cask
+        AR = arms or (15 if self.key.startswith(('homunculus', 'paladin', 'barbarian', 'death_knight', 'lancer', 'dragon_knight', 'totem_master', 'zombie_brute',
+                                                 'zombie_slagback', 'zombie_stoker', 'zombie_warden')) else
+                      22 if self.key.startswith(('slime_lord', 'zombie_bonesack', 'zombie_leechmother')) else 10)   # the slime lords, the bonesack, the leech mother: round as a cask
         self.held = None
 
         def both(p, up, low):
@@ -438,7 +439,20 @@ class Target:
                 'gnawer': (8, -10, 0, ((42, 80, 32), (42, 80, 32)), 0.45),       # stooped, the head up, long arms out before it
                 'lurker': (10, -13, 0, ((58, 75, 55), (58, 75, 55)), 0.8),       # low on its haunches, the claws forward
                 'bonesack': (-3, -7, 0, ((38, 12, 18), (38, 12, 18)), 0.25),     # leaning back off the belly, the head tipped back, arms out round it
-                'brute': (5, -6, 0, ((30, 40, 30), (30, 40, 30)), 0.35)}[kind]   # hunched, the head jutting, the arms hanging heavy
+                'brute': (5, -6, 0, ((30, 40, 30), (30, 40, 30)), 0.35),         # hunched, the head jutting, the arms hanging heavy
+                # past the pines: two of each land, and its lord
+                'rimewalker': (2, 3, 5, ((35, 70, 10), (30, 65, 10)), 0.12),     # froze on the march: upright, the arms locked out before it
+                'driftling': (10, -12, 0, ((55, 75, 50), (55, 75, 50)), 0.7),    # low in the snow like the lurker, the claws forward
+                'husk': (7, -8, 4, ((40, 80, 30), (44, 80, 34)), 0.4),           # light and stooped like the gnawer, the head up
+                'slinger': (3, 5, 8, ((25, 40, 20), (30, 55, 25)), 0.2),         # loose on its bones, the arms hanging open
+                'drowner': (6, 7, 10, ((45, 80, 35), (38, 72, 28)), 0.3),        # bowed, the head over, the arms out and dripping
+                'leechmother': (-3, -5, 0, ((38, 12, 18), (38, 12, 18)), 0.25),  # back off the belly like the bonesack
+                'cinder': (5, -6, 6, ((40, 70, 35), (36, 70, 30)), 0.35),        # crouched over its own heat, the claws up
+                'slagback': (9, -9, 0, ((30, 40, 30), (30, 40, 30)), 0.4),       # bent under the furnace on its back
+                'warden': (1, 2, 0, ((22, 30, 18), (22, 30, 18)), 0.1),          # the lords keep their bearing: still at its post
+                'dryking': (3, -3, 0, ((35, 30, 25), (35, 30, 25)), 0.12),       # tall, the chin up, the hands held open to the court
+                'abbess': (2, 12, 4, ((28, 50, 45), (28, 50, 45)), 0.08),        # upright, the head bowed, the hands before her
+                'stoker': (5, -6, 0, ((30, 40, 30), (30, 40, 30)), 0.35)}[kind]  # the brute's hunch, the shovel arms
             tl = lambda p, bones, how, d: tilt(p, bones, how, d) if d else p
             # Their knees bend both alike, down onto the haunches with the soles kept flat (the library's crouch is a
             # stance, one foot forward), and every clip below, the common ones too, crouches this way.
@@ -722,9 +736,12 @@ class Target:
         elif cls.startswith('zombie_'):
             # The gait: the stride (the gnawer's a run) under the slump, the knees a little less bent than standing, the
             # body rocking (sway), turning (yaw) and the arms swinging, each by kind.
-            gnaw = kind == 'gnawer'
+            gnaw = kind in ('gnawer', 'husk')
             src, n, ln, f0 = ('M_Running', 16, 15.2, 0) if gnaw else ('own_walk', 13, 24.8, self.w0)
-            sw, yw, am = {'shambler': (3, 0, 6), 'gnawer': (0, 0, 16), 'lurker': (0, 3, 8), 'bonesack': (5, 0, 4), 'brute': (2, 5, 8)}[kind]
+            sw, yw, am = {'shambler': (3, 0, 6), 'gnawer': (0, 0, 16), 'lurker': (0, 3, 8), 'bonesack': (5, 0, 4), 'brute': (2, 5, 8),
+                          'rimewalker': (1, 4, 3), 'driftling': (0, 3, 8), 'husk': (0, 0, 16), 'slinger': (3, 0, 7), 'drowner': (3, 2, 6),
+                          'leechmother': (5, 0, 4), 'cinder': (2, 0, 10), 'slagback': (2, 5, 7), 'warden': (1, 4, 5), 'dryking': (2, 3, 6),
+                          'abbess': (1, 0, 2), 'stoker': (2, 5, 8)}[kind]
 
             def stride(i):
                 s = math.sin(2 * math.pi * i / (n - 1))
@@ -739,16 +756,17 @@ class Target:
                 return L(crouch(fling(tilt(tilt(B0, SPINE, 'fwd', -4 * k), NECK, 'fwd', -12 * k), k, 50, 75, 25), 0.2 * k))
             W('Roar', [(0, B0), (5, roar(0.6)), (9, roar(1)), (13, roar(0.9)), (17, roar(1)), (21, roar(0.9)), (25, roar(1)), (36, BI(36))])
             own = ['Roar']
-            if kind in ('shambler', 'lurker', 'bonesack'):                     # Rake: both hands up, then raking down (the ghoul's)
+            if kind in ('shambler', 'lurker', 'bonesack', 'rimewalker', 'husk', 'slinger', 'drowner', 'leechmother', 'cinder', 'dryking', 'abbess'):
+                # Rake: both hands up, then raking down (the ghoul's)
                 up_ = L(crouch(tilt(both(B0, (135, 80), (160, 120)), SPINE, 'fwd', -2), 0.15))
                 down = L(crouch(tilt(tilt(both(B0, (50, 95), 20), SPINE, 'fwd', 8), NECK, 'fwd', -4), 0.35))
                 W('Rake', [(0, B0), (4, up_), (7, down), (10, down), (20, BI(20))]); own.append('Rake')
-            if kind == 'gnawer':                                               # Bite: both hands out to seize, pulled in, the head down into it, a tear
+            if kind in ('gnawer', 'driftling'):                                # Bite: both hands out to seize, pulled in, the head down into it, a tear
                 reach = L(crouch(tilt(both(B0, (85, 80), (95, 85)), SPINE, 'fwd', 3), 0.3))
                 bite = L(crouch(tilt(tilt(both(B0, (70, 88), (60, 150)), SPINE, 'fwd', 7), NECK, 'fwd', 14), 0.45))
                 W('Bite', [(0, B0), (3, reach), (6, bite), (9, bite), (11, L(tilt(bite, NECK, 'yaw', 12))), (13, L(tilt(bite, NECK, 'yaw', -12))),
                            (16, bite), (26, BI(26))]); own.append('Bite')
-            if kind == 'lurker':                                               # Pounce: down on its haunches, then through the air claws first
+            if kind in ('lurker', 'driftling'):                                # Pounce: down on its haunches, then through the air claws first
                 coil = L(crouch(tilt(both(B0, (25, -40), 35), SPINE, 'fwd', 5), 0.6))
                 push = B0                                                      # off the ground: legs driven out behind, claws reaching
                 for s in SIDES: push = leg(push, s, (25, -90), 15)
@@ -758,15 +776,24 @@ class Target:
                 tuck = L(aloft(tilt(both(tuck, (100, 85), 30), SPINE, 'fwd', 4), 0.16))
                 land = L(crouch(tilt(tilt(both(B0, (55, 88), 25), SPINE, 'fwd', 6), NECK, 'fwd', -3), 0.6))
                 W('Pounce', [(0, B0), (4, coil), (7, push), (10, tuck), (14, land), (20, land), (30, BI(30))]); own.append('Pounce')
-            if kind == 'bonesack':                                             # Retch: hands clutched at the belly, heaving, the head thrust out
+            if kind in ('bonesack', 'leechmother'):                            # Retch: hands clutched at the belly, heaving, the head thrust out
 
                 def heave(k):
                     p = tilt(tilt(tilt(B0, SPINE, 'fwd', 4 + 6 * k), ['mixamorig:Neck'], 'fwd', 16 * k), ['mixamorig:Head'], 'fwd', -12 * k)
                     return L(crouch(both(p, (25, 120), (80, 175)), 0.15 + 0.2 * k))
                 W('Retch', [(0, B0), (4, heave(0.3)), (8, heave(1)), (12, heave(0.4)), (16, heave(1.1)), (20, heave(0.5)), (24, heave(1.2)),
                             (30, heave(1.2)), (40, BI(40))]); own.append('Retch')
-            if kind == 'brute':                                                # Slam: both fists into the ground; Chain Sweep: round once, the arms out
+            if kind in ('brute', 'slagback', 'stoker', 'warden'):              # Slam: both fists into the ground; Chain Sweep: round once, the arms out
                 smite('Slam', deep=1); whirl('Sweep', turns=1, up=80); own += ['Slam', 'Sweep']
+            if kind == 'slinger':                                              # Rib Throw: a rib wrenched out over the shoulder and slung
+                TP = {'cock': ((150, -60), (172, -120)), 'loose': ((95, 85), (90, 88)), 'follow': ((45, 115), 15)}
+                sling = lambda ph, yaw, k=0.2: L(crouch(tilt(arm(B0, 'Right', *TP[ph]), SPINE, 'yaw', yaw), k))
+                W('Throw', [(0, B0), (4, sling('cock', -9)), (7, sling('loose', 6, 0.3)), (10, sling('follow', 9, 0.3)), (14, sling('follow', 9, 0.3)),
+                            (24, BI(24))]); own.append('Throw')
+            if kind in ('drowner', 'abbess'):                                  # Drag Under: both hands out to seize, then hauled back and down
+                reach = L(crouch(tilt(both(B0, (88, 82), (92, 85)), SPINE, 'fwd', 6), 0.35))
+                haul = L(crouch(tilt(tilt(both(B0, (55, 70), (125, 150)), SPINE, 'fwd', -5), NECK, 'fwd', 6), 0.55))
+                W('Drag', [(0, B0), (4, reach), (7, reach), (11, haul), (16, haul), (26, BI(26))]); own.append('Drag')
             # nothing of the living's: no running upright, no cheering with a fist, no talk, no potions
             names = [x for x in names if x not in ('Run', 'Victory', 'Talk', 'Drink', 'Point', 'Flex')] + own
         elif cls == 'doorkeeper':                 # Lisandra: her own seventeen clips, which live in the library, carried over as they are
