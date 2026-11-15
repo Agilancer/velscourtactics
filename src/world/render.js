@@ -3,31 +3,15 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { N, T, STEP } from './map.js';
 import { rng32, vnoise, clamp } from '../core/util.js';
 import { label, mat } from '../gfx/models.js';
+import { Ambient } from '../gfx/ambient.js';
 import { Edges } from '../gfx/outline.js';
+import { buildGround, settleRepeats, noiseTexture } from './ground.js';
+import { buildScatter, buildShadows, treeKind } from './scatter.js';
 
 const CAM = new THREE.Vector3(20, 16.5, 20);  // the camera's offset from what it looks at
 const RISE = CAM.y / CAM.x;                    // how fast a ray toward the camera climbs per tile of x and z
-
-const CRYPT_SIDE = 100;                         // (not a tile: the face of the crypt's dais where it steps down)
-const DESERT = 'desert/Desert_Fantasy_Textures/';
-const GROUND_TEX = {
-  [T.GRASS1]: 'tex/grass_1_c.webp', [T.GRASS2]: 'tex/grass_2_c.webp', [T.GRASS3]: 'tex/grass_3_c.webp',
-  [T.PINE]: 'tex/pinefloor_1_c.webp', [T.DIRT]: 'tex/dirt_1_c.webp', [T.ROAD]: 'tex/road_1_c.webp',
-  [T.FLAGS]: 'tex/flags_c.webp', [T.MOSS]: 'tex/moss_1_c.webp', [T.ROCK]: 'tex/granite_1_c.webp',
-  // the lands past the pines: bm's snow, frost, fen, ash and basalt, and its desert packs
-  [T.SNOW]: 'tex/snow_1_c.webp', [T.ICE]: 'tex/frost_1_c.webp', [T.SNOWROCK]: 'tex/snowrock_1_c.webp',
-  [T.SAND]: DESERT + '03_red_desert_sand.png', [T.CLAY]: DESERT + '06_cracked_clay.png', [T.REDROCK]: DESERT + '09_red_canyon_rock.png',
-  [T.OASIS]: 'desert/Desert_Oasis_20_Textures/06_oasis_grass.png', [T.WATER]: 'desert/Desert_Oasis_20_Textures/17_deep_teal_water.png',
-  [T.FEN]: 'tex/fen_1_c.webp', [T.ASH]: 'tex/ash_1_c.webp', [T.BASALT]: 'tex/basalt_1_c.webp', [T.RUST]: 'tex/rust_1_c.webp',
-  [T.RUIN]: DESERT + '12_ruined_flagstones.png',
-  [T.CRYPT]: 'tex/crypt/cata_floor_c.webp', [T.DAIS]: 'tex/crypt/cata_floor4_c.webp', [T.GRAVE]: 'tex/crypt/cata_earth_c.webp',
-  [CRYPT_SIDE]: 'tex/crypt/cata_block_c.webp',
-};
-// bm's catacomb textures are square and about three tiles across; the rest are 7:4
-const SQUARE = new Set([T.CRYPT, T.DAIS, T.GRAVE, CRYPT_SIDE]);
 
 // The crypt's stone and bone (bm's catacomb textures, assets/tex/crypt), and how many tiles one repeat covers.
 const CRYPT_MAT = {
@@ -64,10 +48,155 @@ function loadProp(key) {
   }).catch((e) => { console.warn('no model for', key, e); return null; }));
   return propCache.get(key);
 }
-// which rock a tile's cliff faces wear
-const SIDE = { [T.ROCK]: T.ROCK, [T.MOSS]: T.ROCK, [T.SNOW]: T.SNOWROCK, [T.SNOWROCK]: T.SNOWROCK, [T.ICE]: T.SNOWROCK,
-  [T.SAND]: T.REDROCK, [T.CLAY]: T.REDROCK, [T.REDROCK]: T.REDROCK, [T.ASH]: T.BASALT, [T.BASALT]: T.BASALT, [T.DAIS]: CRYPT_SIDE };
-const SUNK = 0.28;   // how far water lies below its banks
+
+// ---- how the trees are lit: one light model for every kind, each with its own strengths ----
+// For the trunk and the crown: [gain, saturation, calm (the texture's light and dark pulled together), the brightest
+// a texel may be]; the foot [how dark, up to what share of the height]; a sky light on what faces up and a cold rim
+// on the edges, so a crown has a top and a side and parts from the one behind it; the top lighter; the wind; embers
+// in the charred wood. Each kind's crowns come in four tints.
+const TREE_LOOK = {
+  pine: { crown: [1.0, 0.72, 0.62, 0.17], trunk: [1, 0.8, 0, 1], foot: [0.6, 0.1], sky: 0.24, rim: 0.3, top: 0.25, wind: 0.012, hi: [0.5, 0.95, 0.85, 0.9],
+    round: 0.2, ao: 0.35, bark: 0xc8a07c, tints: [0xb4c28e, 0xa4b494, 0xbcc290, 0x9cae8a] },
+  oak: { crown: [1.35, 0.62, 0.4, 0.3], trunk: [1.0, 0.8, 0.2, 0.3], foot: [0.6, 0.1], sky: 0.26, rim: 0.26, top: 0.45, wind: 0.009,
+    round: 0.75, ao: 0.5, tints: [0xd0d4a8, 0x98a890, 0xc4c8a0, 0xa8b894], fen: [0x969888, 0x8c9082, 0x9c9a8c, 0x888c80] },
+  snowpine: { crown: [1, 1, 0, 1], trunk: [1, 0.3, 0, 1], foot: [0.75, 0.08], sky: 0.15, rim: 0.2, top: 0.1, wind: 0.007, bark: 0xd8e0ec,
+    tints: [0xffffff, 0xeef2f6, 0xe4eaf0, 0xf4f4ee] },
+  dead: { crown: [0.62, 0.5, 0.5, 0.42], trunk: [0.62, 0.5, 0.5, 0.42], foot: [0.3, 0.2], sky: 0.1, rim: 0.22, top: 0.1, wind: 0.007,
+    tints: [0xc4ccc0, 0xb4c0b4, 0xccd0c2, 0xb0bab0] },
+  char: { crown: [1, 0.15, 0, 0.06], trunk: [1, 0.15, 0, 0.06], foot: [0.3, 0.2], sky: 0.06, rim: 0.6, rimC: [0.8, 0.85, 0.95], top: 0, wind: 0.003,
+    ember: 1, sink: 0.13, cut: [0.1, 0.34], wide: 0.75, tallK: 1.15, tints: [0xffffff, 0xe8e0dc, 0xdcdcdc, 0xf0e8e0] },
+  palm: { crown: [0.8, 0.95, 0.2, 0.34], trunk: [1.4, 0.7, 0.2, 0.45], foot: [0.45, 0.12], sky: 0.3, rim: 0.25, top: 0.3, wind: 0.02, bark: 0xe6caa4,
+    tints: [0xe0ecb0, 0xd4e4a4, 0xe8e8a8, 0xd0dca8] },
+};
+const TREE_VERT = /* glsl */`
+uniform float uTime, uWind, uH, uY0;
+uniform vec4 uC;
+uniform vec2 uRnd;
+uniform vec4 uCut;
+varying float vTY, vAO;`;
+// a crown lit as one mass: its normals bent out from its middle, its heart and underside in shade
+const TREE_ROUND = /* glsl */`
+{
+  vec3 tq = (position - uC.xyz) / vec3(uC.w, uC.w * 0.8, uC.w);
+  objectNormal = normalize(mix(objectNormal, normalize(tq + vec3(0.0, 0.001, 0.0)), uRnd.x));
+  vAO = 1.0 - uRnd.y * (1.0 - smoothstep(0.2, 1.0, length(tq))) - uRnd.y * 0.6 * (1.0 - smoothstep(-0.7, 0.3, tq.y));
+}`;
+const TREE_SWAY = /* glsl */`
+vTY = (position.y - uY0) / uH;
+#ifdef TREE_CUT
+{
+  // the low, wide skirt (the charred tree's spread of roots) drawn in to the trunk, so it rises straight from the ground
+  vec2 cd = transformed.xz - uCut.xy;
+  float cr = length(cd) / uH, cl = mix(uCut.z, uCut.z + 0.03, clamp(vTY / uCut.w, 0.0, 1.0));
+  float rc = cr > cl ? cl + (cr - cl) * 0.12 : cr;
+  rc = mix(rc, cr, smoothstep(uCut.w * 0.7, uCut.w, vTY));
+  transformed.xz = uCut.xy + cd * (rc / max(cr, 1e-4));
+}
+#endif
+{
+  // the crown leans in the same gusts the grass does, the foot still
+  vec3 ip = modelMatrix[3].xyz;
+  float ph = uTime * 1.3 + dot(ip.xz, vec2(0.41, 0.27));
+  float gust = 0.5 + 0.5 * sin(uTime * 0.37 + ip.x * 0.045 - ip.z * 0.06);
+  float sw = (sin(ph) * 0.7 + sin(ph * 2.31 + 1.3) * 0.3) * (0.35 + 0.65 * gust);
+  vec3 wo = vec3(0.8, 0.0, -0.45) * sw * uWind * uH * length(modelMatrix[1].xyz) * vTY * vTY;
+  transformed += inverse(mat3(modelMatrix)) * wo;
+}`;
+const TREE_FRAG = /* glsl */`
+uniform float uTime;
+uniform vec4 uPart, uFoot, uMore, uHi;
+uniform vec3 uRimC;
+uniform vec4 uHoles[4];
+varying float vTY, vAO;
+vec4 tTex = vec4(1.0);`;
+const TREE_MAP = /* glsl */`
+#ifdef USE_MAP
+  tTex = texture2D(map, vMapUv);
+  float tl = dot(tTex.rgb, vec3(0.3, 0.59, 0.11));
+  vec3 tc = mix(vec3(tl), tTex.rgb, uPart.y);
+  float nl = min(mix(tl, 0.14, uPart.z), uPart.w);       // calmer, and nothing brighter than it should be
+  tc *= nl / max(tl, 0.001);
+  tc = mix(tc, vec3(nl) * uHi.rgb, uHi.a * smoothstep(0.04, 0.16, tl));   // the bright tips turned to the kind's own colour
+  #ifdef TREE_EMBER
+  tc = mix(tc, vec3(nl * 0.3), smoothstep(0.05, 0.16, min(tTex.r, tTex.g) - tTex.b) * step(0.2, tTex.g));   // no yellow flecks
+  #endif
+  diffuseColor.rgb *= tc * uPart.x;
+#endif
+diffuseColor.rgb *= mix(uFoot.x, 1.0, smoothstep(0.0, uFoot.y, vTY)) * (1.0 + uMore.x * clamp(vTY, 0.0, 1.0)) * clamp(mix(vAO, max(vAO, 0.8), smoothstep(0.0, 0.05, tTex.r - tTex.g)), 0.3, 1.0);
+#if defined(TREE_EMBER) && defined(USE_MAP)
+{
+  // ash blown up round the foot, its top edge broken by the bark
+  float tDust = 1.0 - smoothstep(0.14, 0.26, vTY + (tl - 0.06) * 0.3);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.022, 0.02, 0.019), tDust * 0.85);   // soot
+}
+#endif`;
+const TREE_LIGHT = /* glsl */`
+{
+  vec3 upV = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+  float sky = 0.5 + 0.5 * dot(normal, upV), rimT = pow(1.0 - abs(normal.z), 2.0);
+  totalEmissiveRadiance += diffuseColor.rgb * (uFoot.z * sky + uFoot.w * rimT * uRimC);
+  #ifdef TREE_EMBER
+  totalEmissiveRadiance += vec3(0.05, 0.055, 0.065) * rimT * smoothstep(0.12, 0.3, vTY);   // a cool edge, so it parts from dark ash
+  float tEm = tTex.r - max(tTex.g, tTex.b);
+  totalEmissiveRadiance += vec3(1.0, 0.32, 0.06) * (smoothstep(0.04, 0.14, tEm) * 0.5 + smoothstep(0.12, 0.24, tEm) * 1.2) * (0.6 + 0.4 * sin(uTime * 0.9 + vTY * 7.0));
+  #endif
+}`;
+// see-through: a round hole in the tree where someone stands behind it, clear in the middle and thinning out through a
+// fine pattern at its rim, so the rest of the tree stays whole and nothing needs sorting (uHoles: on screen, in pixels)
+const TREE_GHOST = /* glsl */`
+{
+  float th = 0.0;
+  for (int i = 0; i < 4; i++) {
+    vec4 hh = uHoles[i];
+    if (hh.z > 0.0) th = max(th, 1.0 - smoothstep(0.78, 1.0, length(gl_FragCoord.xy - hh.xy) / hh.z));
+  }
+  ivec2 bp = ivec2(gl_FragCoord.xy) & 3;
+  float bay[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);
+  if (bay[bp.y * 4 + bp.x] < th * 16.0 - 0.5) discard;
+}`;
+function treeMaterial(src, look, part, tint, height, y0, crown, shared, ghost) {
+  const m = new THREE.MeshLambertMaterial({ map: src.map, name: src.name, color: tint });
+  const p = look[part], cr = part === 'crown';
+  const u = { uWind: { value: look.wind }, uH: { value: height }, uY0: { value: y0 }, uC: { value: crown },
+    uCut: { value: new THREE.Vector4(...(look.cutAt || [0, 0]), ...(look.cut || [9, 0])) },
+    uRnd: { value: new THREE.Vector2(cr ? look.round || 0 : 0, cr ? look.ao || 0 : 0) }, uRimC: { value: new THREE.Vector3(...(look.rimC || [0.75, 0.85, 1.0])) }, uHi: { value: new THREE.Vector4(...(look.hi || [1, 1, 1, 0])) }, uPart: { value: new THREE.Vector4(...p) },
+    uFoot: { value: new THREE.Vector4(look.foot[0], look.foot[1], look.sky, look.rim) }, uMore: { value: new THREE.Vector4(part === 'crown' ? look.top : 0, 0, 0, 0) } };
+  m.defines = {};
+  if (look.ember) m.defines.TREE_EMBER = 1;
+  if (look.cut) m.defines.TREE_CUT = 1;
+  if (ghost) m.defines.TREE_GHOST = 1;
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, u, { uTime: shared.uTime, uHoles: shared.uHoles });
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + TREE_VERT).replace('#include <begin_vertex>', '#include <begin_vertex>\n' + TREE_SWAY)
+      .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\n' + TREE_ROUND);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + TREE_FRAG)
+      .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n#ifdef TREE_GHOST\n' + TREE_GHOST + '\n#endif')
+      .replace('#include <map_fragment>', TREE_MAP).replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n' + TREE_LIGHT);
+  };
+  m.customProgramCacheKey = () => `tree2|${look.ember ? 1 : 0}|${look.cut ? 1 : 0}|${ghost ? 1 : 0}`;
+  return m;
+}
+
+// where a model's trunk stands: the middle of what it has between a quarter and two-fifths of its height
+function trunkOf(geo) {
+  const P = geo.attributes.position, bb = geo.boundingBox, H = bb.max.y - bb.min.y, xs = [], zs = [];
+  for (let i = 0; i < P.count; i++) {
+    const ty = (P.getY(i) - bb.min.y) / H;
+    if (ty > 0.25 && ty < 0.4) { xs.push(P.getX(i)); zs.push(P.getZ(i)); }
+  }
+  const mid = (a) => (a.length ? a.sort((x, y) => x - y)[a.length >> 1] : 0);
+  return [mid(xs), mid(zs)];
+}
+
+// the middle and reach of a model's crown (its second part), for lighting it as one mass
+function crownOf(geo) {
+  const g = geo.groups[1] || { start: 0, count: Infinity }, P = geo.attributes.position, I = geo.index;
+  const lo = new THREE.Vector3(Infinity, Infinity, Infinity), hi = lo.clone().negate(), v = new THREE.Vector3();
+  const end = Math.min(g.start + g.count, I ? I.count : P.count);
+  for (let i = g.start; i < end; i++) { v.fromBufferAttribute(P, I ? I.getX(i) : i); lo.min(v); hi.max(v); }
+  const c = lo.clone().add(hi).multiplyScalar(0.5), r = Math.max(hi.x - lo.x, hi.z - lo.z) / 2;
+  return new THREE.Vector4(c.x, c.y, c.z, Math.max(r, 1e-3));
+}
 
 export class Renderer {
   constructor(canvas, world) {
@@ -97,7 +226,13 @@ export class Renderer {
     rim.position.set(-8, 7, -6);
     this.scene.add(rim);
 
-    this.buildGround();
+    // the clock and the noise the ground's blends, the swaying grass and the air all share
+    this.shared = { uTime: { value: 0 }, uNoise: { value: noiseTexture() }, uHoles: { value: [0, 1, 2, 3].map(() => new THREE.Vector4()) } };
+    this.holePts = [];
+    this.ground = buildGround(this, this.shared);
+    buildScatter(this, this.ground.vis, this.shared);
+    this.treeShade = buildShadows(this);
+    this.ambient = new Ambient(this, this.shared);
     this.buildTrees();
     this.buildTown();
     this.buildCrypt();
@@ -127,54 +262,17 @@ export class Renderer {
   }
   setZoom(z) { this.zoom = clamp(z, 6, 22); this.resize(); }
 
-  // ---- ground: one mesh per texture, tops plus the two cliff faces the camera can see ----
-  buildGround() {
-    const w = this.world, buckets = {};
-    const push = (t, verts, shade) => {
-      const b = (buckets[t] ||= { p: [], u: [], c: [], n: [] });
-      for (const v of verts) { b.p.push(v[0], v[1], v[2]); b.u.push(v[3], v[4]); b.c.push(shade, shade, shade); b.n.push(v[5], v[6], v[7]); }
-    };
-    const top = (x, z) => { const i = w.I(x, z); return w.h[i] * STEP - (w.type[i] === T.WATER ? SUNK : 0); };
-    for (let z = 0; z < N; z++) for (let x = 0; x < N; x++) {
-      const i = w.I(x, z), t = w.type[i], y = top(x, z);
-      // the 7:4 textures are kept square on the ground; the crypt's square ones span three tiles
-      const U = SQUARE.has(t) ? 1 / 3 : 1 / 7, V = SQUARE.has(t) ? 1 / 3 : 1 / 4;
-      const s = 0.86 + 0.14 * vnoise(x * 0.9, z * 0.9, 77) - (((x + z) & 1) ? 0.035 : 0);
-      const x0 = x - 0.5, x1 = x + 0.5, z0 = z - 0.5, z1 = z + 0.5;
-      const q = (a, b, c, d) => [a, b, c, a, c, d];
-      push(t, q([x0, y, z0, x0 * U, z0 * V, 0, 1, 0], [x0, y, z1, x0 * U, z1 * V, 0, 1, 0], [x1, y, z1, x1 * U, z1 * V, 0, 1, 0], [x1, y, z0, x1 * U, z0 * V, 0, 1, 0]), s);
-      const side = SIDE[t] ?? T.DIRT;
-      const sq = SQUARE.has(side), su = sq ? 0.5 : 1 / 4, sx = sq ? 0.5 : 1 / 7, sy = sq ? 0.5 : 1;
-      const hx = x + 1 < N ? top(x + 1, z) : y, hz = z + 1 < N ? top(x, z + 1) : y;
-      if (hx < y) push(side, q([x1, y, z1, z1 * su, y * sy, 1, 0, 0], [x1, hx, z1, z1 * su, hx * sy, 1, 0, 0], [x1, hx, z0, z0 * su, hx * sy, 1, 0, 0], [x1, y, z0, z0 * su, y * sy, 1, 0, 0]), s * 0.62);
-      if (hz < y) push(side, q([x0, y, z1, x0 * sx, y * sy, 0, 0, 1], [x0, hz, z1, x0 * sx, hz * sy, 0, 0, 1], [x1, hz, z1, x1 * sx, hz * sy, 0, 0, 1], [x1, y, z1, x1 * sx, y * sy, 0, 0, 1]), s * 0.8);
-    }
-    for (const t in buckets) {
-      const b = buckets[t], g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.Float32BufferAttribute(b.p, 3));
-      g.setAttribute('uv', new THREE.Float32BufferAttribute(b.u, 2));
-      g.setAttribute('color', new THREE.Float32BufferAttribute(b.c, 3));
-      g.setAttribute('normal', new THREE.Float32BufferAttribute(b.n, 3));
-      const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: this.tex(GROUND_TEX[t]), vertexColors: true }));
-      m.frustumCulled = false; m.matrixAutoUpdate = false;
-      this.scene.add(m);
-    }
-    // the dark beyond the map's edge
-    const skirt = new THREE.Mesh(new THREE.PlaneGeometry(N * 3, N * 3), new THREE.MeshBasicMaterial({ color: 0x07060a }));
-    skirt.rotation.x = -Math.PI / 2; skirt.position.set(N / 2, -0.05, N / 2);
-    this.scene.add(skirt);
-  }
+  // ---- the ground, what lies on it and the air over it: src/world/ground.js, src/world/scatter.js, src/gfx/ambient.js ----
 
-  // ---- trees: a trunk and a crown, wearing bm's bark, oak leaf and pine needle textures ----
+  // ---- trees: a trunk and a crown, wearing bm's bark, oak leaf and pine needle textures; the models when they come ----
   buildTrees() {
-    const r = rng32(99);
+    const r = rng32(99), w = this.world, vis = this.ground.vis;
     const solid = (path) => new THREE.MeshLambertMaterial({ map: this.tex(path) });
     const ghost = (path) => new THREE.MeshLambertMaterial({ map: this.tex(path), transparent: true, opacity: 0.2 });
     const barkO = 'tex/bark_c.webp', barkP = 'tex/pine_bark_c.webp';
     const leaves = ['trees/oak_leaves_1.webp', 'trees/oak_leaves_2.webp', 'trees/oak_leaves_3.webp', 'trees/oak_leaves_4.webp'];
     const needles = ['tex/pine_c.webp', 'trees/pine_needles_2.webp', 'tex/pine_3_c.webp', 'trees/pine_needles_4.webp'];
     const M = { solid: {}, ghost: {} };
-    const none = new THREE.MeshBasicMaterial({ visible: false });
     // the trees of the other lands: [shape, bark, crown]. A bare tree's crown is its own boughs.
     const OASIS = 'desert/Desert_Oasis_20_Textures/';
     const KIND = {
@@ -186,7 +284,7 @@ export class Renderer {
     };
     for (const p of [barkO, barkP, ...leaves, ...needles, ...Object.values(KIND).flatMap((k) => k.slice(1)).filter(Boolean)]) { M.solid[p] ||= solid(p); M.ghost[p] ||= ghost(p); }
 
-    // a handful of shapes per kind and size, shared between trees
+    // a handful of shapes per kind and size, shared between trees (the stand-ins until a kind's model is in)
     const shapes = {}, SIZE_R = [0, 0.62, 1.25, 1.95], SIZE_H = [0, 3.0, 4.8, 7.0];
     const shape = (kind, size, v) => {
       const key = kind + size + v;
@@ -225,44 +323,90 @@ export class Renderer {
       const geo = mergeGeometries([flat(trunk), mergeGeometries(crown.map(flat))], true);
       return (shapes[key] = { geo, R, H });
     };
+
+    // A fight takes a tree down to a stump, so the board shows which tiles a tree holds: one instanced bark side (wider
+    // at its roots) and one cut top (rings darker to the bark) for every tree, each kept at nothing until it is felled.
+    const n = w.trees.length;
+    const stumpSide = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.8, 1.35, 1, 9, 2, true).translate(0, 0.5, 0),
+      new THREE.MeshLambertMaterial({ map: this.tex('tex/bark_c.webp') }), n);
+    const cut = new THREE.CircleGeometry(0.8, 9).rotateX(-Math.PI / 2).translate(0, 1, 0);
+    cut.setAttribute('color', new THREE.Float32BufferAttribute(Array.from({ length: cut.attributes.position.count }, (_, k) => (k ? [0.55, 0.52, 0.5] : [1, 1, 1])).flat(), 3));
+    const stumpTop = new THREE.InstancedMesh(cut, new THREE.MeshLambertMaterial({ color: 0x8a7660, vertexColors: true }), n);
+    const STUMP_COL = { pine: [0x8a6a50, 0xffffff], oak: [0x7a6250, 0xffffff], snowpine: [0x7a6a60, 0xf4f4f4], dead: [0xb0aa9c, 0xd8d0c0], char: [0x3a3432, 0x5a4a40], palm: [0x9a8468, 0xe8dcc0] };
+    const zero = new THREE.Matrix4().makeScale(0, 0, 0), sm = new THREE.Matrix4(), sc = new THREE.Color();
+    const sp = new THREE.Vector3(), sq = new THREE.Quaternion(), ss = new THREE.Vector3(), sa = new THREE.Vector3();
+    const KF = { oak: 1.5, pine: 1, snowpine: 1, palm: 0.75, dead: 0.95, char: 1.1 };
+    for (let k = 0; k < n; k++) { stumpSide.setMatrixAt(k, zero); stumpTop.setMatrixAt(k, zero); }
+    stumpSide.frustumCulled = stumpTop.frustumCulled = false;
+    this.scene.add(stumpSide, stumpTop);
+    // a stub: what is left of a tree off the field's edge, cut near the ground
+    const stump = (t, kind, on, stub) => {
+      const c = (t.size - 1) / 2, rad = (0.1 + 0.045 * t.size) * (KF[kind] || 1), j = (k) => (t.id * k) % 1;
+      if (on) {
+        const a = j(0.371) * 6.28, tilt = 0.09 + 0.12 * j(0.733);
+        sq.setFromAxisAngle(sa.set(Math.cos(a), 0, Math.sin(a)), tilt);
+        sp.set(t.x + c + (j(0.211) - 0.5) * 0.12, w.y(t.x, t.z) - 0.02, t.z + c + (j(0.457) - 0.5) * 0.12);
+        sm.compose(sp, sq, ss.set(rad, (0.12 + 0.04 * t.size) * (0.75 + 0.5 * j(0.618)) * (stub ? 0.35 : 1), rad));
+      } else sm.copy(zero);
+      stumpSide.setMatrixAt(t.id, sm); stumpTop.setMatrixAt(t.id, sm);
+      stumpSide.setColorAt(t.id, sc.setHex(STUMP_COL[kind][0])); stumpTop.setColorAt(t.id, sc.setHex(STUMP_COL[kind][1]));
+      stumpSide.instanceMatrix.needsUpdate = stumpTop.instanceMatrix.needsUpdate = true;
+      stumpSide.instanceColor.needsUpdate = stumpTop.instanceColor.needsUpdate = true;
+    };
+
     const live = { pine: [], oak: [], snowpine: [], dead: [], char: [], palm: [] };   // the trees that take their models when those come
-    for (const t of this.world.trees) {
-      const K = KIND[t.kind] || KIND.oak;
+    const palms = w.trees.filter((t) => treeKind(w, vis, t) === 'palm');
+    const pool = palms.length ? palms.reduce((a, t) => ({ x: a.x + t.x / palms.length, z: a.z + t.z / palms.length }), { x: 0, z: 0 }) : null;
+    const q = new THREE.Quaternion(), qy = new THREE.Quaternion(), axis = new THREE.Vector3(), UPV = new THREE.Vector3(0, 1, 0);
+    for (const t of w.trees) {
+      const kind = treeKind(w, vis, t), K = KIND[kind] || KIND.oak;
       const s = shape(K[0], t.size, t.v % 3);
       const bark = K[1], leaf = K[2] || (K[0] === 'pine' ? needles : leaves)[t.v];
       const wear = { solid: [M.solid[bark], M.solid[leaf]], ghost: [M.ghost[bark], M.ghost[leaf]] };
       const m = new THREE.Mesh(s.geo, wear.solid);
-      const c = (t.size - 1) / 2;
+      const c = (t.size - 1) / 2, rt = rng32(t.id * 7 + 3);
+      // no two alike: a little taller or shorter than the map says, the biggest a little less, each leaning a few
+      // degrees its own way (a palm out from its pool)
+      const jit = (0.86 + rt() * 0.28) * (t.size === 3 ? 0.88 : 1), tall = t.tall * jit;
+      let lx = rt() - 0.5, lz = rt() - 0.5, lean = 0.02 + rt() * 0.05;
+      if (kind === 'palm' && pool) { lx = t.x - pool.x; lz = t.z - pool.z; lean = 0.08 + rt() * 0.08; }
+      axis.set(lz, 0, -lx); if (axis.lengthSq() < 1e-6) axis.set(1, 0, 0);
+      q.setFromAxisAngle(axis.normalize(), lean).multiply(qy.setFromAxisAngle(UPV, t.rot));
       m.position.set(t.x + c, 0, t.z + c);
-      m.rotation.y = t.rot; m.scale.set(1, t.tall, 1);
+      m.quaternion.copy(q); m.scale.set(1, tall, 1);
       m.updateMatrix(); m.matrixAutoUpdate = false;
       this.scene.add(m);
-      // hide(true) takes the crown away altogether: a fight has to be readable
-      const f = { tree: true, x: t.x + c, z: t.z + c, r: K[0] === 'bare' ? s.R * 0.3 : s.R, h: s.H * t.tall, on: 0,
-        show: () => { m.material = wear.solid; }, hide: (hard) => { m.material = [wear.ghost[0], hard ? none : wear.ghost[1]]; } };
+      // hide(true) fells it to a stump for a fight; hide(false) lets you see through it
+      const f = { tree: true, x: t.x + c, z: t.z + c, r: K[0] === 'bare' ? s.R * 0.3 : s.R, h: s.H * tall, on: 0,
+        show: () => { m.visible = true; m.material = wear.solid; this.treeShade(t.id, 1); stump(t, kind, false); },
+        hide: (hard, stub) => {
+          if (hard) { m.visible = false; this.treeShade(t.id, 0.9, 0.3); stump(t, kind, true, stub); }
+          else { m.visible = true; m.material = wear.ghost; this.treeShade(t.id, 1); stump(t, kind, false); }
+        } };
       this.faders.push(f);
-      if (live[t.kind]) live[t.kind].push({ t, m, f, wear });
+      if (live[kind]) live[kind].push({ t, m, f, wear, tall });
     }
     // the tree models: as tall as the shapes they stand in for (an oak or a bare tree a little less, being broad; a
-    // palm more), each tree's crown one of four greens (the pine's needles are frosted at the tips; these take the
-    // frost off), the snow, the bare boughs and the ash only a shade warmer or cooler. A bare tree hides only its trunk.
-    const GREENS = { oak: [0xffffff, 0xe2ead4, 0xd2e0da, 0xf0e6cc], pine: [0xb8d4a0, 0xaccaa8, 0xc4d6a4, 0xa8c49c],
-      snowpine: [0xffffff, 0xeef2f6, 0xe4eaf0, 0xf4f4ee], dead: [0xffffff, 0xece6dc, 0xe2e2e2, 0xf0ece4],
-      char: [0xffffff, 0xe8e0dc, 0xdcdcdc, 0xf0e8e0], palm: [0xffffff, 0xe6eed8, 0xf0ecd4, 0xdce6d6] };
+    // palm more), each tree's crown one of four tints, lit by one light model for all (`treeMaterial`). A bare tree
+    // hides only its trunk.
     const PROP = { dead: 'dead_tree', char: 'char_tree' }, UP = { oak: 0.8, dead: 0.85, char: 0.85, palm: 1.2 };
     for (const kind in live) if (live[kind].length) loadProp(PROP[kind] || kind).then((p) => {
       if (!p) return;
       const up = UP[kind] || 1, wide = Math.max(p.size.x, p.size.z) / 2 * (KIND[kind][0] === 'bare' ? 0.4 : 1);
-      const wears = GREENS[kind].map((hex) => {
-        const solid = p.mats.map((x, k) => { const n = x.clone(); if (k) n.color.setHex(hex); return n; });
-        return { solid, ghost: solid.map((x) => { const n = x.clone(); n.transparent = true; n.opacity = 0.2; return n; }) };
+      const look = TREE_LOOK[kind], crown = crownOf(p.geo);
+      if (look.cut) look.cutAt = trunkOf(p.geo);
+      const wears = [...look.tints, ...(look.fen || [])].map((hex) => {
+        const make = (ghost) => p.mats.map((x, k) => treeMaterial(x, look, k && p.mats.length > 1 ? 'crown' : 'trunk', k ? hex : look.bark || 0xffffff,
+          p.size.y, p.geo.boundingBox.min.y, crown, this.shared, ghost));
+        return { solid: make(false), ghost: make(true) };
       });
-      for (const { t, m, f, wear } of live[kind]) {
-        const k = SIZE_H[t.size] * up * t.tall / p.size.y;
-        Object.assign(wear, wears[t.v % 4]);
-        m.geometry = p.geo; m.scale.setScalar(k); m.updateMatrix();
-        f.r = wide * k * 0.9; f.h = p.size.y * k;
-        if (f.on) f.hide(f.on === 2); else f.show();
+      for (const { t, m, f, wear, tall } of live[kind]) {
+        const k = SIZE_H[t.size] * up * tall / p.size.y, fen = look.fen && w.region[w.I(t.x, t.z)] === 3;
+        Object.assign(wear, wears[(fen ? 4 : 0) + t.v % 4]);
+        const kw = k * (look.wide || 1), kh = k * (look.tallK || 1);
+        m.geometry = p.geo; m.scale.set(kw, kh, kw); m.position.y = -(look.sink || 0) * p.size.y * kh; m.updateMatrix();
+        f.r = wide * kw * 0.9; f.h = p.size.y * kh;
+        if (f.on) f.hide(f.on >= 2, f.on === 3); else f.show();
       }
     });
   }
@@ -629,8 +773,11 @@ export class Renderer {
       if (ch.act) { ch.act.stop(); ch.mixer.update(0); }
     }
   }
-  // Each frame: lids that are swinging, and the crypt's candles.
+  // Each frame: the wind and the water, the air, lids that are swinging, and the crypt's candles.
   tick(dt) {
+    this.shared.uTime.value += dt;
+    if (this.ground.pending.length) settleRepeats(this.ground.pending);
+    this.ambient.update(dt);
     for (const id in this.chests) { const ch = this.chests[id]; if (ch.mixer && ch.act.isRunning()) ch.mixer.update(dt); }
     if (this.glows) {
       const t = (this.flick += dt);
@@ -644,15 +791,17 @@ export class Renderer {
     this.hl = [];
     this.hlGroup = new THREE.Group();
     this.scene.add(this.hlGroup);
+    // a lit tile: an even wash with a brighter rim, so a range reads as one colour over any ground
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+    const cx = cv.getContext('2d');
+    cx.fillStyle = 'rgba(255,255,255,0.95)'; cx.fillRect(1, 1, 62, 62);
+    cx.clearRect(5, 5, 54, 54); cx.fillStyle = 'rgba(255,255,255,0.5)'; cx.fillRect(5, 5, 54, 54);
+    const tile = new THREE.CanvasTexture(cv);
+    const hm = (color, opacity) => new THREE.MeshBasicMaterial({ color, map: tile, transparent: true, opacity, depthWrite: false });
     this.hlMats = {
-      move: new THREE.MeshBasicMaterial({ color: 0x4f8dff, transparent: true, opacity: 0.38, depthWrite: false }),
-      attack: new THREE.MeshBasicMaterial({ color: 0xd83a3a, transparent: true, opacity: 0.42, depthWrite: false }),
-      place: new THREE.MeshBasicMaterial({ color: 0x4fd65a, transparent: true, opacity: 0.38, depthWrite: false }),
-      aoe: new THREE.MeshBasicMaterial({ color: 0xff9a2a, transparent: true, opacity: 0.6, depthWrite: false }),
-      heal: new THREE.MeshBasicMaterial({ color: 0x4fd6a0, transparent: true, opacity: 0.42, depthWrite: false }),
-      bounds: new THREE.MeshBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: 0.1, depthWrite: false }),
-      danger: new THREE.MeshBasicMaterial({ color: 0xff2a1a, transparent: true, opacity: 0.62, depthWrite: false }),
-      hazard: new THREE.MeshBasicMaterial({ color: 0xb04aff, transparent: true, opacity: 0.4, depthWrite: false }),
+      move: hm(0x5a94ff, 0.85), attack: hm(0xe04040, 0.9), place: hm(0x5ad664, 0.85), aoe: hm(0xff9a2a, 1),
+      heal: hm(0x4fd6a0, 0.88), bounds: new THREE.MeshBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: 0.1, depthWrite: false }),
+      danger: hm(0xff2a1a, 1), hazard: hm(0xb04aff, 0.8),
     };
     this.hlGeo = new THREE.PlaneGeometry(0.92, 0.92).rotateX(-Math.PI / 2);
     const ring = new THREE.RingGeometry(0.4, 0.5, 4, 1, Math.PI / 4).rotateX(-Math.PI / 2);
@@ -711,20 +860,39 @@ export class Renderer {
   // `field` is a battle's bounds: every tree on it loses its crown for as long as the fight lasts.
   updateFade(points, field) {
     const tx = this.target.x, tz = this.target.z;
+    this.fight = !!field;
+    this.holePts = points;
     for (const f of this.faders) {
       let want = 0;
       if (Math.abs(f.x - tx) <= 26 && Math.abs(f.z - tz) <= 26) {
-        if (field && f.tree && f.x >= field.x0 - 1 && f.x <= field.x1 + 2 && f.z >= field.z0 - 1 && f.z <= field.z1 + 2) want = 2;
+        // a fight fells the trees on its field, and those just off it on the camera's side, so nobody on its near edge
+        // is lost behind one
+        if (field && f.tree && f.x >= field.x0 - 1 && f.x <= field.x1 + 6 && f.z >= field.z0 - 1 && f.z <= field.z1 + 6) {
+          want = f.x <= field.x1 + 2 && f.z <= field.z1 + 2 ? 2 : 3;   // on the field a stump, off it a stub
+        }
         else for (const p of points) {
           const dx = f.x - p.x, dz = f.z - p.z;
           const along = (dx + dz) / 2;                    // how far toward the camera the thing is
           if (along < 0.3) continue;
           const side = Math.abs(dx - dz) / 2;             // how far off the line of sight
-          if (side > f.r + 0.35) continue;
+          if (side > f.r + 0.9) continue;
           if (along * RISE - (p.y || 0) < f.h + 0.4 && along < f.h / RISE + f.r + 1) { want = field && f.tree ? 2 : 1; break; }
         }
       }
-      if (want !== f.on) { f.on = want; want ? f.hide(want === 2) : f.show(); }
+      if (want !== f.on) { f.on = want; want ? f.hide(want >= 2, want === 3) : f.show(); }
+    }
+  }
+
+  // where the see-through holes fall on screen: one round each of the first four the camera follows, as wide as about
+  // one and a half of them are tall
+  placeHoles() {
+    const v = (this._hv ||= [new THREE.Vector2(), new THREE.Vector3(), new THREE.Vector3()]);
+    const H = this.shared.uHoles.value, size = this.gl.getDrawingBufferSize(v[0]), a = v[1], b = v[2];
+    for (let k = 0; k < 4; k++) {
+      const p = this.holePts[k];
+      if (!p) { H[k].set(0, 0, 0, 0); continue; }
+      a.set(p.x, (p.y || 0) + 1.0, p.z).project(this.cam); b.set(p.x, (p.y || 0) + 1.9, p.z).project(this.cam);
+      H[k].set((a.x * 0.5 + 0.5) * size.x, (a.y * 0.5 + 0.5) * size.y, Math.abs(b.y - a.y) * 0.5 * size.y * 2.1, 0);
     }
   }
 
@@ -737,6 +905,7 @@ export class Renderer {
     this.cam.lookAt(this.target);
     this.cam.updateMatrixWorld();
     this.edges.update();
+    this.placeHoles();
     this.gl.render(this.scene, this.cam);
     this.edges.draw();
   }

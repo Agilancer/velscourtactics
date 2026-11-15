@@ -151,6 +151,9 @@ last line.
   Dry Court, and the palms at Last Water), the **Drowned Fen** south (black pools, bare trees, the Swamp Abbey)
   and the **Cinder Reach** west (ash, basalt, a dead rail line, Cinder Halt). The names are VELSCOUR's
   (the Great Hunt's lands, the Siege's forts, the Iron Express); the ground is bm's snow, fen, ash and desert textures.
+- **Ground that runs together**: where two kinds of ground meet the edge is torn and ragged, not a square, with gravel,
+  dirt or litter along the join; pools have banks and reeds, stones and grass are strewn about, and each land has
+  its own air (snow in the Waste, dust in the Badlands, fireflies in the Fen, embers and ash in the Reach).
 - **Seventeen classes**, sixteen from VELSCOUR and the Ninja, male and female, eight skills each opening at levels 1, 2,
   3, 4, 6, 8, 10, 13 (`src/data/classes.js`), plus Lisandra's own: four from VELSCOUR's trees (1, 3, 6, 10) and four only this game
   has (2, 4, 8, 13), built on the board: pushes and pulls, lines and cones, chains, traps, blinks, turn order
@@ -181,7 +184,10 @@ last line.
 | | |
 |---|---|
 | `src/world/map.js` | the world as data: tiles, heights, trees, buildings, packs |
-| `src/world/render.js` | the isometric view, textures, see-through trees, tile highlights |
+| `src/world/render.js` | the isometric view, textures, tile highlights; the trees: one light model for every kind (`TREE_LOOK`), wind, the kind by the ground under it, a hole cut round whoever stands behind one, felled to stumps in a fight |
+| `src/world/ground.js` | the ground: tile tops and cliff faces, the ragged blends where two kinds of ground meet, grit along the joins, shores, each land's water |
+| `src/world/scatter.js` | stones, grass, reeds, flowers and the rest strewn over the ground, and the soft dark under trees and houses |
+| `src/gfx/ambient.js` | the air of each land: motes, fireflies, leaves, snow, dust, embers, ash and low mist |
 | `src/gfx/models.js` | the loader for real models (loaded near the party, freed far from it), and the stand-ins for kinds with none yet |
 | `src/game/explore.js` | walking, the follow chain, townsfolk, the dead spotting you |
 | `src/game/battle.js` | the fight: placement, the turn clock, skills, statuses, the AI |
