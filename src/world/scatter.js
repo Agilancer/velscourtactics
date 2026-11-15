@@ -299,7 +299,7 @@ export function buildScatter(r, vis, shared) {
         pebble(t === T.BASALT ? 0.4 : 0.3, 'basalt');
         // black rocks lie in heaps, not salted about
         if (rr() < (t === T.BASALT ? 0.12 : 0.05) * clump) stoneAt(2 + rr() * 2, 'basalt');
-        lone('log', 0.012, 0x6a625a, 0.7, 1.2);
+        lone('log', 0.012, 0x4c4e54, 0.7, 1.2);   // charred grey
         lone('bones', 0.004, 0xb8b0a0, 0.6, 0.8);
         if (rr() < 0.008) plants('ember', 1 + rr() * 2, rr() < 0.5 ? 0xff5a14 : 0xff8a2a, 0.03, 0.05);
         tuft(0.05, 0x5a5048, 0.7);

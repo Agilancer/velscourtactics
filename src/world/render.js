@@ -59,14 +59,14 @@ const TREE_LOOK = {
     round: 0.2, ao: 0.35, bark: 0xc8a07c, tints: [0xbcc690, 0x98ac90, 0xc4c48e, 0x90a684] },
   oak: { crown: [1.35, 0.62, 0.4, 0.3], trunk: [1.0, 0.8, 0.2, 0.3], foot: [0.6, 0.1], sky: 0.26, rim: 0.26, top: 0.45, wind: 0.009,
     round: 0.75, ao: 0.5, wood: [1.25, 0.75, 0.35, 0.085], tints: [0xd0d4a8, 0x98a890, 0xc4c8a0, 0xa8b894],
-    fen: [0xaa9e84, 0x9e947e, 0xb0a286, 0x989080] },
-  snowpine: { crown: [1, 1, 0, 1], trunk: [1, 0.3, 0, 1], foot: [0.75, 0.08], sky: 0.15, rim: 0.2, top: 0.1, wind: 0.007, bark: 0xd8e0ec,
-    mound: [0xa4a8b4, 0.12, 0.45, 0], tints: [0xffffff, 0xeef2f6, 0xe4eaf0, 0xf4f4ee] },
+    fen: [0x9c9478, 0x908a72, 0xa4987a, 0x94805e] },
+  snowpine: { crown: [1, 1, 0, 1], trunk: [1, 0.3, 0, 1], foot: [0.92, 0.1], sky: 0.15, rim: 0.2, top: 0.1, wind: 0.007, bark: 0xd8e0ec,
+    sink: 0.1, tallK: 1.1, mound: [0x868589, 0.13, 0.4, 0, 1], tints: [0xffffff, 0xeef2f6, 0xe4eaf0, 0xf4f4ee] },
   dead: { crown: [0.62, 0.5, 0.5, 0.42], trunk: [0.62, 0.5, 0.5, 0.42], foot: [0.3, 0.2], sky: 0.1, rim: 0.22, top: 0.1, wind: 0.007,
     tints: [0xc4ccc0, 0xb4c0b4, 0xccd0c2, 0xb0bab0] },
-  char: { crown: [1, 0.15, 0, 0.06], trunk: [1, 0.15, 0, 0.06], foot: [0.3, 0.2], sky: 0.06, rim: 0.45, rimC: [0.85, 0.85, 0.88], top: 0, wind: 0.003,
-    ember: 1, sink: 0.24, cut: [0.1, 0.34], wide: 0.75, tallK: 1.4, mound: [0x1e1c1b, 0.21, 0.3, 0x161413], tints: [0xffffff, 0xe8e0dc, 0xdcdcdc, 0xf0e8e0] },
-  palm: { crown: [0.8, 0.95, 0.2, 0.34], trunk: [1.4, 0.7, 0.2, 0.45], foot: [0.45, 0.12], sink: 0.03, sky: 0.3, rim: 0.25, top: 0.3, wind: 0.02, bark: 0xe6caa4,
+  char: { crown: [1, 0.15, 0, 0.06], trunk: [1, 0.15, 0, 0.06], foot: [0.3, 0.2], sky: 0.06, rim: 0.45, rimC: [0.9, 0.86, 0.8], top: 0, wind: 0.003,
+    ember: 1, sink: 0.24, cut: [0.1, 0.34], wide: 0.75, tallK: 1.4, mound: [0x1e1c1b, 0.21, 0.42, 0x161413], tints: [0xffffff, 0xe8e0dc, 0xdcdcdc, 0xf0e8e0] },
+  palm: { crown: [0.8, 0.95, 0.2, 0.34], trunk: [1.4, 0.7, 0.2, 0.45], foot: [0.45, 0.12], sink: 0.05, dates: 0.75, sky: 0.3, rim: 0.25, top: 0.3, wind: 0.02, bark: 0xe6caa4,
     tints: [0xe0ecb0, 0xd4e4a4, 0xe8e8a8, 0xd0dca8] },
 };
 const TREE_VERT = /* glsl */`
@@ -134,12 +134,13 @@ const TREE_MAP = /* glsl */`
   #ifdef TREE_WOOD
   tc = mix(tc, vec3(0.05, 0.08, 0.022), tFleck);
   #endif
+  tc = mix(tc, vec3(nl) * vec3(1.15, 0.9, 0.72), uMore.y * smoothstep(1.2, 1.5, tTex.r / max(tTex.g, 1e-4)));   // the dates toward rust
   #ifdef TREE_EMBER
   tc = mix(tc, vec3(nl * 0.3), smoothstep(0.05, 0.16, min(tTex.r, tTex.g) - tTex.b) * step(0.2, tTex.g));   // no yellow flecks
   #endif
   diffuseColor.rgb *= tc * tP.x;
 #endif
-diffuseColor.rgb *= mix(uFoot.x, 1.0, smoothstep(0.0, uFoot.y, vTY)) * (1.0 + uMore.x * clamp(vTY, 0.0, 1.0)) * clamp(mix(vAO, max(vAO, 0.8), tWood), 0.3, 1.0);
+diffuseColor.rgb *= mix(uFoot.x, 1.0, smoothstep(0.0, uFoot.y, vTY)) * (1.0 + uMore.x * clamp(vTY, 0.0, 1.0) * (1.0 - tWood)) * clamp(mix(vAO, max(vAO, 0.8), tWood * (1.0 - smoothstep(0.5, 0.7, vTY))), 0.3, 1.0);
 #if defined(TREE_EMBER) && defined(USE_MAP)
 {
   // ash blown up round the foot, its top edge broken by the bark
@@ -153,7 +154,7 @@ const TREE_LIGHT = /* glsl */`
   float sky = 0.5 + 0.5 * dot(normal, upV), rimT = pow(1.0 - abs(normal.z), 2.0);
   totalEmissiveRadiance += diffuseColor.rgb * (uFoot.z * sky + uFoot.w * rimT * uRimC);
   #ifdef TREE_EMBER
-  totalEmissiveRadiance += vec3(0.032, 0.033, 0.036) * rimT * smoothstep(0.26, 0.4, vTY);   // a grey edge, so it parts from dark ash
+  totalEmissiveRadiance += vec3(0.034, 0.032, 0.03) * rimT * smoothstep(0.26, 0.4, vTY);   // an ash-grey edge, so it parts from dark ash
   float tEm = tTex.r - max(tTex.g, tTex.b);
   totalEmissiveRadiance += vec3(1.0, 0.32, 0.06) * (smoothstep(0.04, 0.14, tEm) * 0.5 + smoothstep(0.12, 0.24, tEm) * 1.2) * (0.6 + 0.4 * sin(uTime * 0.9 + vTY * 7.0));
   #endif
@@ -165,7 +166,7 @@ const TREE_GHOST = /* glsl */`
   float th = 0.0;
   for (int i = 0; i < 4; i++) {
     vec4 hh = uHoles[i];
-    if (hh.z > 0.0) th = max(th, 1.0 - smoothstep(0.86, 1.0, length(gl_FragCoord.xy - hh.xy) / hh.z));
+    if (hh.z > 0.0) th = max(th, 1.0 - smoothstep(0.92, 1.0, length(gl_FragCoord.xy - hh.xy) / hh.z));
   }
   ivec2 bp = ivec2(gl_FragCoord.xy) & 3;
   float bay[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);
@@ -178,7 +179,7 @@ function treeMaterial(src, look, part, tint, height, y0, crown, shared, ghost) {
     uCut: { value: new THREE.Vector4(...(look.cutAt || [0, 0]), ...(look.cut || [9, 0])) },
     uWood: { value: new THREE.Vector4(...(look.wood || look.trunk)) }, uWoodC: { value: new THREE.Color(look.bark || 0xffffff) },
     uRnd: { value: new THREE.Vector2(cr ? look.round || 0 : 0, cr ? look.ao || 0 : 0) }, uRimC: { value: new THREE.Vector3(...(look.rimC || [0.75, 0.85, 1.0])) }, uHi: { value: new THREE.Vector4(...(look.hi || [1, 1, 1, 0])) }, uPart: { value: new THREE.Vector4(...p) },
-    uFoot: { value: new THREE.Vector4(look.foot[0], look.foot[1], look.sky, look.rim) }, uMore: { value: new THREE.Vector4(part === 'crown' ? look.top : 0, 0, 0, 0) } };
+    uFoot: { value: new THREE.Vector4(look.foot[0], look.foot[1], look.sky, look.rim) }, uMore: { value: new THREE.Vector4(cr ? look.top : 0, cr ? look.dates || 0 : 0, 0, 0) } };
   m.defines = {};
   if (look.ember) m.defines.TREE_EMBER = 1;
   if (look.cut) m.defines.TREE_CUT = 1;
@@ -371,8 +372,8 @@ export class Renderer {
       new THREE.MeshLambertMaterial({ map: this.tex('tex/bark_c.webp') }), n);
     const cut = new THREE.CircleGeometry(0.8, 9).rotateX(-Math.PI / 2).translate(0, 1, 0);
     cut.setAttribute('color', new THREE.Float32BufferAttribute(Array.from({ length: cut.attributes.position.count }, (_, k) => (k ? [0.55, 0.52, 0.5] : [1, 1, 1])).flat(), 3));
-    const stumpTop = new THREE.InstancedMesh(cut, new THREE.MeshLambertMaterial({ color: 0x6a5a4c, vertexColors: true }), n);
-    const STUMP_COL = { pine: [0x8a6a50, 0xffffff], oak: [0x7a6250, 0xffffff], snowpine: [0x7a6a60, 0xf4f4f4], dead: [0xb0aa9c, 0xd8d0c0], char: [0x3a3432, 0x5a4a40], palm: [0x9a8468, 0xe8dcc0] };
+    const stumpTop = new THREE.InstancedMesh(cut, new THREE.MeshLambertMaterial({ color: 0x625852, vertexColors: true }), n);
+    const STUMP_COL = { pine: [0x8a6a50, 0xffffff], oak: [0x7a6250, 0xffffff], snowpine: [0x7a6a60, 0xf4f4f4], dead: [0xb0aa9c, 0xd8d0c0], char: [0x4a4440, 0x9a8070], palm: [0x9a8468, 0xe8dcc0] };
     const zero = new THREE.Matrix4().makeScale(0, 0, 0), sm = new THREE.Matrix4(), sc = new THREE.Color();
     const sp = new THREE.Vector3(), sq = new THREE.Quaternion(), ss = new THREE.Vector3(), sa = new THREE.Vector3();
     const KF = { oak: 1.5, pine: 1, snowpine: 1, palm: 0.75, dead: 0.95, char: 1.1 };
@@ -420,7 +421,7 @@ export class Renderer {
       const f = { tree: true, x: t.x + c, z: t.z + c, r: K[0] === 'bare' ? s.R * 0.3 : s.R, h: s.H * tall, on: 0,
         show: () => { m.visible = true; m.material = wear.solid; this.treeShade(t.id, 1); stump(t, kind, false); },
         hide: (hard, stub) => {
-          if (hard) { m.visible = false; this.treeShade(t.id, 0.9, 0.3); stump(t, kind, true, stub); }
+          if (hard) { m.visible = false; this.treeShade(t.id, 0.6, 0.22); stump(t, kind, true, stub); }
           else { m.visible = true; m.material = wear.ghost; this.treeShade(t.id, 1); stump(t, kind, false); }
         } };
       this.faders.push(f);
@@ -455,8 +456,10 @@ export class Renderer {
   // A mound at each tree's foot (ash under a charred tree, snow under a snow pine) hides where the trunk meets the
   // ground, with a few chunks of char lying round it; in a fight it sinks low round the stump.
   footMounds(L, look, p) {
-    const w = this.world, [col, rk, hk, chunk] = look.mound, UPV = new THREE.Vector3(0, 1, 0);
-    const mound = new THREE.InstancedMesh(moundGeo(), new THREE.MeshLambertMaterial({ color: col, vertexColors: true, transparent: true }), L.length);
+    const w = this.world, [col, rk, hk, chunk, flat] = look.mound, UPV = new THREE.Vector3(0, 1, 0);
+    const mat = flat ? new THREE.MeshBasicMaterial({ color: col, vertexColors: true, transparent: true, opacity: 0.75 })    // as the ground looks on screen
+      : new THREE.MeshLambertMaterial({ color: col, vertexColors: true, transparent: true });
+    const mound = new THREE.InstancedMesh(moundGeo(), mat, L.length);
     const bits = chunk ? new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: chunk, flatShading: true }), L.length * 3) : null;
     const v = new THREE.Vector3(), q = new THREE.Quaternion(), sv = new THREE.Vector3(), mm = new THREE.Matrix4(), zero = new THREE.Matrix4().makeScale(0, 0, 0);
     mound.renderOrder = -1;
