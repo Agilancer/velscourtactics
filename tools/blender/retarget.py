@@ -424,7 +424,8 @@ class Target:
         idle = lambda f: g('M_Idle_02', f % 44.8)
         # the arms hang 10 degrees off the body (15 on the bulky ones, to clear pauldrons and hip plates), elbows a little bent
         AR = arms or (15 if self.key.startswith(('homunculus', 'paladin', 'barbarian', 'death_knight', 'lancer', 'dragon_knight', 'totem_master', 'zombie_brute',
-                                                 'zombie_slagback', 'zombie_stoker', 'zombie_warden', 'brakka', 'flint')) else
+                                                 'zombie_slagback', 'zombie_stoker', 'zombie_warden', 'brakka', 'flint',
+                                                 'bram', 'ingram', 'ragna', 'gunnar', 'rodrigo', 'osric', 'prudence', 'bertram')) else
                       22 if self.key.startswith(('slime_lord', 'zombie_bonesack', 'zombie_leechmother')) else 10)   # the slime lords, the bonesack, the leech mother: round as a cask
         self.held = None
 

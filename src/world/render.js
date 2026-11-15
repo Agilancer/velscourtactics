@@ -33,6 +33,7 @@ function matte(obj) {
 // The scenery's own models (assets/props/<key>.glb, docs/MODELS.md): each loaded once, as one geometry with a group
 // per material (a tree's trunk, then its crown), on plain Lambert surfaces, with its size. Null if it can't be had.
 const propCache = new Map();
+const LID_OPEN = 1.85;                                            // how far back an open chest's lid stands (radians)
 function loadProp(key) {
   if (!propCache.has(key)) propCache.set(key, new GLTFLoader().loadAsync(`assets/props/${key}.glb`).then((gltf) => {
     const parts = [];
@@ -691,12 +692,13 @@ export class Renderer {
       add(MOUND, M(s.x, 0.6, s.z - 0.04, r() * 6, 0.82, 0.32, 0.8), 'skulls', 0.6);
       candles.push([s.x + (s.x < c.x ? 0.25 : -0.25), 0.82, s.z + 0.22]);
     }
-    // the gateposts, tall and kept apart, so they can go see-through when someone stands behind them
+    // the gateposts, tall and kept apart, so they can go see-through when someone stands behind them. Boxes until the
+    // model (assets/props/crypt_gate: a post, skulls in its niche, the gate's hinge pins down its inner side) comes.
     const postB = {};
     for (const p of c.posts) {
       add(BOX, M(p.x, 0, p.z, 0, 0.9, 2.5, 0.9), 'block', 0, postB);
       add(BOX, M(p.x, 2.5, p.z, 0, 1.06, 0.16, 1.06), 'slab', 2.0, postB);
-      candles.push([p.x, 2.66, p.z]);
+      candles.push([p.x + (p.x > c.gate.x ? -0.22 : 0.22), 2.66, p.z + 0.28]);   // on the model's old wax, gate side, front
     }
 
     const crypt = new THREE.Group();
@@ -777,6 +779,21 @@ export class Renderer {
     const ghost = (m) => { const g2 = m.clone(); g2.transparent = true; g2.opacity = 0.25; g2.depthWrite = false; return g2; };
     const fade = { meshes: [...gateMeshes], solid: gateMeshes.map((m) => m.material) };
     fade.ghost = fade.solid.map(ghost);
+    loadProp('crypt_gate').then((p) => {
+      if (!p) return;
+      for (const m of gateMeshes) {
+        const k = fade.meshes.indexOf(m);
+        gateG.remove(m); m.geometry.dispose();
+        fade.meshes.splice(k, 1); fade.solid.splice(k, 1); fade.ghost.splice(k, 1);
+      }
+      for (const q of c.posts) {
+        const m = new THREE.Mesh(p.geo, p.mats);
+        m.position.set(q.x, 0, q.z);
+        if (q.x > c.gate.x) m.scale.x = -1;                             // the pins on the side the gate hangs from
+        m.updateMatrix(); m.matrixAutoUpdate = false; gateG.add(m);
+        fade.meshes.push(m); fade.solid.push(p.mats); fade.ghost.push(p.mats.map(ghost));
+      }
+    });
     this.faders.push({ x: c.gate.x, z: c.gate.z, r: 2.6, h: 2.7, on: 0,
       show: () => fade.meshes.forEach((m, k) => { m.material = fade.solid[k]; }), hide: () => fade.meshes.forEach((m, k) => { m.material = fade.ghost[k]; }) });
     new GLTFLoader().load('assets/props/doors.glb', (gltf) => {
@@ -792,7 +809,7 @@ export class Renderer {
     });
   }
 
-  // ---- chests: bm's chest, its lid swinging up on its hinge when opened ----
+  // ---- chests: the chest (assets/props/chest: a box and its lid, two materials), the lid swinging up on its back edge ----
   buildChests() {
     const w = this.world;
     this.chests = {};
@@ -801,28 +818,38 @@ export class Renderer {
       g.position.set(c.x, w.y(c.x, c.z), c.z);
       g.rotation.y = c.crypt ? 0 : Math.PI / 4;                   // facing the camera, or the crypt's gate
       this.scene.add(g);
-      this.chests[c.id] = { g, open: false, mixer: null, act: null };
+      this.chests[c.id] = { g, open: false, hinge: null, t: 1 };
     }
-    new GLTFLoader().load('assets/props/chest.glb', (gltf) => {
-      matte(gltf.scene);
-      const clip = gltf.animations.find((a) => /lid/i.test(a.name)) || gltf.animations[0];
-      for (const id in this.chests) {
-        const ch = this.chests[id], obj = gltf.scene.clone(true);
-        obj.scale.setScalar(0.82);
-        ch.g.add(obj);
-        ch.mixer = new THREE.AnimationMixer(obj);
-        ch.act = ch.mixer.clipAction(clip);
-        ch.act.setLoop(THREE.LoopOnce, 1); ch.act.clampWhenFinished = true; ch.act.timeScale = 1.25;
-        if (ch.open) this.openChest(id, true);
+    loadProp('chest').then((p) => {
+      const lidAt = p ? p.mats.findIndex((x) => /lid/.test(x.name)) : -1;
+      if (lidAt < 0) {
+        // no model: the old box, its lid a separate piece that tips back
+        for (const id in this.chests) {
+          const ch = this.chests[id];
+          ch.g.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.36, 0.42), mat(0x5a3c24)).translateY(0.18));
+          ch.lid = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.12, 0.46), mat(0xc9a24a)).translateY(0.42);
+          ch.g.add(ch.lid);
+          if (ch.open) ch.lid.rotation.x = -0.9;
+        }
+        return;
       }
-    }, undefined, () => {
-      // no model: the old box, its lid a separate piece that tips back
+      const none = new THREE.MeshBasicMaterial({ visible: false });
+      const boxM = p.mats.map((x, k) => (k === lidAt ? none : x)), lidM = p.mats.map((x, k) => (k === lidAt ? x : none));
+      // the hinge runs along the lid's back edge, at its foot: where most of the back ends, not the hinge straps and
+      // corner plates hanging lower, nor the hasp at the front
+      const P = p.geo.attributes.position, ix = p.geo.index, gr = p.geo.groups.find((q) => q.materialIndex === lidAt);
+      const lidV = [];
+      for (let i = gr.start; i < gr.start + gr.count; i++) lidV.push(ix ? ix.getX(i) : i);
+      let hz = Infinity;
+      for (const v of lidV) hz = Math.min(hz, P.getZ(v));
+      const backY = lidV.filter((v) => P.getZ(v) < hz + 0.06).map((v) => P.getY(v)).sort((a, b) => a - b);
+      const hy = backY[Math.floor(backY.length * 0.05)];
       for (const id in this.chests) {
         const ch = this.chests[id];
-        ch.g.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.36, 0.42), mat(0x5a3c24)).translateY(0.18));
-        ch.lid = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.12, 0.46), mat(0xc9a24a)).translateY(0.42);
-        ch.g.add(ch.lid);
-        if (ch.open) ch.lid.rotation.x = -0.9;
+        ch.g.add(new THREE.Mesh(p.geo, boxM));
+        ch.hinge = new THREE.Group(); ch.hinge.position.set(0, hy, hz); ch.g.add(ch.hinge);
+        ch.hinge.add(new THREE.Mesh(p.geo, lidM).translateY(-hy).translateZ(-hz));
+        if (ch.open) this.openChest(id, true);
       }
     });
   }
@@ -830,20 +857,18 @@ export class Renderer {
   openChest(id, instant = false) {
     const ch = this.chests[id];
     if (!ch) return;
-    ch.open = true;
+    ch.open = true; ch.t = instant ? 1 : 0;
     if (ch.lid) ch.lid.rotation.x = -0.9;
-    if (!ch.act) return;
-    ch.act.reset().play();
-    if (instant) ch.mixer.update(10);
+    if (ch.hinge) ch.hinge.rotation.x = instant ? -LID_OPEN : 0;
   }
   // Every chest as the save has it: open if it was opened, shut if not.
   setChests(opened = {}) {
     for (const id in this.chests) {
       const ch = this.chests[id];
       if (opened[id]) { if (!ch.open) this.openChest(id, true); continue; }
-      ch.open = false;
+      ch.open = false; ch.t = 1;
       if (ch.lid) ch.lid.rotation.x = 0;
-      if (ch.act) { ch.act.stop(); ch.mixer.update(0); }
+      if (ch.hinge) ch.hinge.rotation.x = 0;
     }
   }
   // Each frame: the wind and the water, the air, lids that are swinging, and the crypt's candles.
@@ -851,7 +876,12 @@ export class Renderer {
     this.shared.uTime.value += dt;
     if (this.ground.pending.length) settleRepeats(this.ground.pending);
     this.ambient.update(dt);
-    for (const id in this.chests) { const ch = this.chests[id]; if (ch.mixer && ch.act.isRunning()) ch.mixer.update(dt); }
+    for (const id in this.chests) {
+      const ch = this.chests[id];
+      if (!ch.hinge || !ch.open || ch.t >= 1) continue;
+      ch.t = Math.min(1, ch.t + dt / 0.75);                       // thrown up, past where it rests, and back
+      const u = ch.t - 1; ch.hinge.rotation.x = -LID_OPEN * (1 + 2.4 * u * u * u + 1.4 * u * u);
+    }
     if (this.glows) {
       const t = (this.flick += dt);
       for (const g of this.glows) g.s.scale.setScalar(0.8 + 0.08 * Math.sin(t * 9 + g.ph) + 0.05 * Math.sin(t * 23 + g.ph * 2));

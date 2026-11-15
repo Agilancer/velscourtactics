@@ -1,5 +1,9 @@
 # Batch 9 handoff: 32 new bodies and 2 props, generated, not yet in the game
 
+**Status, 2026-11-15: done.** All 32 bodies and both props are in the game. The notes below are the plan as written
+before the build. What was done, the heights and the fixes are in `docs/MODELS.md` under "The ninth batch", and the rig
+follow-up is in `docs/RIG_CLOTH_HANDOFF.md`.
+
 Written 2026-11-14 by the session that generated them. It ran out of weekly compute, so another account finishes the job.
 On main: the prompts (`tools/meshy/prompts.json`, `tools/meshy/sent.json` for the picture fixes), the task ids
 (`assets/models/batch9/ref/tasks9.json`), this handoff and the style guide. Not committed: the pictures, the walks and the

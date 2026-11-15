@@ -20,7 +20,7 @@ The brief they get is [docs/rig/critic_brief.md](rig/critic_brief.md). Round 1's
   - Only the up-and-comer passed: arcane_sorcerer_f, bard_f, death_knight_f, gunner_f, ranger_f, ranger_m, stevie.
   - Worst (scores vet+upc): lisandra 2+2, carrion_witch_m 3+2, zombie_abbess 2+3, ghoul 3+3, lily 3+3, lancer_f 5+2,
     lancer_m 4+2, maudlin 3+4, wizard_f 3+4, zombie_leechmother 3+4, zombie_driftling 2+5, zombie_slinger 4+3,
-    zombie_warden 4+3. Lancers and slime lords are being remade in Meshy batch 9 (`docs/HANDOFF_BATCH9.md` in the shared folder, not yet on main).
+    zombie_warden 4+3. Lancers and slime lords were remade in Meshy batch 9: see "Batch 9: 32 bodies for rounds 3 and 4" below.
 - **The round-1 faults that ran across many figures, and what now handles each:**
   - *Floating:* clips hung 9-21 cm off the floor. retarget.py's `body()` now sets every library pose down on the
     figure's rest floor (`rest_z`, `lift`, applied in `grab()`), and mixamo.py's `_mx_floor` does the same for the
@@ -107,6 +107,29 @@ Started in Blender on a timer: `refit()` plus shots for every figure.
      state the cost and get a yes first (CLAUDE.md).
 5. **Ship it:** docs/MODELS.md (the manifest's `cloth` field, the cloth's bone naming `Cloth_<piece>_<col>_<link>`),
    `node tools/check.mjs`, try the game, then commit from a worktree (memory `shared-folder-commits.md`).
+
+## Batch 9: 32 bodies for rounds 3 and 4
+
+Batch 9 (`docs/HANDOFF_BATCH9.md`, `docs/MODELS.md` "The ninth batch") added 32 bodies:
+- `lancer_m`, `lancer_f`, `slime_lord_m` and `slime_lord_f`, which replace the round-1 lancers and slime lords;
+- the 28 recruits who wore bm bodies.
+
+Each went through `refit()` once, under round 2's rules, and was exported to the game. None of them has been before the
+critics yet.
+- **They join round 3 and round 4** with the other figures. Their cards are made with
+  `python tools/rigsheet.py r9 --cards`, their shots are in `tools/build/rig/r9`, and their notes are in
+  `tools/build/rig/refit9/notes.json`.
+- **Blender file:** the 32 are in the working file below, `v2 ornate - rigfix.blend` (saved 2026-11-15 01:59), as
+  `<key>_v2` with their clips and Mixamo takes. The version before them is its `.blend1`. Requeue from it with
+  `NS['q3_start'](keys, 'r3', 'refit3')` as for the rest.
+- **Before the refit's backup,** webbing from hand to hip was cut off `lancer_m` and `osric`, and hanging gear on twelve
+  bodies lost its arm weights. A refit restores from that backup, so the fixes hold.
+- **No cloth:** they were made under `style.fitted`, with nothing below the knee but boots and plate, so none should
+  need cloth.
+- **What to look at first:** polish moved the shoulders of `lancer_m` (16 cm), `gunnar` (14 cm) and `slime_lord_m`
+  (13 cm) the most.
+- **Mixamo banks:** each body's bank was baked against its refit rest. Rebake a figure's bank (`moves.make`) after any
+  refit that moves its joints.
 
 ## How to drive Blender
 
