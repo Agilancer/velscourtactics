@@ -449,7 +449,14 @@ def restore(key):
 # Which build() class each figure is (the key without _v2 and its sex, or its own name).
 KLASS = {'wren': 'ranger', 'ismene': 'wizard', 'mortimer': 'necromancer', 'brakka': 'barbarian', 'kestrel': 'dragoon',
          'maudlin': 'carrion_witch', 'jasper': 'bard', 'flint': 'gunner', 'lisandra': 'doorkeeper', 'homunculus': 'paladin',
-         'lily': 'arcane_sorcerer', 'jamie': 'boomerang_knight', 'stevie': 'lancer'}
+         'lily': 'arcane_sorcerer', 'jamie': 'boomerang_knight', 'stevie': 'lancer',
+         # batch 9: the 28 heroes who wore bm bodies
+         'marigold': 'ranger', 'nell': 'bard', 'bram': 'lancer', 'crispin': 'gunner', 'sorrel': 'ranger', 'bertram': 'bard',
+         'fiammetta': 'boomerang_knight', 'hild': 'dragoon', 'oswin': 'dragoon', 'ingram': 'lancer', 'osric': 'paladin',
+         'perkin': 'ninja', 'sigrun': 'ranger', 'halvard': 'bard', 'hakon': 'boomerang_knight', 'thordis': 'dragoon',
+         'leif': 'dragoon', 'ragna': 'lancer', 'gunnar': 'lancer', 'prudence': 'paladin', 'ximena': 'ranger', 'soraya': 'bard',
+         'paloma': 'boomerang_knight', 'esteban': 'boomerang_knight', 'isabeau': 'dragoon', 'rodrigo': 'lancer',
+         'silas': 'gunner', 'lorenzo': 'ninja'}
 
 
 def klass(key):

@@ -921,7 +921,7 @@
   },
   "lancer_m": {
     "file": "lancer_m.glb",
-    "height": 1.95,
+    "height": 2.0,
     "inPlace": true,
     "anims": {
       "idle": "Idle",
@@ -963,40 +963,40 @@
         "file": "w_lance.glb",
         "bone": "RightHand",
         "at": [
-          -0.223,
-          5.684,
-          3.718
+          -0.532,
+          5.403,
+          3.664
         ],
         "rot": [
-          0.94131,
-          -0.12854,
-          0.1412,
-          0.27833
+          0.90953,
+          -0.10527,
+          0.1259,
+          0.38188
         ],
-        "scale": 100
+        "scale": 100.0
       },
       {
         "file": "w_shield_tower.glb",
         "bone": "LeftHand",
         "at": [
-          3.433,
-          42.802,
-          -16.844
+          4.313,
+          29.732,
+          -18.064
         ],
         "rot": [
-          0.60271,
-          -0.23753,
-          -0.7601,
-          0.05067
+          0.64327,
+          -0.33741,
+          -0.681,
+          0.09268
         ],
-        "scale": 100
+        "scale": 100.0
       }
     ],
     "mx": "lancer_m"
   },
   "lancer_f": {
     "file": "lancer_f.glb",
-    "height": 1.9,
+    "height": 2.02,
     "inPlace": true,
     "anims": {
       "idle": "Idle",
@@ -1038,33 +1038,33 @@
         "file": "w_lance.glb",
         "bone": "RightHand",
         "at": [
-          0.951,
-          5.624,
-          3.518
+          0.573,
+          5.134,
+          3.471
         ],
         "rot": [
-          -0.96762,
-          0.07605,
-          0.01128,
-          -0.24044
+          -0.92101,
+          0.04479,
+          0.01505,
+          -0.38665
         ],
-        "scale": 100
+        "scale": 100.0
       },
       {
         "file": "w_shield_tower.glb",
         "bone": "LeftHand",
         "at": [
-          3.93,
-          36.484,
-          -8.523
+          9.309,
+          30.123,
+          -16.719
         ],
         "rot": [
-          0.75388,
-          -0.18649,
-          -0.62996,
-          -0.00576
+          0.72638,
+          -0.33962,
+          -0.59555,
+          0.04841
         ],
-        "scale": 100
+        "scale": 100.0
       }
     ],
     "mx": "lancer_f"
@@ -3501,7 +3501,7 @@
   },
   "slime_lord_m": {
     "file": "slime_lord_m.glb",
-    "height": 1.91,
+    "height": 1.95,
     "inPlace": true,
     "anims": {
       "idle": "Idle",
@@ -3541,7 +3541,7 @@
   },
   "slime_lord_f": {
     "file": "slime_lord_f.glb",
-    "height": 1.86,
+    "height": 1.9,
     "inPlace": true,
     "anims": {
       "idle": "Idle",
@@ -7456,5 +7456,1276 @@
       "step": 1.3
     },
     "mx": "ninja_f"
+  },
+  "marigold": {
+    "file": "marigold.glb",
+    "height": 1.74,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Shoot",
+      "shoot": "Shoot",
+      "volley": "Volley",
+      "call": "Call"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "shoot": 1.3
+    },
+    "mx": "marigold"
+  },
+  "nell": {
+    "file": "nell.glb",
+    "height": 1.71,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Strum",
+      "strum": "Strum",
+      "ballad": "Ballad",
+      "bless": "Bless"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6
+    },
+    "mx": "nell"
+  },
+  "bram": {
+    "file": "bram.glb",
+    "height": 1.99,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "attack": "Thrust",
+      "cast": "Cast",
+      "thrust": "Thrust",
+      "guard_up": "Guard_Up",
+      "rally": "Rally",
+      "charge": "Charge",
+      "bash": "Shield_Bash",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "thrust": 1.25,
+      "attack": 1.25,
+      "charge": 1.4,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6
+    },
+    "props": [
+      {
+        "file": "w_lance.glb",
+        "bone": "RightHand",
+        "at": [
+          -0.288,
+          5.454,
+          3.726
+        ],
+        "rot": [
+          0.91621,
+          -0.091,
+          0.09583,
+          0.37827
+        ],
+        "scale": 100.0
+      },
+      {
+        "file": "w_shield_tower.glb",
+        "bone": "LeftHand",
+        "at": [
+          5.372,
+          33.287,
+          -20.771
+        ],
+        "rot": [
+          0.63962,
+          -0.32995,
+          -0.68807,
+          0.09263
+        ],
+        "scale": 100.0
+      }
+    ],
+    "mx": "bram"
+  },
+  "crispin": {
+    "file": "crispin.glb",
+    "height": 1.83,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Shoot",
+      "shoot": "Shoot",
+      "fan": "Fan",
+      "lob": "Lob",
+      "deploy": "Deploy"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "shoot": 1.25
+    },
+    "mx": "crispin"
+  },
+  "sorrel": {
+    "file": "sorrel.glb",
+    "height": 1.73,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Shoot",
+      "shoot": "Shoot",
+      "volley": "Volley",
+      "call": "Call"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "shoot": 1.3
+    },
+    "mx": "sorrel"
+  },
+  "bertram": {
+    "file": "bertram.glb",
+    "height": 1.88,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Strum",
+      "strum": "Strum",
+      "ballad": "Ballad",
+      "bless": "Bless"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6
+    },
+    "mx": "bertram"
+  },
+  "fiammetta": {
+    "file": "fiammetta.glb",
+    "height": 1.76,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Throw",
+      "throw": "Throw",
+      "twin": "Twin",
+      "whirl": "Whirl",
+      "typhoon": "Typhoon"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "whirl": 1.4,
+      "typhoon": 1.5
+    },
+    "mx": "fiammetta"
+  },
+  "hild": {
+    "file": "hild.glb",
+    "height": 1.83,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Thrust",
+      "thrust": "Thrust",
+      "leap": "Leap",
+      "breath": "Breath"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "leap": 1.4
+    },
+    "mx": "hild"
+  },
+  "oswin": {
+    "file": "oswin.glb",
+    "height": 1.89,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Thrust",
+      "thrust": "Thrust",
+      "leap": "Leap",
+      "breath": "Breath"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "leap": 1.4
+    },
+    "mx": "oswin"
+  },
+  "ingram": {
+    "file": "ingram.glb",
+    "height": 1.96,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "attack": "Thrust",
+      "cast": "Cast",
+      "thrust": "Thrust",
+      "guard_up": "Guard_Up",
+      "rally": "Rally",
+      "charge": "Charge",
+      "bash": "Shield_Bash",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "thrust": 1.25,
+      "attack": 1.25,
+      "charge": 1.4,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6
+    },
+    "props": [
+      {
+        "file": "w_lance.glb",
+        "bone": "RightHand",
+        "at": [
+          0.132,
+          5.58,
+          3.821
+        ],
+        "rot": [
+          -0.90712,
+          0.07352,
+          -0.04287,
+          -0.41218
+        ],
+        "scale": 100.0
+      },
+      {
+        "file": "w_shield_tower.glb",
+        "bone": "LeftHand",
+        "at": [
+          8.942,
+          36.954,
+          -24.176
+        ],
+        "rot": [
+          0.65521,
+          -0.36216,
+          -0.65694,
+          0.08927
+        ],
+        "scale": 100.0
+      }
+    ],
+    "mx": "ingram"
+  },
+  "osric": {
+    "file": "osric.glb",
+    "height": 1.88,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Swing",
+      "swing": "Swing",
+      "smite": "Smite",
+      "bolt": "Bolt",
+      "bless": "Bless",
+      "wave": "Wave",
+      "bash": "Shield_Bash"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "swing": 1.25,
+      "smite": 1.3,
+      "wave": 1.5
+    },
+    "mx": "osric"
+  },
+  "perkin": {
+    "file": "perkin.glb",
+    "height": 1.81,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Slash",
+      "slash": "Slash",
+      "cuts": "Cuts",
+      "stars": "Stars",
+      "smoke": "Smoke",
+      "step": "Step"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "mx": "perkin"
+  },
+  "sigrun": {
+    "file": "sigrun.glb",
+    "height": 1.71,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Shoot",
+      "shoot": "Shoot",
+      "volley": "Volley",
+      "call": "Call"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "shoot": 1.3
+    },
+    "mx": "sigrun"
+  },
+  "halvard": {
+    "file": "halvard.glb",
+    "height": 1.8,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Strum",
+      "strum": "Strum",
+      "ballad": "Ballad",
+      "bless": "Bless"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6
+    },
+    "mx": "halvard"
+  },
+  "hakon": {
+    "file": "hakon.glb",
+    "height": 1.71,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Throw",
+      "throw": "Throw",
+      "twin": "Twin",
+      "whirl": "Whirl",
+      "typhoon": "Typhoon"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "whirl": 1.4,
+      "typhoon": 1.5
+    },
+    "mx": "hakon"
+  },
+  "thordis": {
+    "file": "thordis.glb",
+    "height": 1.82,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Thrust",
+      "thrust": "Thrust",
+      "leap": "Leap",
+      "breath": "Breath"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "leap": 1.4
+    },
+    "mx": "thordis"
+  },
+  "leif": {
+    "file": "leif.glb",
+    "height": 1.88,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Thrust",
+      "thrust": "Thrust",
+      "leap": "Leap",
+      "breath": "Breath"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "leap": 1.4
+    },
+    "mx": "leif"
+  },
+  "ragna": {
+    "file": "ragna.glb",
+    "height": 1.95,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "attack": "Thrust",
+      "cast": "Cast",
+      "thrust": "Thrust",
+      "guard_up": "Guard_Up",
+      "rally": "Rally",
+      "charge": "Charge",
+      "bash": "Shield_Bash",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "thrust": 1.25,
+      "attack": 1.25,
+      "charge": 1.4,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6
+    },
+    "props": [
+      {
+        "file": "w_lance.glb",
+        "bone": "RightHand",
+        "at": [
+          0.584,
+          5.341,
+          3.613
+        ],
+        "rot": [
+          -0.9188,
+          0.04604,
+          0.0134,
+          -0.39179
+        ],
+        "scale": 100.0
+      },
+      {
+        "file": "w_shield_tower.glb",
+        "bone": "LeftHand",
+        "at": [
+          13.07,
+          36.383,
+          -20.863
+        ],
+        "rot": [
+          0.72663,
+          -0.34493,
+          -0.59224,
+          0.04791
+        ],
+        "scale": 100.0
+      }
+    ],
+    "mx": "ragna"
+  },
+  "gunnar": {
+    "file": "gunnar.glb",
+    "height": 2.06,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "attack": "Thrust",
+      "cast": "Cast",
+      "thrust": "Thrust",
+      "guard_up": "Guard_Up",
+      "rally": "Rally",
+      "charge": "Charge",
+      "bash": "Shield_Bash",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "thrust": 1.25,
+      "attack": 1.25,
+      "charge": 1.4,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6
+    },
+    "props": [
+      {
+        "file": "w_lance.glb",
+        "bone": "RightHand",
+        "at": [
+          1.204,
+          5.225,
+          3.372
+        ],
+        "rot": [
+          -0.88202,
+          0.00797,
+          0.09658,
+          -0.46113
+        ],
+        "scale": 100.0
+      },
+      {
+        "file": "w_shield_tower.glb",
+        "bone": "LeftHand",
+        "at": [
+          10.286,
+          26.583,
+          -14.593
+        ],
+        "rot": [
+          0.73774,
+          -0.41521,
+          -0.5313,
+          0.03263
+        ],
+        "scale": 100.0
+      }
+    ],
+    "mx": "gunnar"
+  },
+  "prudence": {
+    "file": "prudence.glb",
+    "height": 1.75,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Swing",
+      "swing": "Swing",
+      "smite": "Smite",
+      "bolt": "Bolt",
+      "bless": "Bless",
+      "wave": "Wave",
+      "bash": "Shield_Bash"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "swing": 1.25,
+      "smite": 1.3,
+      "wave": 1.5
+    },
+    "mx": "prudence"
+  },
+  "ximena": {
+    "file": "ximena.glb",
+    "height": 1.73,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Shoot",
+      "shoot": "Shoot",
+      "volley": "Volley",
+      "call": "Call"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "shoot": 1.3
+    },
+    "mx": "ximena"
+  },
+  "soraya": {
+    "file": "soraya.glb",
+    "height": 1.73,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Strum",
+      "strum": "Strum",
+      "ballad": "Ballad",
+      "bless": "Bless"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6
+    },
+    "mx": "soraya"
+  },
+  "paloma": {
+    "file": "paloma.glb",
+    "height": 1.8,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Throw",
+      "throw": "Throw",
+      "twin": "Twin",
+      "whirl": "Whirl",
+      "typhoon": "Typhoon"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "whirl": 1.4,
+      "typhoon": 1.5
+    },
+    "mx": "paloma"
+  },
+  "esteban": {
+    "file": "esteban.glb",
+    "height": 1.71,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Throw",
+      "throw": "Throw",
+      "twin": "Twin",
+      "whirl": "Whirl",
+      "typhoon": "Typhoon"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "whirl": 1.4,
+      "typhoon": 1.5
+    },
+    "mx": "esteban"
+  },
+  "isabeau": {
+    "file": "isabeau.glb",
+    "height": 1.91,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Thrust",
+      "thrust": "Thrust",
+      "leap": "Leap",
+      "breath": "Breath"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "leap": 1.4
+    },
+    "mx": "isabeau"
+  },
+  "rodrigo": {
+    "file": "rodrigo.glb",
+    "height": 1.99,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "attack": "Thrust",
+      "cast": "Cast",
+      "thrust": "Thrust",
+      "guard_up": "Guard_Up",
+      "rally": "Rally",
+      "charge": "Charge",
+      "bash": "Shield_Bash",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "thrust": 1.25,
+      "attack": 1.25,
+      "charge": 1.4,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6
+    },
+    "props": [
+      {
+        "file": "w_lance.glb",
+        "bone": "RightHand",
+        "at": [
+          0.855,
+          5.528,
+          3.69
+        ],
+        "rot": [
+          -0.92145,
+          0.03205,
+          0.0447,
+          -0.38459
+        ],
+        "scale": 100.0
+      },
+      {
+        "file": "w_shield_tower.glb",
+        "bone": "LeftHand",
+        "at": [
+          10.726,
+          34.655,
+          -19.768
+        ],
+        "rot": [
+          0.71819,
+          -0.33564,
+          -0.60722,
+          0.05321
+        ],
+        "scale": 100.0
+      }
+    ],
+    "mx": "rodrigo"
+  },
+  "silas": {
+    "file": "silas.glb",
+    "height": 1.84,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Shoot",
+      "shoot": "Shoot",
+      "fan": "Fan",
+      "lob": "Lob",
+      "deploy": "Deploy"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "shoot": 1.25
+    },
+    "mx": "silas"
+  },
+  "lorenzo": {
+    "file": "lorenzo.glb",
+    "height": 1.81,
+    "inPlace": true,
+    "anims": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Hop",
+      "cast": "Cast",
+      "hit": "Hit",
+      "dead": "Dead_Fall",
+      "revive": "Revive",
+      "wounded": "Wounded",
+      "stunned": "Stunned",
+      "guard": "Guard",
+      "cheer": "Victory",
+      "taunt": "Flex",
+      "point": "Point",
+      "talk": "Talk",
+      "item": "Drink",
+      "attack": "Slash",
+      "slash": "Slash",
+      "cuts": "Cuts",
+      "stars": "Stars",
+      "smoke": "Smoke",
+      "step": "Step"
+    },
+    "speed": {
+      "walk": 1.4,
+      "jump": 2.2,
+      "attack": 1.25,
+      "cast": 1.3,
+      "hit": 1.3,
+      "dead": 1.3,
+      "revive": 1.6,
+      "cuts": 1.3,
+      "step": 1.3
+    },
+    "mx": "lorenzo"
   }
 }

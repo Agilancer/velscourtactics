@@ -689,6 +689,75 @@ sarcophagus): weathered stone, no carving, no figures, no crosses.
 
 `buildRuins` and `buildCrypt` keep the boxes and cones for a missing file.
 
+### The ninth batch: the twenty-eight recruits, new lancers and slime lords, a chest and a gatepost
+
+Thirty-four models. Each of the twenty-eight recruits of the Hollow, the pines, the White Waste and the Red Badlands who
+still wore a bm body has one of their own. `lancer_m`, `lancer_f`, `slime_lord_m` and `slime_lord_f` were made again
+with no cape and no long cloth: midnight-blue and gold plate under a fin-crested helm for the lancer, and gold armour
+strapped over cobalt slime for the slime lord. The two pieces of scenery are `chest` and `crypt_gate`.
+
+The prompts take a fourth style block, `style.fitted`, which `prompt.mjs` uses for every key in the `fitted` list.
+Under it nothing reaches below the knee but boots and plate. The 3D step was meshy-t2.5 at 30,000 polygons with the
+n1 texture, in an A-pose, and Meshy's auto-rig did the rigging. The route, the picture fixes and the task ids are in
+`docs/HANDOFF_BATCH9.md`, `tools/meshy/sent.json` and `assets/models/batch9/ref/tasks9.json`. The rigged walks
+(`assets/models/batch9/<key>_v2_walk.glb`, copied to the meshy folder) are build inputs and stay out of git. The
+built figures are in the meshy folder's working file, `v2 ornate - rigfix.blend`, as `<key>_v2`.
+
+**Before the build.** A turnaround of each walk was checked for loose geometry and for the V and T rule, and none
+needed a remake. The fixes below were made in Blender before the refit took its backup of the skin:
+- Webbing that Meshy stretched from the hand to the hip in the A-pose was deleted (`lancer_m`, `osric`).
+- Some worn things hang on the body but had been given partly to an arm by the auto-rig, so they stretched with the
+  hand: arrows in a quiver, a lute on the back, a pouch or a horn at the hip. Each loose part like that gave up its arm
+  weights to whatever else holds it. That was twelve bodies: marigold, crispin, sorrel, oswin, perkin, sigrun,
+  thordis, soraya, paloma, rodrigo, silas and lorenzo.
+- Bram's star stud was deleted, and the fleurs on Ximena's sash were painted out to plain maroon.
+- Kept as gear, like the gunner's bandoliers and the ninja's knives:
+  - crossed straps (hakon, silas, esteban);
+  - crossed blades on the back (fiammetta, esteban);
+  - a sheathed knife on Bram's chest;
+  - the scrollwork on Marigold's back, Prudence's hem and the lancer_f breastplate.
+
+**The build** is rigfix.py's `refit()`, the same as every figure from rig round 2, then `export_figure`, with the
+critics' shots in `tools/build/rig/r9` and the notes in `tools/build/rig/refit9/notes.json`. The recruits' classes are
+in rigfix.py's `KLASS`. The heavily built ones hold their arms 15 degrees out, as `brakka` and `flint` do: bram, ingram,
+ragna, gunnar, rodrigo, osric, prudence and bertram (`retarget.py`). The lancers' `props` are the lance and tower shield
+grips worked out from each body's own hands (`T.props()`).
+
+**Heights** put each head where the class body's is: `height` = the class body's head height / this body's head share,
+both read from the `.glb`s (the Head joint's bind position against the rest bounds). The four new class bodies are put
+where the old ones' heads were: `lancer_m` 2.0, `lancer_f` 2.02, `slime_lord_m` 1.95 and `slime_lord_f` 1.9. The
+lancers' crests stand above that.
+
+| Key | Clips as | `height` | Key | Clips as | `height` |
+|---|---|---|---|---|---|
+| `marigold` | ranger_f | 1.74 | `nell` | bard_f | 1.71 |
+| `bram` | lancer_m | 1.99 | `crispin` | gunner_m | 1.83 |
+| `sorrel` | ranger_f | 1.73 | `bertram` | bard_m | 1.88 |
+| `fiammetta` | boomerang_knight_f | 1.76 | `hild` | dragoon_f | 1.83 |
+| `oswin` | dragoon_m | 1.89 | `ingram` | lancer_m | 1.96 |
+| `osric` | paladin_m | 1.88 | `perkin` | ninja_m | 1.81 |
+| `sigrun` | ranger_f | 1.71 | `halvard` | bard_m | 1.8 |
+| `hakon` | boomerang_knight_m | 1.71 | `thordis` | dragoon_f | 1.82 |
+| `leif` | dragoon_m | 1.88 | `ragna` | lancer_f | 1.95 |
+| `gunnar` | lancer_m | 2.06 | `prudence` | paladin_f | 1.75 |
+| `ximena` | ranger_f | 1.73 | `soraya` | bard_f | 1.73 |
+| `paloma` | boomerang_knight_f | 1.8 | `esteban` | boomerang_knight_m | 1.71 |
+| `isabeau` | dragoon_f | 1.91 | `rodrigo` | lancer_m | 1.99 |
+| `silas` | gunner_m | 1.84 | `lorenzo` | ninja_m | 1.81 |
+
+The recruits are named keys (`HEROES[id].model` in `cast.js`), so they wear their own body at every armour tier. Their
+`palette` went with the bm body it dyed. The recruits of the Fen and the Reach still wear bm bodies. As for every
+class, the bm tier bodies (`lancer_f_t3` to `_t5`, `lancer_m_t3`) stay in front of the class body at the higher tiers.
+
+**Mixamo banks** were baked for all thirty-two after the refit (section 13: `make("<key>_v2", key, cls)`, then
+`tools/mx_manifest.py`), so each body plays its class's takes against its own rest. The lancer and slime-lord banks
+are rebaked on the new bodies.
+
+| Key | Size (wide x deep x tall, tiles) | In the world |
+|---|---|---|
+| `chest` | 0.75 x 0.52 x 0.52, box and lid as two materials (`chest_body`, `chest_lid`) | replaces bm's chest. `buildChests` hangs the lid on a hinge along its back foot and throws it open past where it rests (`LID_OPEN`, eased in `tick`). The old box and lid stay for a missing file |
+| `crypt_gate` | 1.2 x 1.15 x 2.79, the cap's top at 2.66 | the crypt's two gateposts. Skulls sit in the niche on the outside, and the gate's hinge pins run down the side the gate hangs from (the post right of the gate is mirrored). The candles stand on its own old wax at the front corner. They go see-through like the boxes did |
+
 ### Looking at a model in the running game
 
 `python tools/serve.py 8417` serves the game and saves any picture the page posts:
