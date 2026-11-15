@@ -56,16 +56,17 @@ function loadProp(key) {
 // in the charred wood. Each kind's crowns come in four tints.
 const TREE_LOOK = {
   pine: { crown: [1.0, 0.72, 0.62, 0.17], trunk: [1, 0.8, 0, 1], foot: [0.6, 0.1], sky: 0.24, rim: 0.3, top: 0.25, wind: 0.012, hi: [0.5, 0.95, 0.85, 0.9],
-    round: 0.2, ao: 0.35, bark: 0xc8a07c, tints: [0xb4c28e, 0xa4b494, 0xbcc290, 0x9cae8a] },
+    round: 0.2, ao: 0.35, bark: 0xc8a07c, tints: [0xbcc690, 0x98ac90, 0xc4c48e, 0x90a684] },
   oak: { crown: [1.35, 0.62, 0.4, 0.3], trunk: [1.0, 0.8, 0.2, 0.3], foot: [0.6, 0.1], sky: 0.26, rim: 0.26, top: 0.45, wind: 0.009,
-    round: 0.75, ao: 0.5, tints: [0xd0d4a8, 0x98a890, 0xc4c8a0, 0xa8b894], fen: [0x969888, 0x8c9082, 0x9c9a8c, 0x888c80] },
+    round: 0.75, ao: 0.5, wood: [1.25, 0.75, 0.35, 0.085], tints: [0xd0d4a8, 0x98a890, 0xc4c8a0, 0xa8b894],
+    fen: [0xaa9e84, 0x9e947e, 0xb0a286, 0x989080] },
   snowpine: { crown: [1, 1, 0, 1], trunk: [1, 0.3, 0, 1], foot: [0.75, 0.08], sky: 0.15, rim: 0.2, top: 0.1, wind: 0.007, bark: 0xd8e0ec,
-    tints: [0xffffff, 0xeef2f6, 0xe4eaf0, 0xf4f4ee] },
+    mound: [0xa4a8b4, 0.12, 0.45, 0], tints: [0xffffff, 0xeef2f6, 0xe4eaf0, 0xf4f4ee] },
   dead: { crown: [0.62, 0.5, 0.5, 0.42], trunk: [0.62, 0.5, 0.5, 0.42], foot: [0.3, 0.2], sky: 0.1, rim: 0.22, top: 0.1, wind: 0.007,
     tints: [0xc4ccc0, 0xb4c0b4, 0xccd0c2, 0xb0bab0] },
-  char: { crown: [1, 0.15, 0, 0.06], trunk: [1, 0.15, 0, 0.06], foot: [0.3, 0.2], sky: 0.06, rim: 0.6, rimC: [0.8, 0.85, 0.95], top: 0, wind: 0.003,
-    ember: 1, sink: 0.13, cut: [0.1, 0.34], wide: 0.75, tallK: 1.15, tints: [0xffffff, 0xe8e0dc, 0xdcdcdc, 0xf0e8e0] },
-  palm: { crown: [0.8, 0.95, 0.2, 0.34], trunk: [1.4, 0.7, 0.2, 0.45], foot: [0.45, 0.12], sky: 0.3, rim: 0.25, top: 0.3, wind: 0.02, bark: 0xe6caa4,
+  char: { crown: [1, 0.15, 0, 0.06], trunk: [1, 0.15, 0, 0.06], foot: [0.3, 0.2], sky: 0.06, rim: 0.45, rimC: [0.85, 0.85, 0.88], top: 0, wind: 0.003,
+    ember: 1, sink: 0.24, cut: [0.1, 0.34], wide: 0.75, tallK: 1.4, mound: [0x1e1c1b, 0.21, 0.3, 0x161413], tints: [0xffffff, 0xe8e0dc, 0xdcdcdc, 0xf0e8e0] },
+  palm: { crown: [0.8, 0.95, 0.2, 0.34], trunk: [1.4, 0.7, 0.2, 0.45], foot: [0.45, 0.12], sink: 0.03, sky: 0.3, rim: 0.25, top: 0.3, wind: 0.02, bark: 0xe6caa4,
     tints: [0xe0ecb0, 0xd4e4a4, 0xe8e8a8, 0xd0dca8] },
 };
 const TREE_VERT = /* glsl */`
@@ -104,8 +105,9 @@ vTY = (position.y - uY0) / uH;
 }`;
 const TREE_FRAG = /* glsl */`
 uniform float uTime;
-uniform vec4 uPart, uFoot, uMore, uHi;
-uniform vec3 uRimC;
+uniform vec4 uPart, uFoot, uMore, uHi, uWood;
+uniform vec3 uRimC, uWoodC;
+float tWood = 0.0;
 uniform vec4 uHoles[4];
 varying float vTY, vAO;
 vec4 tTex = vec4(1.0);`;
@@ -113,20 +115,35 @@ const TREE_MAP = /* glsl */`
 #ifdef USE_MAP
   tTex = texture2D(map, vMapUv);
   float tl = dot(tTex.rgb, vec3(0.3, 0.59, 0.11));
-  vec3 tc = mix(vec3(tl), tTex.rgb, uPart.y);
-  float nl = min(mix(tl, 0.14, uPart.z), uPart.w);       // calmer, and nothing brighter than it should be
+  vec4 tP = uPart;
+  #ifdef TREE_WOOD
+  // the boughs inside a crown (texels dark and not green) take the bark's colour and light, not the leaves'; pale grey
+  // slivers at the leaves' edges take the leaves' middle
+  float tGr = smoothstep(1.06, 1.18, tTex.g / max(tTex.r, 1e-4));
+  tWood = (1.0 - tGr) * (1.0 - smoothstep(0.035, 0.06, tl));
+  float tFleck = (1.0 - tGr) * smoothstep(0.045, 0.075, tl);
+  tP = mix(uPart, uWood, tWood);
+  diffuseColor.rgb = mix(diffuseColor.rgb, uWoodC, tWood);
+  #else
+  tWood = smoothstep(0.0, 0.05, tTex.r - tTex.g);
+  #endif
+  vec3 tc = mix(vec3(tl), tTex.rgb, tP.y);
+  float nl = min(mix(tl, 0.14, tP.z), tP.w);       // calmer, and nothing brighter than it should be
   tc *= nl / max(tl, 0.001);
   tc = mix(tc, vec3(nl) * uHi.rgb, uHi.a * smoothstep(0.04, 0.16, tl));   // the bright tips turned to the kind's own colour
+  #ifdef TREE_WOOD
+  tc = mix(tc, vec3(0.05, 0.08, 0.022), tFleck);
+  #endif
   #ifdef TREE_EMBER
   tc = mix(tc, vec3(nl * 0.3), smoothstep(0.05, 0.16, min(tTex.r, tTex.g) - tTex.b) * step(0.2, tTex.g));   // no yellow flecks
   #endif
-  diffuseColor.rgb *= tc * uPart.x;
+  diffuseColor.rgb *= tc * tP.x;
 #endif
-diffuseColor.rgb *= mix(uFoot.x, 1.0, smoothstep(0.0, uFoot.y, vTY)) * (1.0 + uMore.x * clamp(vTY, 0.0, 1.0)) * clamp(mix(vAO, max(vAO, 0.8), smoothstep(0.0, 0.05, tTex.r - tTex.g)), 0.3, 1.0);
+diffuseColor.rgb *= mix(uFoot.x, 1.0, smoothstep(0.0, uFoot.y, vTY)) * (1.0 + uMore.x * clamp(vTY, 0.0, 1.0)) * clamp(mix(vAO, max(vAO, 0.8), tWood), 0.3, 1.0);
 #if defined(TREE_EMBER) && defined(USE_MAP)
 {
   // ash blown up round the foot, its top edge broken by the bark
-  float tDust = 1.0 - smoothstep(0.14, 0.26, vTY + (tl - 0.06) * 0.3);
+  float tDust = 1.0 - smoothstep(0.26, 0.42, vTY + (tl - 0.06) * 0.3);
   diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.022, 0.02, 0.019), tDust * 0.85);   // soot
 }
 #endif`;
@@ -136,7 +153,7 @@ const TREE_LIGHT = /* glsl */`
   float sky = 0.5 + 0.5 * dot(normal, upV), rimT = pow(1.0 - abs(normal.z), 2.0);
   totalEmissiveRadiance += diffuseColor.rgb * (uFoot.z * sky + uFoot.w * rimT * uRimC);
   #ifdef TREE_EMBER
-  totalEmissiveRadiance += vec3(0.05, 0.055, 0.065) * rimT * smoothstep(0.12, 0.3, vTY);   // a cool edge, so it parts from dark ash
+  totalEmissiveRadiance += vec3(0.032, 0.033, 0.036) * rimT * smoothstep(0.26, 0.4, vTY);   // a grey edge, so it parts from dark ash
   float tEm = tTex.r - max(tTex.g, tTex.b);
   totalEmissiveRadiance += vec3(1.0, 0.32, 0.06) * (smoothstep(0.04, 0.14, tEm) * 0.5 + smoothstep(0.12, 0.24, tEm) * 1.2) * (0.6 + 0.4 * sin(uTime * 0.9 + vTY * 7.0));
   #endif
@@ -148,7 +165,7 @@ const TREE_GHOST = /* glsl */`
   float th = 0.0;
   for (int i = 0; i < 4; i++) {
     vec4 hh = uHoles[i];
-    if (hh.z > 0.0) th = max(th, 1.0 - smoothstep(0.78, 1.0, length(gl_FragCoord.xy - hh.xy) / hh.z));
+    if (hh.z > 0.0) th = max(th, 1.0 - smoothstep(0.86, 1.0, length(gl_FragCoord.xy - hh.xy) / hh.z));
   }
   ivec2 bp = ivec2(gl_FragCoord.xy) & 3;
   float bay[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);
@@ -159,11 +176,13 @@ function treeMaterial(src, look, part, tint, height, y0, crown, shared, ghost) {
   const p = look[part], cr = part === 'crown';
   const u = { uWind: { value: look.wind }, uH: { value: height }, uY0: { value: y0 }, uC: { value: crown },
     uCut: { value: new THREE.Vector4(...(look.cutAt || [0, 0]), ...(look.cut || [9, 0])) },
+    uWood: { value: new THREE.Vector4(...(look.wood || look.trunk)) }, uWoodC: { value: new THREE.Color(look.bark || 0xffffff) },
     uRnd: { value: new THREE.Vector2(cr ? look.round || 0 : 0, cr ? look.ao || 0 : 0) }, uRimC: { value: new THREE.Vector3(...(look.rimC || [0.75, 0.85, 1.0])) }, uHi: { value: new THREE.Vector4(...(look.hi || [1, 1, 1, 0])) }, uPart: { value: new THREE.Vector4(...p) },
     uFoot: { value: new THREE.Vector4(look.foot[0], look.foot[1], look.sky, look.rim) }, uMore: { value: new THREE.Vector4(part === 'crown' ? look.top : 0, 0, 0, 0) } };
   m.defines = {};
   if (look.ember) m.defines.TREE_EMBER = 1;
   if (look.cut) m.defines.TREE_CUT = 1;
+  if (look.wood && cr) m.defines.TREE_WOOD = 1;
   if (ghost) m.defines.TREE_GHOST = 1;
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, u, { uTime: shared.uTime, uHoles: shared.uHoles });
@@ -173,7 +192,7 @@ function treeMaterial(src, look, part, tint, height, y0, crown, shared, ghost) {
       .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n#ifdef TREE_GHOST\n' + TREE_GHOST + '\n#endif')
       .replace('#include <map_fragment>', TREE_MAP).replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n' + TREE_LIGHT);
   };
-  m.customProgramCacheKey = () => `tree2|${look.ember ? 1 : 0}|${look.cut ? 1 : 0}|${ghost ? 1 : 0}`;
+  m.customProgramCacheKey = () => `tree3|${look.ember ? 1 : 0}|${look.cut ? 1 : 0}|${look.wood && cr ? 1 : 0}|${ghost ? 1 : 0}`;
   return m;
 }
 
@@ -186,6 +205,27 @@ function trunkOf(geo) {
   }
   const mid = (a) => (a.length ? a.sort((x, y) => x - y)[a.length >> 1] : 0);
   return [mid(xs), mid(zs)];
+}
+
+// a low mound, highest in the middle and running out to nothing at a ragged edge, where it fades into the ground
+function moundGeo() {
+  const pos = [], col = [], idx = [], RING = 5, SEG = 16;
+  pos.push(0, 1, 0); col.push(1, 1, 1, 1);
+  for (let k = 1; k <= RING; k++) for (let j = 0; j < SEG; j++) {
+    const a = (j / SEG) * Math.PI * 2, r = k / RING, e = r * (0.82 + 0.36 * vnoise(Math.cos(a) * 1.7 + 3, Math.sin(a) * 1.7, 41));
+    const y = (1 - r * r) ** 2 * (0.85 + 0.3 * vnoise(Math.cos(a) * 3 * r + 7, Math.sin(a) * 3 * r, 43));
+    pos.push(Math.cos(a) * e, y, Math.sin(a) * e); col.push(1, 1, 1, 1 - Math.max(0, (r - 0.55) / 0.45) ** 1.5);
+  }
+  for (let j = 0; j < SEG; j++) idx.push(0, 1 + ((j + 1) % SEG), 1 + j);
+  for (let k = 1; k < RING; k++) for (let j = 0; j < SEG; j++) {
+    const a = 1 + (k - 1) * SEG + j, b = 1 + (k - 1) * SEG + ((j + 1) % SEG), c = a + SEG, d = b + SEG;
+    idx.push(a, b, d, a, d, c);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+  g.setIndex(idx); g.computeVertexNormals();
+  return g;
 }
 
 // the middle and reach of a model's crown (its second part), for lighting it as one mass
@@ -331,7 +371,7 @@ export class Renderer {
       new THREE.MeshLambertMaterial({ map: this.tex('tex/bark_c.webp') }), n);
     const cut = new THREE.CircleGeometry(0.8, 9).rotateX(-Math.PI / 2).translate(0, 1, 0);
     cut.setAttribute('color', new THREE.Float32BufferAttribute(Array.from({ length: cut.attributes.position.count }, (_, k) => (k ? [0.55, 0.52, 0.5] : [1, 1, 1])).flat(), 3));
-    const stumpTop = new THREE.InstancedMesh(cut, new THREE.MeshLambertMaterial({ color: 0x8a7660, vertexColors: true }), n);
+    const stumpTop = new THREE.InstancedMesh(cut, new THREE.MeshLambertMaterial({ color: 0x6a5a4c, vertexColors: true }), n);
     const STUMP_COL = { pine: [0x8a6a50, 0xffffff], oak: [0x7a6250, 0xffffff], snowpine: [0x7a6a60, 0xf4f4f4], dead: [0xb0aa9c, 0xd8d0c0], char: [0x3a3432, 0x5a4a40], palm: [0x9a8468, 0xe8dcc0] };
     const zero = new THREE.Matrix4().makeScale(0, 0, 0), sm = new THREE.Matrix4(), sc = new THREE.Color();
     const sp = new THREE.Vector3(), sq = new THREE.Quaternion(), ss = new THREE.Vector3(), sa = new THREE.Vector3();
@@ -367,7 +407,7 @@ export class Renderer {
       const c = (t.size - 1) / 2, rt = rng32(t.id * 7 + 3);
       // no two alike: a little taller or shorter than the map says, the biggest a little less, each leaning a few
       // degrees its own way (a palm out from its pool)
-      const jit = (0.86 + rt() * 0.28) * (t.size === 3 ? 0.88 : 1), tall = t.tall * jit;
+      const jit = (t.size === 1 ? 0.76 + rt() * 0.48 : 0.86 + rt() * 0.28) * (t.size === 3 ? 0.88 : 1), tall = t.tall * jit;
       let lx = rt() - 0.5, lz = rt() - 0.5, lean = 0.02 + rt() * 0.05;
       if (kind === 'palm' && pool) { lx = t.x - pool.x; lz = t.z - pool.z; lean = 0.08 + rt() * 0.08; }
       axis.set(lz, 0, -lx); if (axis.lengthSq() < 1e-6) axis.set(1, 0, 0);
@@ -394,7 +434,7 @@ export class Renderer {
       if (!p) return;
       const up = UP[kind] || 1, wide = Math.max(p.size.x, p.size.z) / 2 * (KIND[kind][0] === 'bare' ? 0.4 : 1);
       const look = TREE_LOOK[kind], crown = crownOf(p.geo);
-      if (look.cut) look.cutAt = trunkOf(p.geo);
+      if (look.cut || look.mound) look.cutAt = trunkOf(p.geo);
       const wears = [...look.tints, ...(look.fen || [])].map((hex) => {
         const make = (ghost) => p.mats.map((x, k) => treeMaterial(x, look, k && p.mats.length > 1 ? 'crown' : 'trunk', k ? hex : look.bark || 0xffffff,
           p.size.y, p.geo.boundingBox.min.y, crown, this.shared, ghost));
@@ -408,7 +448,37 @@ export class Renderer {
         f.r = wide * kw * 0.9; f.h = p.size.y * kh;
         if (f.on) f.hide(f.on >= 2, f.on === 3); else f.show();
       }
+      if (look.mound) this.footMounds(live[kind], look, p);
     });
+  }
+
+  // A mound at each tree's foot (ash under a charred tree, snow under a snow pine) hides where the trunk meets the
+  // ground, with a few chunks of char lying round it; in a fight it sinks low round the stump.
+  footMounds(L, look, p) {
+    const w = this.world, [col, rk, hk, chunk] = look.mound, UPV = new THREE.Vector3(0, 1, 0);
+    const mound = new THREE.InstancedMesh(moundGeo(), new THREE.MeshLambertMaterial({ color: col, vertexColors: true, transparent: true }), L.length);
+    const bits = chunk ? new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: chunk, flatShading: true }), L.length * 3) : null;
+    const v = new THREE.Vector3(), q = new THREE.Quaternion(), sv = new THREE.Vector3(), mm = new THREE.Matrix4(), zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    mound.renderOrder = -1;
+    L.forEach(({ t, m, f }, i) => {
+      const rt = rng32(t.id * 13 + 5), y = w.y(t.x, t.z);
+      v.set(look.cutAt[0], p.geo.boundingBox.min.y + (look.sink || 0) * p.size.y, look.cutAt[1]).applyMatrix4(m.matrix);
+      const R = rk * p.size.y * m.scale.x * (0.85 + 0.3 * rt()), h = R * hk * (0.8 + 0.4 * rt()), x = v.x, z = v.z;
+      q.setFromAxisAngle(UPV, rt() * 6.28);
+      const put = (low) => { mm.compose(v.set(x, y - 0.01, z), q, sv.set(R, h * (low ? 0.3 : 1), R)); mound.setMatrixAt(i, mm); mound.instanceMatrix.needsUpdate = true; };
+      put(f.on >= 2);
+      const show = f.show, hide = f.hide;
+      f.show = () => { show(); put(false); };
+      f.hide = (hard, stub) => { hide(hard, stub); put(hard); };
+      if (bits) for (let k = 0; k < 3; k++) {
+        const a = rt() * 6.28, d = R * (0.75 + 0.6 * rt()), s = R * (0.07 + 0.08 * rt());
+        q.setFromAxisAngle(sv.set(rt() - 0.5, rt() - 0.5, rt() - 0.5).normalize(), rt() * 3);
+        mm.compose(v.set(x + Math.cos(a) * d, y + s * 0.3, z + Math.sin(a) * d), q, sv.set(s, s * 0.6, s * 1.3));
+        bits.setMatrixAt(i * 3 + k, rt() < 0.8 ? mm : zero);
+      }
+    });
+    mound.frustumCulled = false; this.scene.add(mound);
+    if (bits) { bits.frustumCulled = false; this.scene.add(bits); }
   }
 
   // ---- Herrington Hollow: a cottage or a townhouse for each building (its `look`), the inn and the forge their own;
