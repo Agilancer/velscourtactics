@@ -1,0 +1,618 @@
+{
+  "_about": "What was actually sent to Meshy for the 17 models whose prompts tools/meshy/prompts.json can't give word for word, taken from the session logs on 2026-11-14. prompts.json stays the record to make new models from; this is how these 17 were really made. Each model's steps run in order: a picture, any fixes, the 3D model, the rig (scenery has no rig). `from` is what a step started from: a task id, or a file in this repo with `from_task`, the task that made that file. Every task is on the Meshy account in this machine's MCP config, so a download needs only the id. `sent` is UTC. `node tools/meshy/prompt.mjs <key> sent` prints one model's steps.",
+  "models": {
+    "necromancer_m": {
+      "why": "prompts.json added \"(plain coffin lids, no crosses)\" to the necromancer line after this was sent; nothing else differs.",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "text-to-image",
+          "task": "01a1d86f-5fa5-730d-8e9f-1491e18dabc1",
+          "sent": "2026-11-14T05:02:09Z",
+          "ai_model": "nano-banana-pro",
+          "pose_mode": "a-pose",
+          "prompt": "A courteous undertaker-mage, a tall thin man; a tailored funeral coat of deep violet velvet with silver embroidery and a row of carved bone clasps, a tall mourning hat draped with a black veil, a short mantle of raven feathers, an ornate silver coffin-handle pauldron on one shoulder, a rosary of finger bones, fine black gloves, grave dirt on a hem of black lace; the male cut of this class costume, same colours. Original character design for a dark gothic high-fantasy MMORPG, in the ornate job-armor tradition of Final Fantasy XIV artifact gear: tall elegant realistic proportions, about 7.5 heads, intricate layered costume with engraved filigree borders, rich brocade, tooled leather and jeweled fittings, asymmetric silhouette, long trailing cloth. Grimdark palette of blackened grave steel, tarnished gold, deep wine, night indigo and bone ivory; worn, battle-scarred, candle-sooted; sombre and regal, never cute, never generic. Semi-realistic painted 3D game character, very high detail. Abstract scrollwork decoration only: no text, letters, runes, heraldic emblems or logos anywhere. Full-body character sheet, front view, standing straight in an A-pose with the arms held 40 degrees from the body, hands open and empty, legs slightly apart, the whole figure visible from the top of the headpiece to the soles with a margin, flat neutral studio lighting, plain light grey background, single character, no weapon, nothing held in the hands."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1d874-fa1e-7526-b502-a05fd19ab383",
+          "sent": "2026-11-14T05:08:23Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 30000,
+          "pose_mode": "a-pose",
+          "from": "art/concepts/v2/necromancer_m.png",
+          "from_task": "01a1d86f-5fa5-730d-8e9f-1491e18dabc1"
+        },
+        {
+          "step": "rig",
+          "tool": "rigging",
+          "task": "01a1d879-b469-770f-a66c-19653eef9cd7",
+          "sent": "2026-11-14T05:13:36Z",
+          "height_meters": 1.85,
+          "from": "01a1d874-fa1e-7526-b502-a05fd19ab383"
+        }
+      ]
+    },
+    "necromancer_f": {
+      "why": "Its picture was redrawn from the necromancer_m picture by image-to-image, not made from text. prompts.json has only a text-to-image prompt for it, which gives a different design. (The other cuts were made from text; a redraw copies its reference too closely, so make new ones from text.)",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "image-to-image",
+          "task": "01a1d900-1e1c-7576-9c3f-228e1d3c6073",
+          "sent": "2026-11-14T07:40:05Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "from": "art/concepts/v2/necromancer_m.png",
+          "from_task": "01a1d86f-5fa5-730d-8e9f-1491e18dabc1",
+          "prompt": "Redraw the character in the reference picture as a woman of the same class: keep the same costume design, the same pieces, materials, colours and level of detail, in the same painted style, re-cut for a female figure. A courteous undertaker-mage, a tall thin woman; a tailored funeral coat of deep violet velvet with silver embroidery and a row of carved bone clasps, a tall mourning hat draped with a black veil, a short mantle of raven feathers, an ornate silver coffin-handle pauldron on one shoulder (plain coffin lids, no crosses), a rosary of finger bones, fine black gloves, grave dirt on a hem of black lace; the female cut of this class costume, same colours. Original character design for a dark gothic high-fantasy MMORPG, in the ornate job-armor tradition of Final Fantasy XIV artifact gear: tall elegant realistic proportions, about 7.5 heads, intricate layered costume with engraved filigree borders, rich brocade, tooled leather and jeweled fittings, asymmetric silhouette, long trailing cloth. Grimdark palette of blackened grave steel, tarnished gold, deep wine, night indigo and bone ivory; worn, battle-scarred, candle-sooted; sombre and regal, never cute, never generic. Semi-realistic painted 3D game character, very high detail. Abstract scrollwork decoration only: no text, letters, runes, heraldic emblems or logos anywhere. Full-body character sheet, front view, standing straight in an A-pose with the arms held 40 degrees from the body, hands open and empty, legs slightly apart, the whole figure visible from the top of the headpiece to the soles with a margin, flat neutral studio lighting, plain light grey background, single character, no weapon, nothing held in the hands."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1d903-1d9d-753c-b25c-9fc48c7ad6c9",
+          "sent": "2026-11-14T07:43:36Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 30000,
+          "pose_mode": "a-pose",
+          "from": "01a1d900-1e1c-7576-9c3f-228e1d3c6073"
+        },
+        {
+          "step": "rig",
+          "tool": "rigging",
+          "task": "01a1d90a-d488-7043-9f99-02a1dc0538fa",
+          "sent": "2026-11-14T07:51:05Z",
+          "height_meters": 1.85,
+          "from": "01a1d903-1d9d-753c-b25c-9fc48c7ad6c9"
+        }
+      ]
+    },
+    "dragoon_f": {
+      "why": "Its picture was redrawn from the dragoon_m picture by image-to-image, not made from text. prompts.json has only a text-to-image prompt for it, which gives a different design. (The other cuts were made from text; a redraw copies its reference too closely, so make new ones from text.)",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "image-to-image",
+          "task": "01a1d900-231c-722a-87e9-7781f0e26e85",
+          "sent": "2026-11-14T07:40:10Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "from": "art/concepts/v2/dragoon_m.png",
+          "from_task": "01a1d86f-61b6-71a6-8cd3-f424ccc2dfd5",
+          "prompt": "Redraw the character in the reference picture as a woman of the same class: keep the same costume design, the same pieces, materials, colours and level of detail, in the same painted style, re-cut for a female figure. A knight who leaps from the sky, a tall woman; sleek ornate blue-black scale plate edged in tarnished gold, a swept-back wyrm-horn helm with a narrow visor, finned tassets like folded wings, long split coat-tails of indigo brocade, clawed sabatons and heavy landing greaves, a single wing-shaped pauldron; the female cut of this class costume, same colours. Original character design for a dark gothic high-fantasy MMORPG, in the ornate job-armor tradition of Final Fantasy XIV artifact gear: tall elegant realistic proportions, about 7.5 heads, intricate layered costume with engraved filigree borders, rich brocade, tooled leather and jeweled fittings, asymmetric silhouette, long trailing cloth. Grimdark palette of blackened grave steel, tarnished gold, deep wine, night indigo and bone ivory; worn, battle-scarred, candle-sooted; sombre and regal, never cute, never generic. Semi-realistic painted 3D game character, very high detail. Abstract scrollwork decoration only: no text, letters, runes, heraldic emblems or logos anywhere. Full-body character sheet, front view, standing straight in an A-pose with the arms held 40 degrees from the body, hands open and empty, legs slightly apart, the whole figure visible from the top of the headpiece to the soles with a margin, flat neutral studio lighting, plain light grey background, single character, no weapon, nothing held in the hands."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1d903-2211-709b-94cf-26e251be860a",
+          "sent": "2026-11-14T07:43:37Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 30000,
+          "pose_mode": "a-pose",
+          "from": "01a1d900-231c-722a-87e9-7781f0e26e85"
+        },
+        {
+          "step": "rig",
+          "tool": "rigging",
+          "task": "01a1d90a-e0cd-7014-9abd-14e3d7696f82",
+          "sent": "2026-11-14T07:51:06Z",
+          "height_meters": 1.8,
+          "from": "01a1d903-2211-709b-94cf-26e251be860a"
+        }
+      ]
+    },
+    "carrion_witch_m": {
+      "why": "Its picture was redrawn from the carrion_witch_f picture by image-to-image, not made from text. prompts.json has only a text-to-image prompt for it, which gives a different design. (The other cuts were made from text; a redraw copies its reference too closely, so make new ones from text.)",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "image-to-image",
+          "task": "01a1d900-29da-7381-8595-87fcedfd7695",
+          "sent": "2026-11-14T07:40:21Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "from": "art/concepts/v2/carrion_witch_f.png",
+          "from_task": "01a1d86f-63cf-7746-8e04-bcb20ce5a657",
+          "prompt": "Redraw the character in the reference picture as an old man of the same class: keep the same costume design, the same pieces, materials, colours and level of detail, in the same painted style, re-cut for a male figure. A swamp hag of grim elegance, an old man; a huge crooked wide-brimmed black hat hung with small bones and dried flowers, a ragged layered gown of moss green and black lace, a great mantle of crow feathers with a high feathered collar, an ornate corset of tarnished silver ribs, a rag poppet doll and glass jars tied at the belt, a muddy hem, long nails; the male cut of this class costume, same colours. Original character design for a dark gothic high-fantasy MMORPG, in the ornate job-armor tradition of Final Fantasy XIV artifact gear: tall elegant realistic proportions, about 7.5 heads, intricate layered costume with engraved filigree borders, rich brocade, tooled leather and jeweled fittings, asymmetric silhouette, long trailing cloth. Grimdark palette of blackened grave steel, tarnished gold, deep wine, night indigo and bone ivory; worn, battle-scarred, candle-sooted; sombre and regal, never cute, never generic. Semi-realistic painted 3D game character, very high detail. Abstract scrollwork decoration only: no text, letters, runes, heraldic emblems or logos anywhere. Full-body character sheet, front view, standing straight in an A-pose with the arms held 40 degrees from the body, hands open and empty, legs slightly apart, the whole figure visible from the top of the headpiece to the soles with a margin, flat neutral studio lighting, plain light grey background, single character, no weapon, nothing held in the hands."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1d903-2b17-7242-be42-d47da0d512c0",
+          "sent": "2026-11-14T07:43:41Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 30000,
+          "pose_mode": "a-pose",
+          "from": "01a1d900-29da-7381-8595-87fcedfd7695"
+        },
+        {
+          "step": "rig",
+          "tool": "rigging",
+          "task": "01a1d90a-ed5e-727e-bb70-f65962fa40ae",
+          "sent": "2026-11-14T07:51:07Z",
+          "height_meters": 1.85,
+          "from": "01a1d903-2b17-7242-be42-d47da0d512c0"
+        }
+      ]
+    },
+    "bard_f": {
+      "why": "Its picture was redrawn from the bard_m picture by image-to-image, not made from text. prompts.json has only a text-to-image prompt for it, which gives a different design. (The other cuts were made from text; a redraw copies its reference too closely, so make new ones from text.)",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "image-to-image",
+          "task": "01a1d900-2cb8-7470-aa32-d98b1d067f0e",
+          "sent": "2026-11-14T07:40:26Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "from": "art/concepts/v2/bard_m.png",
+          "from_task": "01a1d86f-675a-735c-b6be-199db428f559",
+          "prompt": "Redraw the character in the reference picture as a woman of the same class: keep the same costume design, the same pieces, materials, colours and level of detail, in the same painted style, re-cut for a female figure. A roguish court minstrel, a striking woman; a wine-red and black doublet of quilted brocade with one sleeve slashed to gold silk, a wide feathered hat cocked to one side, a long asymmetric half-cape lined in indigo, ornate knife sheaths on a baldric of silver links, thigh boots with turned cuffs, fingerless gloves, ribbons and small bells at the cuffs; the female cut of this class costume, same colours. Original character design for a dark gothic high-fantasy MMORPG, in the ornate job-armor tradition of Final Fantasy XIV artifact gear: tall elegant realistic proportions, about 7.5 heads, intricate layered costume with engraved filigree borders, rich brocade, tooled leather and jeweled fittings, asymmetric silhouette, long trailing cloth. Grimdark palette of blackened grave steel, tarnished gold, deep wine, night indigo and bone ivory; worn, battle-scarred, candle-sooted; sombre and regal, never cute, never generic. Semi-realistic painted 3D game character, very high detail. Abstract scrollwork decoration only: no text, letters, runes, heraldic emblems or logos anywhere. Full-body character sheet, front view, standing straight in an A-pose with the arms held 40 degrees from the body, hands open and empty, legs slightly apart, the whole figure visible from the top of the headpiece to the soles with a margin, flat neutral studio lighting, plain light grey background, single character, no weapon, nothing held in the hands."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1d903-2edf-70cb-b8ef-897d57e9bba5",
+          "sent": "2026-11-14T07:43:42Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 30000,
+          "pose_mode": "a-pose",
+          "from": "01a1d900-2cb8-7470-aa32-d98b1d067f0e"
+        },
+        {
+          "step": "rig",
+          "tool": "rigging",
+          "task": "01a1d90a-f8f8-7462-95ea-207a64c41b26",
+          "sent": "2026-11-14T07:51:08Z",
+          "height_meters": 1.75,
+          "from": "01a1d903-2edf-70cb-b8ef-897d57e9bba5"
+        }
+      ]
+    },
+    "arcane_sorcerer_m": {
+      "why": "Its picture was redrawn from the arcane_sorcerer_f picture by image-to-image, not made from text. prompts.json has only a text-to-image prompt for it, which gives a different design. (The other cuts were made from text; a redraw copies its reference too closely, so make new ones from text.)",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "image-to-image",
+          "task": "01a1d902-cc94-73ae-af30-ae39da44e253",
+          "sent": "2026-11-14T07:43:22Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "from": "art/concepts/v2/arcane_sorcerer_f.png",
+          "from_task": "01a1d900-1814-71e9-8cb8-048fbe0002d5",
+          "prompt": "Redraw the character in the reference picture as a man of the same class: keep the same costume design, the same pieces, materials, colours and level of detail, in the same painted style, re-cut for a male figure. A royal astronomer, a tall man; a night-indigo robe of heavy brocade sewn with pale silver star studs, a towering brass armillary headdress of nested rings, a half-veil over the lower face, a tall flared collar, an ornate astrolabe on a long chain, a mantle like a folded star chart of indigo and gold, long gloves, brass lenses on a jeweled band; the male cut of this class costume, same colours. Original character design for a dark gothic high-fantasy MMORPG, in the ornate job-armor tradition of Final Fantasy XIV artifact gear: tall elegant realistic proportions, about 7.5 heads, intricate layered costume with engraved filigree borders, rich brocade, tooled leather and jeweled fittings, asymmetric silhouette, long trailing cloth. Grimdark palette of blackened grave steel, tarnished gold, deep wine, night indigo and bone ivory; worn, battle-scarred, candle-sooted; sombre and regal, never cute, never generic. Semi-realistic painted 3D game character, very high detail. Abstract scrollwork decoration only: no text, letters, runes, heraldic emblems or logos anywhere. Full-body character sheet, front view, standing straight in an A-pose with the arms held 40 degrees from the body, hands open and empty, legs slightly apart, the whole figure visible from the top of the headpiece to the soles with a margin, flat neutral studio lighting, plain light grey background, single character, no weapon, nothing held in the hands."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1d908-2bd2-740c-ac4b-6fce710d2312",
+          "sent": "2026-11-14T07:49:12Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 30000,
+          "pose_mode": "a-pose",
+          "from": "01a1d902-cc94-73ae-af30-ae39da44e253"
+        },
+        {
+          "step": "rig",
+          "tool": "rigging",
+          "task": "01a1d90b-05d9-77fe-9325-3b56aaaa5dfc",
+          "sent": "2026-11-14T07:51:09Z",
+          "height_meters": 2,
+          "from": "01a1d908-2bd2-740c-ac4b-6fce710d2312"
+        }
+      ]
+    },
+    "pine": {
+      "why": "Sent with the village `scenery` style. prompts.json has since given trees their own plainer `tree` style, so `prompt.mjs pine image` no longer prints this text.",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "text-to-image",
+          "task": "01a1d996-3413-7558-a161-f9457afd5ab2",
+          "sent": "2026-11-14T10:23:58Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "prompt": "A single tall dark pine tree of a cold northern forest: a straight trunk of rough grey-brown bark, layered drooping tiers of dark blue-green needles to a narrow point, a few dead lower branches, a little moss at the foot; the whole tree, about three times as tall as it is wide, the trunk ending in a few short roots: a set piece for a dark gothic high-fantasy village in an MMORPG, in the manner of a Final Fantasy XIV village prop made grimdark: dark weathered timber, grey fieldstone, wrought iron, slate, moss and soot, a little tarnished brass, carved scrollwork details, worn and lived-in, matte, no glow. Semi-realistic painted 3D game asset, very high detail. Isolated object, three-quarter view from the front and a little above, the whole object in frame with a margin, flat neutral studio lighting, plain light grey background, no ground plane, no grass, no people, no animals. No text, letters, numbers, runes, writing, emblems or logos anywhere."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1d9a2-c595-7180-866f-0440e020a635",
+          "sent": "2026-11-14T10:37:52Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 4000,
+          "from": "01a1d996-3413-7558-a161-f9457afd5ab2"
+        }
+      ]
+    },
+    "oak": {
+      "why": "Sent with the village `scenery` style. prompts.json has since given trees their own plainer `tree` style, so `prompt.mjs oak image` no longer prints this text.",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "text-to-image",
+          "task": "01a1d996-3456-7417-879e-e9d2460873a6",
+          "sent": "2026-11-14T10:24:01Z",
+          "ai_model": "nano-banana-pro",
+          "prompt": "A single old gnarled oak tree: a thick twisted trunk of furrowed dark bark with ivy climbing it, a broad spreading crown of dense dark green leaves in heavy rounded clumps, a few bare crooked branches; the whole tree, a little taller than it is wide, the trunk ending in a few spreading roots: a set piece for a dark gothic high-fantasy village in an MMORPG, in the manner of a Final Fantasy XIV village prop made grimdark: dark weathered timber, grey fieldstone, wrought iron, slate, moss and soot, a little tarnished brass, carved scrollwork details, worn and lived-in, matte, no glow. Semi-realistic painted 3D game asset, very high detail. Isolated object, three-quarter view from the front and a little above, the whole object in frame with a margin, flat neutral studio lighting, plain light grey background, no ground plane, no grass, no people, no animals. No text, letters, numbers, runes, writing, emblems or logos anywhere."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1d9a2-c9b7-72ca-a1b9-ff8749be95d2",
+          "sent": "2026-11-14T10:37:54Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 6000,
+          "from": "01a1d996-3456-7417-879e-e9d2460873a6"
+        }
+      ]
+    },
+    "snowpine": {
+      "why": "Sent with the village `scenery` style. prompts.json has since given trees their own plainer `tree` style, so `prompt.mjs snowpine image` no longer prints this text.",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "text-to-image",
+          "task": "01a1d9f6-d5b9-74fe-9c0f-34435cc1dd52",
+          "sent": "2026-11-14T12:09:33Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "prompt": "A single tall pine tree of a frozen northern waste: a straight trunk of grey bark split by frost, layered drooping tiers of dark blue-green needles weighed down with heavy snow, snow lying thick on every tier and small icicles hanging from the tips, a narrow point; the whole tree, about three times as tall as it is wide, the trunk ending in a few short roots: a set piece for a dark gothic high-fantasy village in an MMORPG, in the manner of a Final Fantasy XIV village prop made grimdark: dark weathered timber, grey fieldstone, wrought iron, slate, moss and soot, a little tarnished brass, carved scrollwork details, worn and lived-in, matte, no glow. Semi-realistic painted 3D game asset, very high detail. Isolated object, three-quarter view from the front and a little above, the whole object in frame with a margin, flat neutral studio lighting, plain light grey background, no ground plane, no grass, no people, no animals. No text, letters, numbers, runes, writing, emblems or logos anywhere."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1d9fb-c662-7114-b78a-984f76c20bdb",
+          "sent": "2026-11-14T12:14:59Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 10000,
+          "from": "01a1d9f6-d5b9-74fe-9c0f-34435cc1dd52"
+        }
+      ]
+    },
+    "char_tree": {
+      "why": "Sent with the village `scenery` style. prompts.json has since given trees their own plainer `tree` style, so `prompt.mjs char_tree image` no longer prints this text.",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "text-to-image",
+          "task": "01a1d9f6-d638-77ed-8d5a-093f5d2008a5",
+          "sent": "2026-11-14T12:09:39Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "prompt": "A single burnt tree of a land of ash and slag: a crooked trunk charred black and cracked into scales of charcoal, a dull rust-red in the deepest cracks, a few stumps of burnt branches, no leaves, grey ash lying on the top of every bough; the whole tree, about twice as tall as it is wide, the trunk ending in a few blackened roots: a set piece for a dark gothic high-fantasy village in an MMORPG, in the manner of a Final Fantasy XIV village prop made grimdark: dark weathered timber, grey fieldstone, wrought iron, slate, moss and soot, a little tarnished brass, carved scrollwork details, worn and lived-in, matte, no glow. Semi-realistic painted 3D game asset, very high detail. Isolated object, three-quarter view from the front and a little above, the whole object in frame with a margin, flat neutral studio lighting, plain light grey background, no ground plane, no grass, no people, no animals. No text, letters, numbers, runes, writing, emblems or logos anywhere."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1d9fb-c957-76b8-8d68-607f38cd8aa9",
+          "sent": "2026-11-14T12:15:00Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 10000,
+          "from": "01a1d9f6-d638-77ed-8d5a-093f5d2008a5"
+        }
+      ]
+    },
+    "palm": {
+      "why": "Sent with the village `scenery` style. prompts.json has since given trees their own plainer `tree` style, so `prompt.mjs palm image` no longer prints this text.",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "text-to-image",
+          "task": "01a1d9f6-d68d-75ec-a662-d066a60d4867",
+          "sent": "2026-11-14T12:09:42Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "prompt": "A single date palm of a desert oasis: a tall slender trunk of ringed grey-brown fibre with a gentle lean, a crown of long arching green fronds with a skirt of dry brown fronds hanging beneath it, a heavy cluster of amber dates under the crown; the whole tree, about three times as tall as it is wide, the trunk ending in a few short roots: a set piece for a dark gothic high-fantasy village in an MMORPG, in the manner of a Final Fantasy XIV village prop made grimdark: dark weathered timber, grey fieldstone, wrought iron, slate, moss and soot, a little tarnished brass, carved scrollwork details, worn and lived-in, matte, no glow. Semi-realistic painted 3D game asset, very high detail. Isolated object, three-quarter view from the front and a little above, the whole object in frame with a margin, flat neutral studio lighting, plain light grey background, no ground plane, no grass, no people, no animals. No text, letters, numbers, runes, writing, emblems or logos anywhere."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1d9fb-cc7c-74b1-a4d0-7a7de0a6e60b",
+          "sent": "2026-11-14T12:15:02Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 10000,
+          "from": "01a1d9f6-d68d-75ec-a662-d066a60d4867"
+        }
+      ]
+    },
+    "lancer_m": {
+      "why": "prompts.json dropped \"a tower-shield bracket on the left forearm;\" from the lancer line after this was sent (on lancer_m it came out as a stray shield plate). Then the picture was fixed by image-to-image: the stray shield plate behind the right arm taken out.",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "text-to-image",
+          "task": "01a1dcf8-6eb3-73b4-a4fb-3dce76aeaa0a",
+          "sent": "2026-11-15T02:10:15Z",
+          "ai_model": "nano-banana-pro",
+          "pose_mode": "a-pose",
+          "prompt": "An unbreakable knight-captain, a massive broad man; towering ornate full plate enamelled deep midnight blue and edged in heavy tarnished gold filigree, the heaviest armour of any class, every plate thick, fluted and sculpted with gold scrollwork and leaves: huge tiered rounded pauldrons as big as the helm, a deep sculpted breastplate with a tall flared gorget, a close helm with a tall swept gold fin crest and a plain faceplate with one narrow horizontal eye slit and no vertical ridge, articulated arms with flared winged couters and enormous gauntlets, a broad fauld of overlapping gold-edged lames, short broad tassets ending above the knee, sculpted poleyns, greaves and thick armoured sabatons; nothing but plate below the waist; a tower-shield bracket on the left forearm; the male cut of this class costume, same colours. Original character design for a dark gothic high-fantasy MMORPG, in the ornate job-armor tradition of Final Fantasy XIV artifact gear: tall elegant realistic proportions, about 7.5 heads, intricate layered costume with engraved filigree borders, rich brocade, tooled leather and jeweled fittings, a bold silhouette made by the shoulders and the headpiece. Close-fitting: no cape, no cloak, no mantle, no robe, no long coat, no tabard, no hanging sash ends or streamers; every garment ends above the knee and the legs are clear from the knee to the boots. Grimdark palette of blackened grave steel, tarnished gold, deep wine, night indigo and bone ivory; worn, battle-scarred, candle-sooted; sombre and regal, never cute, never generic. Semi-realistic painted 3D game character, very high detail. Abstract scrollwork decoration only: no text, letters, runes, heraldic emblems, crosses or logos anywhere. Full-body character sheet, front view, standing straight in an A-pose with the arms held 40 degrees from the body, hands open and empty, legs slightly apart, the whole figure visible from the top of the headpiece to the soles with a margin, flat neutral studio lighting, plain light grey background, single character, no weapon, nothing held in the hands."
+        },
+        {
+          "step": "fix",
+          "tool": "image-to-image",
+          "task": "01a1dd00-4985-7641-9316-90c0f57fd4f0",
+          "sent": "2026-11-15T02:18:49Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "from": "01a1dcf8-6eb3-73b4-a4fb-3dce76aeaa0a",
+          "prompt": "Remove the large shield-shaped plate that hangs behind and beside the knight's right arm, so the arm and the plain light grey background show cleanly there. Keep everything else exactly the same: the same knight, the same midnight-blue and gold armour, the same crested helm, the same A-pose, the same framing, lighting and plain light grey background. Hands open and empty."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1dd02-b2f5-777d-b102-dd976ae9e08c",
+          "sent": "2026-11-15T02:21:35Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 30000,
+          "pose_mode": "a-pose",
+          "from": "01a1dd00-4985-7641-9316-90c0f57fd4f0"
+        },
+        {
+          "step": "rig",
+          "tool": "rigging",
+          "task": "01a1dd04-47a9-74bf-9143-a1539cc90316",
+          "sent": "2026-11-15T02:23:20Z",
+          "height_meters": 1.95,
+          "from": "01a1dd02-b2f5-777d-b102-dd976ae9e08c"
+        }
+      ]
+    },
+    "lancer_f": {
+      "why": "prompts.json dropped \"a tower-shield bracket on the left forearm;\" from the lancer line after this was sent (on lancer_m it came out as a stray shield plate). Then the picture was fixed by image-to-image: a faceplate with no vertical ridge, so the helm shows no T or cross (the V and T rule).",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "text-to-image",
+          "task": "01a1dcf8-712f-7144-80cc-ef33a8cb1a2e",
+          "sent": "2026-11-15T02:10:20Z",
+          "ai_model": "nano-banana-pro",
+          "pose_mode": "a-pose",
+          "prompt": "An unbreakable knight-captain, a massive broad woman; towering ornate full plate enamelled deep midnight blue and edged in heavy tarnished gold filigree, the heaviest armour of any class, every plate thick, fluted and sculpted with gold scrollwork and leaves: huge tiered rounded pauldrons as big as the helm, a deep sculpted breastplate with a tall flared gorget, a close helm with a tall swept gold fin crest and a plain faceplate with one narrow horizontal eye slit and no vertical ridge, articulated arms with flared winged couters and enormous gauntlets, a broad fauld of overlapping gold-edged lames, short broad tassets ending above the knee, sculpted poleyns, greaves and thick armoured sabatons; nothing but plate below the waist; a tower-shield bracket on the left forearm; the female cut of this class costume, same colours. Original character design for a dark gothic high-fantasy MMORPG, in the ornate job-armor tradition of Final Fantasy XIV artifact gear: tall elegant realistic proportions, about 7.5 heads, intricate layered costume with engraved filigree borders, rich brocade, tooled leather and jeweled fittings, a bold silhouette made by the shoulders and the headpiece. Close-fitting: no cape, no cloak, no mantle, no robe, no long coat, no tabard, no hanging sash ends or streamers; every garment ends above the knee and the legs are clear from the knee to the boots. Grimdark palette of blackened grave steel, tarnished gold, deep wine, night indigo and bone ivory; worn, battle-scarred, candle-sooted; sombre and regal, never cute, never generic. Semi-realistic painted 3D game character, very high detail. Abstract scrollwork decoration only: no text, letters, runes, heraldic emblems, crosses or logos anywhere. Full-body character sheet, front view, standing straight in an A-pose with the arms held 40 degrees from the body, hands open and empty, legs slightly apart, the whole figure visible from the top of the headpiece to the soles with a margin, flat neutral studio lighting, plain light grey background, single character, no weapon, nothing held in the hands."
+        },
+        {
+          "step": "fix",
+          "tool": "image-to-image",
+          "task": "01a1dd00-4abf-7606-9cb0-ae3ddb5c3b4f",
+          "sent": "2026-11-15T02:18:52Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "from": "01a1dcf8-712f-7144-80cc-ef33a8cb1a2e",
+          "prompt": "Change only the helm's faceplate: make it one smooth rounded plate with a single narrow horizontal eye slit and nothing else on it, with no vertical ridge, seam or line running down the middle of the face. Keep everything else exactly the same: the same knight, the same midnight-blue and gold armour, the same tall gold crest, the same A-pose, the same framing, lighting and plain light grey background. Hands open and empty."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1dd02-b717-7345-85ba-1c87e347abd0",
+          "sent": "2026-11-15T02:21:37Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 30000,
+          "pose_mode": "a-pose",
+          "from": "01a1dd00-4abf-7606-9cb0-ae3ddb5c3b4f"
+        },
+        {
+          "step": "rig",
+          "tool": "rigging",
+          "task": "01a1dd04-5b0c-7667-a62d-b13ed14f6cc2",
+          "sent": "2026-11-15T02:23:20Z",
+          "height_meters": 1.9,
+          "from": "01a1dd02-b717-7345-85ba-1c87e347abd0"
+        }
+      ]
+    },
+    "osric": {
+      "why": "The text-to-image prompt is prompts.json's word for word; the picture was then fixed by image-to-image: the X-shaped gash on his breastplate made into parallel scratches (no crosses, the V and T rule).",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "text-to-image",
+          "task": "01a1dcfa-059a-74db-b62f-fcd7cde97f9c",
+          "sent": "2026-11-15T02:11:49Z",
+          "ai_model": "nano-banana-pro",
+          "pose_mode": "a-pose",
+          "prompt": "A scarred reformed sellsword in his fifties, a broad weathered man with a broken nose, a grizzled grey beard and a shaved head; ornate knight's plate of dark forest-green enamel and tarnished silver filigree, battered and re-riveted, one great rounded pauldron, a tall open-faced helm with a swept crest, a coin purse and a small plain brass-bound ledger chained to his belt, a notched gorget, articulated tassets ending above the knee, heavy greaves and sabatons, no symbol anywhere. Original character design for a dark gothic high-fantasy MMORPG, in the ornate job-armor tradition of Final Fantasy XIV artifact gear: tall elegant realistic proportions, about 7.5 heads, intricate layered costume with engraved filigree borders, rich brocade, tooled leather and jeweled fittings, a bold silhouette made by the shoulders and the headpiece. Close-fitting: no cape, no cloak, no mantle, no robe, no long coat, no tabard, no hanging sash ends or streamers; every garment ends above the knee and the legs are clear from the knee to the boots. Grimdark palette of blackened grave steel, tarnished gold, deep wine, night indigo and bone ivory; worn, battle-scarred, candle-sooted; sombre and regal, never cute, never generic. Semi-realistic painted 3D game character, very high detail. Abstract scrollwork decoration only: no text, letters, runes, heraldic emblems, crosses or logos anywhere. Full-body character sheet, front view, standing straight in an A-pose with the arms held 40 degrees from the body, hands open and empty, legs slightly apart, the whole figure visible from the top of the headpiece to the soles with a margin, flat neutral studio lighting, plain light grey background, single character, no weapon, nothing held in the hands."
+        },
+        {
+          "step": "fix",
+          "tool": "image-to-image",
+          "task": "01a1dd00-4c14-71a5-8656-716de3607dab",
+          "sent": "2026-11-15T02:18:54Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "from": "01a1dcfa-059a-74db-b62f-fcd7cde97f9c",
+          "prompt": "Repair the X-shaped gash on the upper left of the green breastplate so no two scratches cross anywhere: the battle damage becomes a few short separate parallel diagonal scratches, none crossing another. Keep everything else exactly the same: the same old soldier, the same face, the same green and silver armour, the same A-pose, the same framing, lighting and plain light grey background."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1dd02-c320-714e-a61a-1f49a6ac65f4",
+          "sent": "2026-11-15T02:21:42Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 30000,
+          "pose_mode": "a-pose",
+          "from": "01a1dd00-4c14-71a5-8656-716de3607dab"
+        },
+        {
+          "step": "rig",
+          "tool": "rigging",
+          "task": "01a1dd06-b26e-75ba-ae15-f359293ce2a5",
+          "sent": "2026-11-15T02:25:36Z",
+          "height_meters": 1.91,
+          "from": "01a1dd02-c320-714e-a61a-1f49a6ac65f4"
+        }
+      ]
+    },
+    "soraya": {
+      "why": "The text-to-image prompt is prompts.json's word for word; the picture was then fixed by image-to-image: twice, the second on top of the first: the ribbon on her bundle of letters made to run one way, then the bundle taken out altogether (no crosses, the V and T rule).",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "text-to-image",
+          "task": "01a1dcfa-d104-7002-82d9-b16bb58c7f7b",
+          "sent": "2026-11-15T02:12:55Z",
+          "ai_model": "nano-banana-pro",
+          "pose_mode": "a-pose",
+          "prompt": "A hopeful romantic singer, a young woman with large dark eyes, a dreamy smile and black curls pinned up with a rose; a fitted dusty-rose and gold brocade bodice with slashed puffed sleeves and a short layered peplum, a bundle of letters tied with ribbon and closed with plain wax tucked in her belt, a small writing case on a strap at her hip, a lute on her back, fitted breeches, turned-down ankle boots. Original character design for a dark gothic high-fantasy MMORPG, in the ornate job-armor tradition of Final Fantasy XIV artifact gear: tall elegant realistic proportions, about 7.5 heads, intricate layered costume with engraved filigree borders, rich brocade, tooled leather and jeweled fittings, a bold silhouette made by the shoulders and the headpiece. Close-fitting: no cape, no cloak, no mantle, no robe, no long coat, no tabard, no hanging sash ends or streamers; every garment ends above the knee and the legs are clear from the knee to the boots. Grimdark palette of blackened grave steel, tarnished gold, deep wine, night indigo and bone ivory; worn, battle-scarred, candle-sooted; sombre and regal, never cute, never generic. Semi-realistic painted 3D game character, very high detail. Abstract scrollwork decoration only: no text, letters, runes, heraldic emblems, crosses or logos anywhere. Full-body character sheet, front view, standing straight in an A-pose with the arms held 40 degrees from the body, hands open and empty, legs slightly apart, the whole figure visible from the top of the headpiece to the soles with a margin, flat neutral studio lighting, plain light grey background, single character, no weapon, nothing held in the hands."
+        },
+        {
+          "step": "fix",
+          "tool": "image-to-image",
+          "task": "01a1dd00-4d47-7601-a6a2-4eb347799ef5",
+          "sent": "2026-11-15T02:18:56Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "from": "01a1dcfa-d104-7002-82d9-b16bb58c7f7b",
+          "prompt": "Change only the bundle of letters at her hip: tie it with a single plain dark ribbon that runs one way only, across the short side of the bundle, with no bow and nothing crossing over it. Keep everything else exactly the same: the same woman, the same face, the same costume and colours, the same A-pose, the same framing, lighting and plain light grey background. Hands open and empty."
+        },
+        {
+          "step": "fix",
+          "tool": "image-to-image",
+          "task": "01a1dd02-b1b5-73a2-ab42-5512a584262a",
+          "sent": "2026-11-15T02:21:34Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "from": "01a1dd00-4d47-7601-a6a2-4eb347799ef5",
+          "prompt": "Remove the bundle of letters and its straps from her hip entirely, so the belt and the layered skirt show plainly there. Keep everything else exactly the same: the same woman, the same face, the same costume and colours, the same A-pose, the same framing, lighting and plain light grey background. Hands open and empty."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1dd03-6726-73e4-bfd7-7b721b6e76b3",
+          "sent": "2026-11-15T02:22:26Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 30000,
+          "pose_mode": "a-pose",
+          "from": "01a1dd02-b1b5-73a2-ab42-5512a584262a"
+        },
+        {
+          "step": "rig",
+          "tool": "rigging",
+          "task": "01a1dd07-1bcd-77e2-9ecc-fcefb42ed290",
+          "sent": "2026-11-15T02:26:23Z",
+          "height_meters": 1.75,
+          "from": "01a1dd03-6726-73e4-bfd7-7b721b6e76b3"
+        }
+      ]
+    },
+    "ingram": {
+      "why": "The text-to-image prompt is prompts.json's word for word; the picture was then fixed by image-to-image: the compass on his chest made a plain locket, with no dial or needle (no crosses, the V and T rule).",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "text-to-image",
+          "task": "01a1dcfa-0358-7744-99d2-b2d1c1aaa273",
+          "sent": "2026-11-15T02:11:44Z",
+          "ai_model": "nano-banana-pro",
+          "pose_mode": "a-pose",
+          "prompt": "A precise pedantic surveyor turned lancer, a thin upright man in his fifties with a long nose, round spectacles and a neat pointed grey beard; heavy ornate lancer full plate of deep garnet enamel and tarnished gold filigree, huge layered pauldrons, a tall gorget, an open bascinet helm with the visor raised, a brass surveyor's compass and a plumb-bob hanging from the gorget, a knotted measuring cord wound round one vambrace, a belt of small marking stakes, short broad tassets ending above the knee, armoured sabatons, a tower-shield bracket on the left forearm. Original character design for a dark gothic high-fantasy MMORPG, in the ornate job-armor tradition of Final Fantasy XIV artifact gear: tall elegant realistic proportions, about 7.5 heads, intricate layered costume with engraved filigree borders, rich brocade, tooled leather and jeweled fittings, a bold silhouette made by the shoulders and the headpiece. Close-fitting: no cape, no cloak, no mantle, no robe, no long coat, no tabard, no hanging sash ends or streamers; every garment ends above the knee and the legs are clear from the knee to the boots. Grimdark palette of blackened grave steel, tarnished gold, deep wine, night indigo and bone ivory; worn, battle-scarred, candle-sooted; sombre and regal, never cute, never generic. Semi-realistic painted 3D game character, very high detail. Abstract scrollwork decoration only: no text, letters, runes, heraldic emblems, crosses or logos anywhere. Full-body character sheet, front view, standing straight in an A-pose with the arms held 40 degrees from the body, hands open and empty, legs slightly apart, the whole figure visible from the top of the headpiece to the soles with a margin, flat neutral studio lighting, plain light grey background, single character, no weapon, nothing held in the hands."
+        },
+        {
+          "step": "fix",
+          "tool": "image-to-image",
+          "task": "01a1dd00-4edb-74f7-b9cf-09e15c7ae815",
+          "sent": "2026-11-15T02:18:59Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "from": "01a1dcfa-0358-7744-99d2-b2d1c1aaa273",
+          "prompt": "Change only the round gold compass hanging on his chest: make it a closed plain round gold locket with a smooth domed lid and a thin engraved rim, with no dial, needle, hands or lines on its face. Keep the hanging plumb bob and everything else exactly the same: the same old man, the same face and spectacles, the same armour and colours, the same A-pose, the same framing, lighting and plain light grey background."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1dd02-c7a6-731f-97f5-785745829baa",
+          "sent": "2026-11-15T02:21:43Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 30000,
+          "pose_mode": "a-pose",
+          "from": "01a1dd00-4edb-74f7-b9cf-09e15c7ae815"
+        },
+        {
+          "step": "rig",
+          "tool": "rigging",
+          "task": "01a1dd06-be95-76e9-ac25-006783ad12b0",
+          "sent": "2026-11-15T02:25:36Z",
+          "height_meters": 1.95,
+          "from": "01a1dd02-c7a6-731f-97f5-785745829baa"
+        }
+      ]
+    },
+    "isabeau": {
+      "why": "The text-to-image prompt is prompts.json's word for word; the picture was then fixed by image-to-image: the painted frame and scrollwork drawn on the background taken out.",
+      "steps": [
+        {
+          "step": "picture",
+          "tool": "text-to-image",
+          "task": "01a1dcfb-5929-7333-ad0d-03fa292eb254",
+          "sent": "2026-11-15T02:13:21Z",
+          "ai_model": "nano-banana-pro",
+          "pose_mode": "a-pose",
+          "prompt": "A haughty impoverished noblewoman, a tall elegant woman of forty with a long neck, a raised chin, a cool superior gaze and silver-blonde hair in an elaborate pinned coiffure; once-splendid dragoon scale plate of deep teal edged in tarnished gold, patched and mended, a high lace ruff above the gorget, a swept-back wyrm-horn helm with a short crest of faded feathers, a plain jewelled locket at the throat, a single wing-shaped pauldron, finned tassets ending above the knee, heavy landing greaves and clawed sabatons. Original character design for a dark gothic high-fantasy MMORPG, in the ornate job-armor tradition of Final Fantasy XIV artifact gear: tall elegant realistic proportions, about 7.5 heads, intricate layered costume with engraved filigree borders, rich brocade, tooled leather and jeweled fittings, a bold silhouette made by the shoulders and the headpiece. Close-fitting: no cape, no cloak, no mantle, no robe, no long coat, no tabard, no hanging sash ends or streamers; every garment ends above the knee and the legs are clear from the knee to the boots. Grimdark palette of blackened grave steel, tarnished gold, deep wine, night indigo and bone ivory; worn, battle-scarred, candle-sooted; sombre and regal, never cute, never generic. Semi-realistic painted 3D game character, very high detail. Abstract scrollwork decoration only: no text, letters, runes, heraldic emblems, crosses or logos anywhere. Full-body character sheet, front view, standing straight in an A-pose with the arms held 40 degrees from the body, hands open and empty, legs slightly apart, the whole figure visible from the top of the headpiece to the soles with a margin, flat neutral studio lighting, plain light grey background, single character, no weapon, nothing held in the hands."
+        },
+        {
+          "step": "fix",
+          "tool": "image-to-image",
+          "task": "01a1dd00-506c-73c8-921a-0d27a71d704d",
+          "sent": "2026-11-15T02:19:01Z",
+          "ai_model": "nano-banana-pro",
+          "aspect_ratio": "3:4",
+          "from": "01a1dcfb-5929-7333-ad0d-03fa292eb254",
+          "prompt": "Remove the decorative frame and the scrollwork ornaments drawn on the background, leaving a completely plain flat light grey studio background behind her. Keep the woman exactly the same: the same face, the same horned feathered helm, the same armour and colours, the same A-pose, the same framing and lighting. Hands open and empty."
+        },
+        {
+          "step": "3d",
+          "tool": "image-to-3d",
+          "task": "01a1dd02-be64-72e2-8667-d7a0c4b7e212",
+          "sent": "2026-11-15T02:21:40Z",
+          "ai_model": "meshy-t2.5",
+          "model_type": "smart-topology",
+          "texture_model": "meshy-n1",
+          "target_polycount": 30000,
+          "pose_mode": "a-pose",
+          "from": "01a1dd00-506c-73c8-921a-0d27a71d704d"
+        },
+        {
+          "step": "rig",
+          "tool": "rigging",
+          "task": "01a1dd06-a4f5-7797-87d9-f8b0affe979f",
+          "sent": "2026-11-15T02:25:35Z",
+          "height_meters": 1.8,
+          "from": "01a1dd02-be64-72e2-8667-d7a0c4b7e212"
+        }
+      ]
+    }
+  }
+}
