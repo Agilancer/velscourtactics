@@ -20,7 +20,7 @@ import { plan as tacPlan, intent, threat } from './tactics.js';
 import * as enc from './encounter.js';
 import { note } from './chronicle.js';
 import { heroModel, ground, clinks } from './explore.js';
-import { withOverride, sleep, shadowDisc, setAnim, setRest, animate } from '../gfx/models.js';
+import { withOverride, sleep, shadowDisc, setAnim, setRest, animate, canPlay, blowTimes } from '../gfx/models.js';
 import { palOf } from '../gfx/fx.js';
 import { setSide } from '../gfx/outline.js';
 import { DPAD } from '../core/input.js';
@@ -244,6 +244,8 @@ export class Battle {
   wait(ms) { return new Promise((r) => setTimeout(r, ms / ((this.st.auto ? 1.7 : 1) * this.g.pace))); }
   // Something a moment from now, on the fight's clock.
   later(fn, ms) { return setTimeout(fn, ms / this.g.pace); }
+  // A pause that keeps time with the clips (they run on the fight's clock, auto-play or not): to the moment a blow lands.
+  clipWait(ms) { return new Promise((r) => setTimeout(r, ms / this.g.pace)); }
   say(text, cls = '') { this.chron.add(text, cls); }
   float(u, text, cls = '') { this.show.word(u, text, cls); }
   // A status taking hold. st: [id, turns, chance, strength]; `loud` says so when it fails (for a curse that was the point).
@@ -416,17 +418,25 @@ export class Battle {
         this.show.land2(u, L);
       }
     }
-    const spell = sk.kind !== 'phys';
-    setAnim(u.model, sk.item ? 'item' : sk.anim || (spell ? 'cast' : 'attack'), 0.5, spell ? 'cast' : 'attack');
+    const spell = sk.kind !== 'phys', fall = spell ? 'cast' : 'attack';
+    // the skill's own move if the figure has it (a Mixamo take), else the shared one it had before, else cast or attack
+    setAnim(u.model, sk.item ? 'item' : [sk.move || 'sk_' + sk.id, sk.anim].find((s) => canPlay(u.model, s)) || sk.anim || fall, 0.5, fall);
+    // the blow lands when the clip says it does: the wait below and the swing's own reach (show.travel) come to that
+    // (the reach is a wait() of show.travel's, which auto-play shortens; the clip it is timed against plays on regardless)
+    const blows = sk.item ? null : blowTimes(u.model), reach = (L.go === 'melee' ? (sk.dash ? 60 : 170) : L.go === 'thrust' ? 110 : 0) / (this.st.auto ? 1.7 : 1);
     const at = u.model.position, kind = this.weaponOf(u, sk);
-    if (sk.item) { if (sk.item !== 'tonic') sfx.drink(at); }
-    else if (sk.kind === 'heal' || sk.kind === 'cleanse' || sk.kind === 'revive') sfx.heal(at);
-    else if (sk.kind === 'buff' || sk.kind === 'tempo') sfx.buff(at);
-    else if (sk.kind === 'debuff') sfx.debuff(at);
-    else if (sk.kind === 'summon') sfx.summon(at);
-    else if (spell) sfx.cast(sk, at, kind);
-    else sfx.swing(kind, at, sk.el);
-    await this.wait(200);
+    const sound = () => {
+      if (sk.item) { if (sk.item !== 'tonic') sfx.drink(at); }
+      else if (sk.kind === 'heal' || sk.kind === 'cleanse' || sk.kind === 'revive') sfx.heal(at);
+      else if (sk.kind === 'buff' || sk.kind === 'tempo') sfx.buff(at);
+      else if (sk.kind === 'debuff') sfx.debuff(at);
+      else if (sk.kind === 'summon') sfx.summon(at);
+      else if (spell) sfx.cast(sk, at, kind);
+      else sfx.swing(kind, at, sk.el);
+    };
+    // a long wind-up swishes as the blade comes down, not as the arm goes back
+    if (blows && blows[0] > 0.35) setTimeout(sound, (blows[0] - 0.2) * 1000 / this.g.pace); else sound();
+    if (blows) await this.clipWait(Math.max(0, blows[0] * 1000 - reach)); else await this.wait(200);
     if (sk.kind === 'summon') {
       await this.show.travel(u, sk, L, tx, tz, []);
       this.show.land(u, sk, L, tx, tz);
@@ -486,7 +496,7 @@ export class Battle {
           if (sk.kind === 'magic') sfx.burst(sk, where, crit); else sfx.hit({ kind, el: sk.el, crit, blocked, at: where });
         }
         if (sk.allyHeal) for (const t of this.aoeTiles(sk, tx, tz)) { const o = this.unitAt(t.x, t.z); if (o && o.side === u.side && o.hp < o.maxhp) this.mend(o, Math.round(u.s.mag * sk.allyHeal), L); }
-        if (h < hits - 1) await this.wait(170);
+        if (h < hits - 1) { if (blows?.[h + 1] != null) await this.clipWait(Math.max(40, (blows[h + 1] - blows[h]) * 1000 - reach)); else await this.wait(170); }
       }
       this.batch = false;
       if (hits > 1) for (const [t, n] of tally) if (n > 0) { this.show.total(t, n, hits); this.say(`${this.nm(t)} takes <b class="dmg">${n}</b> in ${hits} blows`, 'hit'); }
@@ -566,9 +576,9 @@ export class Battle {
     this.float(t, 'Riposte', 'good');
     this.say(`${this.nm(t)} answers in kind.`, 'act');
     setAnim(t.model, 'attack', 0.5, 'attack');
-    const kind = this.weaponOf(t, sk);
+    const kind = this.weaponOf(t, sk), blows = blowTimes(t.model);
     sfx.swing(kind, t.model.position);
-    await this.wait(180);
+    if (blows) await this.clipWait(blows[0] * 1000); else await this.wait(180);
     const d = this.damage(t, u, sk, false, t);
     this.show.hit(t, u, sk, this.show.look(t, sk), d);
     sfx.hit({ kind, crit: d.crit, at: u.model.position });

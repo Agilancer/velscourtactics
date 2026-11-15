@@ -89,7 +89,8 @@
       "swing": 1.25,
       "smite": 1.3,
       "wave": 1.5
-    }
+    },
+    "mx": "homunculus"
   },
   "lily": {
     "inPlace": true,
@@ -127,7 +128,8 @@
       "wave": 1.5
     },
     "file": "lily.glb",
-    "height": 1.74
+    "height": 1.74,
+    "mx": "lily"
   },
   "jamie": {
     "inPlace": true,
@@ -166,7 +168,8 @@
       "typhoon": 1.5
     },
     "file": "jamie.glb",
-    "height": 1.79
+    "height": 1.79,
+    "mx": "jamie"
   },
   "stevie": {
     "file": "stevie.glb",
@@ -240,7 +243,8 @@
         ],
         "scale": 100
       }
-    ]
+    ],
+    "mx": "stevie"
   },
   "zombie_shambler": {
     "file": "zombie_shambler.glb",
@@ -442,7 +446,8 @@
       "swing": 1.25,
       "smite": 1.3,
       "wave": 1.5
-    }
+    },
+    "mx": "paladin_m"
   },
   "ranger_f": {
     "file": "ranger_f.glb",
@@ -479,7 +484,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "shoot": 1.3
-    }
+    },
+    "mx": "ranger_f"
   },
   "wizard_m": {
     "file": "wizard_m.glb",
@@ -517,7 +523,8 @@
       "revive": 1.6,
       "wave": 1.5,
       "meteor": 1.2
-    }
+    },
+    "mx": "wizard_m"
   },
   "paladin_f": {
     "file": "paladin_f.glb",
@@ -559,7 +566,8 @@
       "swing": 1.25,
       "smite": 1.3,
       "wave": 1.5
-    }
+    },
+    "mx": "paladin_f"
   },
   "ranger_m": {
     "file": "ranger_m.glb",
@@ -596,7 +604,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "shoot": 1.3
-    }
+    },
+    "mx": "ranger_m"
   },
   "wizard_f": {
     "file": "wizard_f.glb",
@@ -634,7 +643,8 @@
       "revive": 1.6,
       "wave": 1.5,
       "meteor": 1.2
-    }
+    },
+    "mx": "wizard_f"
   },
   "barbarian_m": {
     "file": "barbarian_m.glb",
@@ -675,7 +685,8 @@
       "whirl": 1.4,
       "leap": 1.4,
       "slam": 1.3
-    }
+    },
+    "mx": "barbarian_m"
   },
   "barbarian_f": {
     "file": "barbarian_f.glb",
@@ -716,7 +727,8 @@
       "whirl": 1.4,
       "leap": 1.4,
       "slam": 1.3
-    }
+    },
+    "mx": "barbarian_f"
   },
   "necromancer_m": {
     "file": "necromancer_m.glb",
@@ -752,7 +764,8 @@
       "hit": 1.3,
       "dead": 1.3,
       "revive": 1.6
-    }
+    },
+    "mx": "necromancer_m"
   },
   "dragoon_m": {
     "file": "dragoon_m.glb",
@@ -789,7 +802,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "leap": 1.4
-    }
+    },
+    "mx": "dragoon_m"
   },
   "death_knight_m": {
     "file": "death_knight_m.glb",
@@ -827,7 +841,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "smite": 1.3
-    }
+    },
+    "mx": "death_knight_m"
   },
   "carrion_witch_f": {
     "file": "carrion_witch_f.glb",
@@ -864,7 +879,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "wave": 1.5
-    }
+    },
+    "mx": "carrion_witch_f"
   },
   "bard_m": {
     "file": "bard_m.glb",
@@ -900,7 +916,8 @@
       "hit": 1.3,
       "dead": 1.3,
       "revive": 1.6
-    }
+    },
+    "mx": "bard_m"
   },
   "lancer_m": {
     "file": "lancer_m.glb",
@@ -974,7 +991,8 @@
         ],
         "scale": 100
       }
-    ]
+    ],
+    "mx": "lancer_m"
   },
   "lancer_f": {
     "file": "lancer_f.glb",
@@ -1048,7 +1066,8 @@
         ],
         "scale": 100
       }
-    ]
+    ],
+    "mx": "lancer_f"
   },
   "arcane_sorcerer_f": {
     "file": "arcane_sorcerer_f.glb",
@@ -1086,7 +1105,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "wave": 1.5
-    }
+    },
+    "mx": "arcane_sorcerer_f"
   },
   "arcane_sorcerer_m": {
     "file": "arcane_sorcerer_m.glb",
@@ -1124,7 +1144,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "wave": 1.5
-    }
+    },
+    "mx": "arcane_sorcerer_m"
   },
   "boomerang_knight_m": {
     "file": "boomerang_knight_m.glb",
@@ -1163,7 +1184,8 @@
       "revive": 1.6,
       "whirl": 1.4,
       "typhoon": 1.5
-    }
+    },
+    "mx": "boomerang_knight_m"
   },
   "necromancer_f": {
     "file": "necromancer_f.glb",
@@ -1199,7 +1221,8 @@
       "hit": 1.3,
       "dead": 1.3,
       "revive": 1.6
-    }
+    },
+    "mx": "necromancer_f"
   },
   "dragoon_f": {
     "file": "dragoon_f.glb",
@@ -1236,7 +1259,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "leap": 1.4
-    }
+    },
+    "mx": "dragoon_f"
   },
   "death_knight_f": {
     "file": "death_knight_f.glb",
@@ -1274,7 +1298,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "smite": 1.3
-    }
+    },
+    "mx": "death_knight_f"
   },
   "carrion_witch_m": {
     "file": "carrion_witch_m.glb",
@@ -1311,7 +1336,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "wave": 1.5
-    }
+    },
+    "mx": "carrion_witch_m"
   },
   "bard_f": {
     "file": "bard_f.glb",
@@ -1347,7 +1373,8 @@
       "hit": 1.3,
       "dead": 1.3,
       "revive": 1.6
-    }
+    },
+    "mx": "bard_f"
   },
   "ranger_f_t3": {
     "file": "heroes/archer_f2.glb",
@@ -3431,7 +3458,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "slam": 1.3
-    }
+    },
+    "mx": "totem_master_m"
   },
   "totem_master_f": {
     "file": "totem_master_f.glb",
@@ -3468,7 +3496,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "slam": 1.3
-    }
+    },
+    "mx": "totem_master_f"
   },
   "slime_lord_m": {
     "file": "slime_lord_m.glb",
@@ -3507,7 +3536,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "slam": 1.4
-    }
+    },
+    "mx": "slime_lord_m"
   },
   "slime_lord_f": {
     "file": "slime_lord_f.glb",
@@ -3546,7 +3576,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "slam": 1.4
-    }
+    },
+    "mx": "slime_lord_f"
   },
   "dragon_knight_m": {
     "file": "dragon_knight_m.glb",
@@ -3583,7 +3614,8 @@
       "hit": 1.3,
       "dead": 1.3,
       "revive": 1.6
-    }
+    },
+    "mx": "dragon_knight_m"
   },
   "dragon_knight_f": {
     "file": "dragon_knight_f.glb",
@@ -3620,7 +3652,8 @@
       "hit": 1.3,
       "dead": 1.3,
       "revive": 1.6
-    }
+    },
+    "mx": "dragon_knight_f"
   },
   "gunner_f": {
     "file": "gunner_f.glb",
@@ -3658,7 +3691,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "shoot": 1.25
-    }
+    },
+    "mx": "gunner_f"
   },
   "skeleton": {
     "file": "skeleton.glb",
@@ -6992,7 +7026,8 @@
       "revive": 1.6,
       "whirl": 1.4,
       "typhoon": 1.5
-    }
+    },
+    "mx": "boomerang_knight_f"
   },
   "gunner_m": {
     "file": "gunner_m.glb",
@@ -7030,7 +7065,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "shoot": 1.25
-    }
+    },
+    "mx": "gunner_m"
   },
   "wren": {
     "file": "wren.glb",
@@ -7067,7 +7103,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "shoot": 1.3
-    }
+    },
+    "mx": "wren"
   },
   "ismene": {
     "file": "ismene.glb",
@@ -7105,7 +7142,8 @@
       "revive": 1.6,
       "wave": 1.5,
       "meteor": 1.2
-    }
+    },
+    "mx": "ismene"
   },
   "mortimer": {
     "file": "mortimer.glb",
@@ -7141,7 +7179,8 @@
       "hit": 1.3,
       "dead": 1.3,
       "revive": 1.6
-    }
+    },
+    "mx": "mortimer"
   },
   "brakka": {
     "file": "brakka.glb",
@@ -7182,7 +7221,8 @@
       "whirl": 1.4,
       "leap": 1.4,
       "slam": 1.3
-    }
+    },
+    "mx": "brakka"
   },
   "kestrel": {
     "file": "kestrel.glb",
@@ -7219,7 +7259,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "leap": 1.4
-    }
+    },
+    "mx": "kestrel"
   },
   "maudlin": {
     "file": "maudlin.glb",
@@ -7256,7 +7297,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "wave": 1.5
-    }
+    },
+    "mx": "maudlin"
   },
   "jasper": {
     "file": "jasper.glb",
@@ -7292,7 +7334,8 @@
       "hit": 1.3,
       "dead": 1.3,
       "revive": 1.6
-    }
+    },
+    "mx": "jasper"
   },
   "flint": {
     "file": "flint.glb",
@@ -7370,7 +7413,8 @@
       "revive": 1.6,
       "cuts": 1.3,
       "step": 1.3
-    }
+    },
+    "mx": "ninja_m"
   },
   "ninja_f": {
     "file": "ninja_f.glb",
@@ -7410,6 +7454,7 @@
       "revive": 1.6,
       "cuts": 1.3,
       "step": 1.3
-    }
+    },
+    "mx": "ninja_f"
   }
 }

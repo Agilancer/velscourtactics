@@ -476,6 +476,8 @@ class Target:
             def aloft(p, h):                                                   # the lowest foot h of the height off the floor
                 p = G(p); q, l = p[H]; p[H] = (q, l + self.restQ[H].inverted() @ (self.Z * h * self.tall)); return p
 
+        self.B0, self.BI = B0, BI                                              # the idle, for mixamo.py's takes
+
         def blow(name, src, s0, s1, n, legs=0.7, df=2, tail=8):
             # the upper body from the source, the legs partly, the hips never turning
             keys = [(0, B0)]

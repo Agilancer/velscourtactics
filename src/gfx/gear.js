@@ -6,6 +6,12 @@
 // points ahead and a little down, a shield hangs on the outside of the forearm, whatever the rig's wrists do. After that
 // it rides its bone, so every other clip swings it with the hand.
 //
+// A figure with Mixamo takes (gfx/clipbank.js, mxClips) also knows where a Mixamo fist holds things in its hands (the
+// bank's grip: the fist's middle, the axis the fingers wrap, the way the knuckles face, in the hand bone's frame). Those
+// takes were made with something in that fist, so while one plays the piece goes over to it: the long axis along the
+// fist (a pistol's barrel along the knuckles instead), the bit or edge out the knuckles' side. The takes say how far over
+// the hands are (the GripW node, eased in and out with the body), and holdGear moves each piece between the two places.
+//
 // The gear's own frame (tools/gear/bake.py): the grip at the origin, the long axis up +Y, the flat of a blade facing ±X,
 // an axe's bit and a boomerang's elbow out along -Z, a shield's face to -Z, a lute's strings to +Z.
 import * as THREE from 'three';
@@ -49,7 +55,7 @@ const BONES = { handR: /(RightHand|hand_r)$/, armR: /(RightForeArm|lowerarm_r)$/
 const UP = new THREE.Vector3(0, 1, 0), FWD = new THREE.Vector3(0, 0, 1);
 
 // The rig of a real model. def: its manifest entry; idle: its idle clip, whose first frame it is posed in to measure.
-export function fitGear(holder, obj, def = {}, idle = null) {
+export function fitGear(holder, obj, def = {}, idle = null, grip = null) {
   const b = {};
   obj.traverse((o) => { if (o.isBone) for (const [k, re] of Object.entries(BONES)) if (!b[k] && re.test(o.name)) b[k] = o; });
   const u = holder.userData;
@@ -75,6 +81,7 @@ export function fitGear(holder, obj, def = {}, idle = null) {
     k: (u.height || 1.6) / BM_HEIGHT, busy,
     R: side(b.handR, b.armR, -1), L: side(b.handL, b.armL, 1),
     chest: b.chest ? { bone: b.chest, at: at(b.chest), to: toLocal(b.chest) } : null,
+    grip,
   };
   for (const [bone, prop, v] of saved) bone[prop].copy(v);
   holder.updateMatrixWorld(true);
@@ -122,7 +129,33 @@ function place(rig, look) {
   }
   const f = rig[side];
   const m = new THREE.Matrix4().compose(pos, q, v3(s, s, s));
-  return { side, bone: onArm ? f.arm : f.hand, matrix: (onArm ? f.toArm : f.toHand).clone().multiply(m) };
+  const matrix = (onArm ? f.toArm : f.toHand).clone().multiply(m);
+  return { side, bone: onArm ? f.arm : f.hand, matrix, fist: onArm ? null : inFist(rig, side, look, matrix) };
+}
+
+// The same look in a Mixamo fist (see the top of the file), in the hand bone's frame, the size kept; null without a grip.
+function inFist(rig, side, look, matrix) {
+  const g = rig.grip?.[side];
+  if (!g) return null;
+  const at = v3(g[0], g[1], g[2]), A = v3(g[3], g[4], g[5]), K = v3(g[6], g[7], g[8]);
+  const q = look.kind === 'pistol' ? basis(K, A) : basis(A, FLIP.has(look.id) ? K : K.clone().negate());
+  const s = new THREE.Vector3(); matrix.decompose(new THREE.Vector3(), new THREE.Quaternion(), s);
+  return new THREE.Matrix4().compose(at, q, s);
+}
+
+// Each frame, on a figure with Mixamo takes: every piece in a hand as far over to the fist as that hand is (w: GripW's
+// position, x the right hand, y the left).
+const P0 = new THREE.Vector3(), P1 = new THREE.Vector3(), Q0 = new THREE.Quaternion(), Q1 = new THREE.Quaternion(), S = new THREE.Vector3();
+export function holdGear(model, w) {
+  for (const o of model.userData.gearObjs || []) {
+    const h = o.userData.held;
+    if (!h?.fist) continue;
+    const k = Math.min(1, Math.max(0, h.side === 'L' ? w.y : w.x));
+    if (k === h.k) continue;
+    h.k = k;
+    h.matrix.decompose(P0, Q0, S); h.fist.decompose(P1, Q1, S);
+    o.position.lerpVectors(P0, P1, k); o.quaternion.slerpQuaternions(Q0, Q1, k); o.scale.copy(S);
+  }
 }
 
 // Puts gear on a model, replacing what it had. gear: { main, off } looks from data/gear.js (lookFor, shieldFor), or null.
@@ -147,6 +180,7 @@ export function setGear(model, gear) {
       if (u.gearToken !== token) return;
       const o = scene.clone();
       p.matrix.decompose(o.position, o.quaternion, o.scale);
+      o.userData.held = { side: p.side, matrix: p.matrix, fist: p.fist, k: 0 };
       o.traverse((c) => { if (c.isMesh) c.frustumCulled = false; });
       p.bone.add(o);
       u.gearObjs.push(o);

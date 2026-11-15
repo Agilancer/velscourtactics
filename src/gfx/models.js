@@ -7,8 +7,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { CLASSES } from '../data/classes.js';
-import { fitGear } from './gear.js';
-import { bankClips, dress } from './clipbank.js';
+import { fitGear, holdGear } from './gear.js';
+import { bankClips, mxClips, dress } from './clipbank.js';
 import { dyeBody } from './dye.js';
 
 const mats = new Map();
@@ -196,6 +196,15 @@ export function setAnim(model, state, hold = 0, fallback) {
   a.state = state; a.t = 0; a.hold = clips ? 0 : hold;
   if (model.userData.mixer) playClip(model, state);
 }
+// Whether a figure has a clip for a state (a stand-in plays only the seven).
+export const canPlay = (model, state) => !!state && (model.userData.clips ? !!model.userData.clips[state] : STANDIN.has(state));
+// When the blows of the clip a figure is playing land, in seconds from its start at the speed it plays; null if it doesn't say.
+export function blowTimes(model) {
+  const u = model.userData, st = u.anim?.state, c = st && u.clips?.[st], h = c?.userData?.hits;
+  if (!h?.length) return null;
+  const k = (!c.userData.mx && u.speed && u.speed[st]) || 1;
+  return h.map((t) => t / k);
+}
 // What a model does when it has nothing else to do: 'idle', or 'wounded' or 'stunned' while that lasts.
 export function setRest(model, state) {
   const was = model.userData.rest || 'idle';
@@ -244,7 +253,7 @@ function playClip(model, state) {
   if (!clip) return;
   const act = u.mixer.clipAction(clip), once = !LOOPS.has(state);
   act.reset(); act.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); act.clampWhenFinished = once;
-  act.timeScale = (u.speed && u.speed[state]) || 1;
+  act.timeScale = (!clip.userData?.mx && u.speed && u.speed[state]) || 1;   // a Mixamo take plays as it was timed
   if (u.playing && u.playing !== act) act.crossFadeFrom(u.playing, 0.12, false);
   act.play(); u.playing = act;
 }
@@ -309,32 +318,46 @@ function scrap(file) {
     for (const m of [].concat(o.material)) { for (const v of Object.values(m)) if (v && v.isTexture) v.dispose(); m.dispose(); }
   })).catch(() => {});
 }
-// A key's clips, cut and kept on the spot once, and shared by every body that wears that key.
-function clipsFor(key, def, g) {
-  if (!sets.has(key)) sets.set(key, { file: def.file, p: (async () => {
-    const anims = def.bank ? await bankClips(def.bank, g, Object.values(def.anims || {})) : g.animations;
+// A key's clips, cut and kept on the spot once, and shared by every body that wears that key (and plays those takes).
+// mx: the Mixamo bank (gfx/clipbank.js, mxClips): each of its takes, MX_<state>, plays that state over what the key had.
+function clipsFor(key, def, g, mx) {
+  const id = mx ? key + '|' + mx : key;
+  if (!sets.has(id)) sets.set(id, { file: def.file, p: (async () => {
+    let anims = def.bank ? await bankClips(def.bank, g, Object.values(def.anims || {})) : g.animations;
     const clips = {};
+    let takes = [];
+    if (mx) {
+      const b = await mxClips(mx, g).catch((e) => { console.warn('model', key, 'has no Mixamo bank', mx, e); return null; });
+      if (b) { takes = b.clips; Object.defineProperty(clips, '$grip', { value: b.grip }); }
+    }
     let home = null;
-    const prep = (c) => { if (def.inPlace) { const k = c.clone(); home = inPlace(k, home); return k; } return c; };
+    // a take that keeps some of its lunge carries it out and back (it ends where it began), so it isn't flattened
+    const prep = (c) => { if (def.inPlace && !c.userData?.travel) { const k = c.clone(); home = inPlace(k, home); return k; } return c; };
     const order = Object.entries(def.anims || {}).sort((a, b) => (a[0] === 'idle' ? -1 : b[0] === 'idle' ? 1 : 0));
     for (const [state, name] of order) {
       let c = anims.find((c) => c.name === name);
       if (!c) { console.warn('model', key, 'has no clip named', name); continue; }
       const cut = def.trim && def.trim[state];             // [from, to] in seconds: library clips come with long wind-ups
       if (cut) c = THREE.AnimationUtils.subclip(c, name + ':' + state, Math.round(cut[0] * 30), Math.round(cut[1] * 30), 30);
+      const ud = c.userData;
       clips[state] = prep(c);
+      if (ud) clips[state].userData = ud;
     }
+    for (const c of takes) { const ud = c.userData; clips[c.name.slice(3)] = prep(c); clips[c.name.slice(3)].userData = ud; }
     if (!clips.idle && anims[0]) clips.idle = anims[0];
     return clips;
   })() });
-  return sets.get(key).p;
+  return sets.get(id).p;
 }
 // The figure for a key. Where the manifest names a .glb it is that model and nothing else: the holder comes back empty
 // and the body is put in it once loaded. Only a key the manifest lacks gets `standIn()` (the boxes above).
 // asleep: don't load yet; wake(model) loads the body, sleep(model) frees it (game/explore.js does both by distance).
-export function withOverride(key, standIn, { asleep = false } = {}) {
+// cls: the class of the hero wearing it. A figure of its own has its own Mixamo takes ("mx" in the manifest); bm's hero
+// bodies are worn by any class, so they play that class's (hero_<class>).
+export function withOverride(key, standIn, { asleep = false, cls = null } = {}) {
   const def = manifest && manifest[key];
   if (!def) return standIn ? standIn() : new THREE.Group();
+  const mx = def.mx || (def.bank === 'heroes' && cls ? 'hero_' + cls : null);
   const holder = new THREE.Group(), u = holder.userData;
   u.height = def.height || 1.6;
   let body = null, glow = null, held = false, token = 0, tries = 0;
@@ -404,6 +427,7 @@ export function withOverride(key, standIn, { asleep = false } = {}) {
     const v = new THREE.Vector3(), lit = glow;
     u.post = (state) => {
       for (const [b, k] of scaled) { if (k.length) b.scale.set(k[0], k[1], k[2]); else b.scale.setScalar(k); }
+      if (clips.$grip) holdGear(holder, gw.position);
       if (!lit) return;
       const gu = lit.userData, hand = gu.held[state], b = hand || gu.home;
       if (!b) return;
@@ -417,10 +441,11 @@ export function withOverride(key, standIn, { asleep = false } = {}) {
       if (gu.lamp) gu.lamp.intensity += (gu.light * on - gu.lamp.intensity) * 0.1;
     };
     holder.add(obj); body = obj;
+    const gw = new THREE.Object3D(); gw.name = 'GripW'; obj.add(gw);   // driven by the Mixamo takes (gfx/clipbank.js, mxClips)
     u.mixer = new THREE.AnimationMixer(obj);
     u.speed = def.speed || {};
     u.clips = clips;
-    fitGear(holder, obj, def, clips.idle);               // weapons and shields onto the hands, placed in the idle's first frame
+    fitGear(holder, obj, def, clips.idle, clips.$grip);  // weapons and shields onto the hands, placed in the idle's first frame
     u.mixer.addEventListener('finished', () => {
       const a = u.anim;
       if (a && a.state !== 'dead' && !LOOPS.has(a.state)) { a.state = ''; setAnim(holder, 'idle'); }
@@ -438,7 +463,7 @@ export function withOverride(key, standIn, { asleep = false } = {}) {
     const t = ++token;
     take(def.file).then(async (g) => {
       if (def.skin) dress(g, def.skin);                  // a bare file gets its pictures just before it's cloned
-      const clips = await clipsFor(key, def, g);
+      const clips = await clipsFor(key, def, g, mx);
       if (t === token) { tries = 0; use(g, clips); }
     }).catch((e) => {
       console.warn('model', key, 'failed to load', e);

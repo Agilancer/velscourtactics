@@ -694,3 +694,56 @@ sarcophagus): weathered stone, no carving, no figures, no crosses.
 `python tools/serve.py 8417` serves the game and saves any picture the page posts:
 `game.r.render(); fetch('/shot?name=x', {method: 'POST', body: game.r.gl.domElement.toDataURL()})`
 writes `tools/build/shots/x.png`, and `python tools/sheet.py <tag>` tiles a set of them into one sheet.
+
+## 13. Mixamo takes: every class's blows, by level, and its cheers
+
+The sources are Mixamo downloads kept outside the repo (`F:\!    BM V2\ANIMATIONS\`): single clips on Y Bot, and two packs
+on X Bot, the axe pack (`axe:<clip>`) and the sword and shield pack (`sns:<clip>`). `tools/blender/mixamo.py` carries a
+pose from them onto any figure with Mixamo's joint names (Meshy's, and bm's hero rig under its own names), and cuts a
+stretch of a clip into a take: eased in from the idle, its blow landing on a set frame, eased back out.
+`tools/blender/moves.py` names the moves (a stretch of a clip each) and which class does which, by state:
+
+| state | when the game plays it |
+|---|---|
+| `<basic>_1`, `_2`, `_3` | the plain blow (`swing`, `thrust`, `shoot`, `bolt`...) from level 1, 5 and 10 (`game/party.js` basicTier) |
+| `sk_<skill id>` | that skill (`game/battle.js` plays a skill's own take where the figure has one, else its `anim`) |
+| `cheer`, `taunt` | the fight won; after a kill |
+
+Every take says when its blows land (`hits`): the battle waits for the first before the damage shows, and spaces a
+combo's numbers by the rest. A weapon in the hand is held in the take's Mixamo fist while it plays (`gfx/gear.js`
+holdGear, eased by the take's `GripW` track), so a sword swings with its edge along the cut. Where the fist alone would
+hold it wrong, the take turns the hand itself: a staff, a bow or a pistol stands up out of it, a spear is held level
+at the foe in a thrust or driven down from a leap, and any weapon in a cheer or a taunt is raised rather than left
+lying across the body (moves.py, the `up`, `level` and `down` options). The turn is worked on the weapon, matched to the
+game's own blend from the idle grip, so nothing swings round on the way in or out. The lancer's lance and shield are
+the figure's own props: its takes hold the lance up, or level in a thrust, and the shield's face out.
+
+A take can be more than one stretch of one clip:
+- `first` plays a lead-in before it, at its own pace (a charge, then the throw); the blow comes that much later.
+- `then` plays a stretch after it, crossfaded in, its last pose held (a sheathe, then a hero's pose to end a cheer on).
+- `skip` cuts a still stretch out of the middle (the long hold at full draw in the bow clip).
+- `face` takes off some or all of the hips' turn, so a blow that spins the body away stays facing the foe.
+- `tilt` pitches the spine (an arrow lofted, a breath sent down) and sweeps it across the blow (a fan of arrows).
+- `aim` picks how a turned hand holds its weapon (`stand`, `raise`, `level`, `down`). A weapon standing up by the face
+  leans out, away from the head. A level spear points at the foe whichever way the chest has turned.
+
+Cheers and taunts ease in over 6 frames instead of 3 and hold the weapon up. The draw and sheathe moves leave it in
+the fist.
+
+Baking, in the work .blend (headless is fine; nothing is saved):
+
+    exec(open(r"<repo>/tools/blender/retarget.py").read()); exec(open(r"<repo>/tools/blender/mixamo.py").read())
+    load_mixamo(r"<folder of fbx>", {"axe": r"<axe pack>", "sns": r"<sword and shield pack>"})   # once per .blend
+    exec(open(r"<repo>/tools/blender/moves.py").read())
+    make("paladin_m_v2", "paladin_m", "paladin")      # a figure: assets/models/clips/mx/paladin_m.json + .bin
+    make_hero("dragoon")                              # bm's hero bodies, any class wearing one: mx/hero_dragoon.*
+
+Then `python tools/mx_manifest.py` sets `"mx": "<key>"` on each figure with a bank. bm's hero bodies (the armour tiers
+`<class>_<g>_t3..5` and the recruits) need no entry: any class may wear one, so the game plays `hero_<class>` on whoever
+has it on (`withOverride(key, standIn, { cls })`). A take replaces whatever the figure played for that state before;
+states without a take keep their own clips.
+
+A bank is the figure's bones' turns against their rest, one frame in 24, as Int16s, then the hips' place (Float32), with
+a `.json` naming the clips, their blows, their grip ease, and the fist (where it holds, its axis, its knuckles) in each
+hand. A hero bank was made on `heroes/paladin_m1.glb` and says how big that body is (`motionScale`): the pelvis's
+travel is scaled to each body's own.

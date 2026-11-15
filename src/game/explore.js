@@ -60,7 +60,7 @@ export function outfit(h) {
 const outfitSig = (h) => `${bodyKey(h)}|${h.equip?.weapon?.uid}|${h.equip?.armor?.uid}|${h.equip?.helm?.uid}`;
 export const paletteOf = (h) => (h.heroId && HEROES[h.heroId]?.palette) || null;
 export function heroModel(h) {
-  const m = withOverride(bodyKey(h), () => makePerson({ cls: h.cls, g: h.g }));
+  const m = withOverride(bodyKey(h), () => makePerson({ cls: h.cls, g: h.g }), { cls: h.cls });
   setGear(m, outfit(h));
   setDye(m, h, paletteOf(h));
   m.userData.outfit = outfitSig(h);
@@ -100,7 +100,7 @@ export class Explore {
       // townsfolk wear bm's bodies where the manifest has one for them (folk_<id>, tools/bm/folk.py)
       // (asleep: a body is loaded when the party comes near and freed when it has gone, in update)
       const model = gone || !f.hero ? withOverride(who.model || 'folk_' + (gone ? f.id + '_sub' : f.id), () => makePerson({ ...look, small: f.small }), { asleep: true })
-        : withOverride(bodyKey({ heroId: f.hero, cls: hero.cls, g: hero.g }), () => makePerson(look), { asleep: true });
+        : withOverride(bodyKey({ heroId: f.hero, cls: hero.cls, g: hero.g }), () => makePerson(look), { asleep: true, cls: hero.cls });
       // a recruit waiting to be asked has the plainest of their class's weapons on them, and their own colours
       if (f.hero && !gone) {
         setGear(model, outfit({ cls: hero.cls, name, equip: { weapon: { kind: CLASSES[hero.cls].weapon[0], tier: 0 } } }));
