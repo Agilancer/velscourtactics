@@ -76,10 +76,40 @@ class Target:
         self.setup(fresh=False)
         return self
 
+    @classmethod
+    def rebuild(cls, key):
+        """A figure already in the file sent through the library again, as if new (after rigfix.py has moved its joints):
+        the calibration measured again, every library clip carried over again; then build() as usual."""
+        self = cls.__new__(cls)
+        self.key = key; self.arm = bpy.data.objects[key]; self.mesh = bpy.data.objects[key + '_mesh']
+        self.walk = bpy.data.actions[key + ':own_walk']
+        self.setup(fresh=True)
+        return self
+
+    # the limbs whose direction the calibration takes from the library (parent joint, child joint)
+    SEGMENTS = [('Spine', 'Spine1'), ('Spine1', 'Spine2'), ('Spine2', 'Neck'), ('Neck', 'Head')] + [
+        (s + a, s + b) for s in ('Left', 'Right') for a, b in (('Shoulder', 'Arm'), ('Arm', 'ForeArm'), ('ForeArm', 'Hand'),
+                                                              ('UpLeg', 'Leg'), ('Leg', 'Foot'), ('Foot', 'ToeBase'))]
+
+    def align(self):
+        """Meshy's walk is the library's "Walking", but on frame 0 its limbs never point quite the same ways (8 to 12
+        degrees), and where Meshy put a joint in the wrong place (a knee in a gown's hem) they point nowhere a leg would.
+        So each limb of the calibration pose is turned to point, joint to joint, exactly as the library's does there,
+        keeping the twist Meshy gave it."""
+        bl = self.arm.data.bones
+        for a, b in self.SEGMENTS:
+            A, B = 'mixamorig:' + a, 'mixamorig:' + b
+            if A not in self.Sref or B not in self.Sref or B not in self.Lref: continue
+            rel = (bl[A].matrix_local.inverted() @ bl[B].matrix_local).translation
+            d = self.Sref[A][0] @ rel; e = self.Lref[B][1] - self.Lref[A][1]
+            if d.length < 1e-6 or e.length < 1e-6: continue
+            q, l = self.Sref[A]; self.Sref[A] = (d.normalized().rotation_difference(e.normalized()) @ q, l)
+
     def setup(self, fresh):
         key = self.key
         self.order = []
         def walk(b):
+            if b.name.startswith('Cloth_'): return            # cloth chains: no clip turns them (rigfix.py, src/gfx/cloth.js)
             self.order.append(b.name)
             for c in b.children: walk(c)
         walk(self.arm.data.bones[H])
@@ -93,6 +123,7 @@ class Target:
         # the calibration: both figures at frame 0 of the same walk
         self.w0 = self.walk.frame_range[0]                # Meshy's walk does not always start on frame 0
         self.Lref = arm_pose(LIB, 'Walking', 0); self.Sref = arm_pose(self.arm, self.walk.name, self.w0)
+        self.align()
         self.off = {n: self.Lref[n][0].inverted() @ self.Sref[n][0] for n in self.order}
         self.ratio = self.arm.data.bones[H].head_local.length / LIB.data.bones[H].head_local.length
         self.restq = {}
@@ -152,7 +183,10 @@ class Target:
     # ---- composing ----
     def grab(self, action, f):
         use(self.arm, self.n(action)); sc.frame_set(int(f), subframe=f - int(f))
-        return {pb.name: (pb.rotation_quaternion.copy(), pb.location.copy()) for pb in self.arm.pose.bones}
+        p = {pb.name: (pb.rotation_quaternion.copy(), pb.location.copy()) for pb in self.arm.pose.bones}
+        if getattr(self, 'lift', 0):                      # the library's poses set down on this figure's floor (body)
+            q, l = p[H]; p[H] = (q, l + self.restQ[H].inverted() @ (self.Z * self.lift))
+        return p
 
     def mix(self, a, b, w, bones=None):
         out = dict(a)
@@ -187,7 +221,15 @@ class Target:
         self.FEET = ['mixamorig:%s%s' % (s, b) for s in ('Left', 'Right') for b in ('Foot', 'ToeBase')]
         self.NECK = ['mixamorig:Neck', 'mixamorig:Head']
         self.tall = (P('Head') - P('LeftFoot')).dot(self.U)
-        self.floor = self.lowest(self.I0)
+        # The floor is where the feet stand at rest (the lowest foot joint), not where the library's idle happens to put
+        # them: sent through to a figure whose legs are short for its hips, the idle hangs its feet off the ground and
+        # every clip made from it hovers. So every library pose is set down by the difference (grab), the idle again.
+        self.rest_z = {n: bl[n].head_local.dot(self.Z) for n in self.FEET}
+        self.floor = min(self.rest_z.values())
+        if not getattr(self, 'lift', 0) and hasattr(self, 'I0') and bpy.data.actions.get(self.n('M_Idle_02')):
+            self.lift = self.floor - self.lowest(self.I0)
+            if abs(self.lift) > 1e-4:
+                self.I0 = self.grab('M_Idle_02', 0); self.home = self.I0[H][1].copy()
 
     def fk(self, p):
         """Armature-space rotation and joint position of every bone, for a pose of local rotations."""
@@ -476,6 +518,8 @@ class Target:
             def aloft(p, h):                                                   # the lowest foot h of the height off the floor
                 p = G(p); q, l = p[H]; p[H] = (q, l + self.restQ[H].inverted() @ (self.Z * h * self.tall)); return p
 
+        self.B0, self.BI = B0, BI                                              # the idle, for mixamo.py's takes
+
         def blow(name, src, s0, s1, n, legs=0.7, df=2, tail=8):
             # the upper body from the source, the legs partly, the hips never turning
             keys = [(0, B0)]
@@ -485,8 +529,13 @@ class Target:
 
         # ---- what every figure has (24 frames a second; a blow or a cast lands about 0.3 s in, frame 7) ----
         W('Idle', [(f, BI(f)) for f in (0, 9, 18, 27, 36, 45)])
-        W('Walk', [(i * 2, L(g('own_walk', self.w0 + i * 24.8 / 12))) for i in range(13)])
-        W('Run', [(i, L(g('M_Running', i * 15.2 / 15))) for i in range(16)])
+        if bpy.data.objects.get('MX:bm:Walk_Loop') and hasattr(self, 'mx_sample'):
+            # bm's heroes' walk and jog (bmclips.py): upright, a long easy stride, the back foot peeling off the floor
+            W('Walk', [(i * 2, L(self.mx_sample('bm:Walk_Loop', i * 2 / 24))) for i in range(17)])            # 1.33 s
+            W('Run', [(i * 2, L(self.mx_sample('bm:Jog_Fwd_Loop', i * (28 / 30) / 11))) for i in range(12)])  # 0.93 s in 22 frames
+        else:
+            W('Walk', [(i * 2, L(g('M_Walking', i * 24.8 / 12))) for i in range(13)])  # the library's walk, aligned (align)
+            W('Run', [(i, L(g('M_Running', i * 15.2 / 15))) for i in range(16)])
 
         def tuck(k):                                                           # in the air: knees up, arms up
             p = B0
@@ -763,16 +812,21 @@ class Target:
             # The gait: the stride (the gnawer's a run) under the slump, the knees a little less bent than standing, the
             # body rocking (sway), turning (yaw) and the arms swinging, each by kind.
             gnaw = kind in ('gnawer', 'husk')
-            src, n, ln, f0 = ('M_Running', 16, 15.2, 0) if gnaw else ('own_walk', 13, 24.8, self.w0)
+            src, n, ln, f0 = ('M_Running', 16, 15.2, 0) if gnaw else ('M_Walking', 13, 24.8, 0)
             sw, yw, am = {'shambler': (3, 0, 6), 'gnawer': (0, 0, 16), 'lurker': (0, 3, 8), 'bonesack': (5, 0, 4), 'brute': (2, 5, 8),
                           'rimewalker': (1, 4, 3), 'driftling': (0, 3, 8), 'husk': (0, 0, 16), 'slinger': (3, 0, 7), 'drowner': (3, 2, 6),
                           'leechmother': (5, 0, 4), 'cinder': (2, 0, 10), 'slagback': (2, 5, 7), 'warden': (1, 4, 5), 'dryking': (2, 3, 6),
                           'abbess': (1, 0, 2), 'stoker': (2, 5, 8)}[kind]
 
+            # the legs from bm's heroes' walk (or jog) where bmclips.py has loaded them: a calmer stride than the library's
+            bm = bool(bpy.data.objects.get('MX:bm:Walk_Loop')) and hasattr(self, 'mx_sample')
+            if bm: src, n, ln = ('bm:Jog_Fwd_Loop', 12, 28 / 30) if gnaw else ('bm:Walk_Loop', 17, 40 / 30)
+
             def stride(i):
                 s = math.sin(2 * math.pi * i / (n - 1))
-                return L(slump(g(src, f0 + ln * i / (n - 1)), sw * s, yw * s, am * s, KN * 0.5))
-            W('Walk', [(i * (1 if gnaw else 2), stride(i)) for i in range(n)])
+                p = self.mx_sample(src, ln * i / (n - 1)) if bm else g(src, f0 + ln * i / (n - 1))
+                return L(slump(p, sw * s, yw * s, am * s, KN * 0.5))
+            W('Walk', [(i * (2 if bm or not gnaw else 1), stride(i)) for i in range(n)])
 
             def jolt(k):                                                       # Hit: thrown back from the slump
                 return L(crouch(fling(tilt(tilt(B0, SPINE, 'fwd', -5 * k), NECK, 'fwd', -7 * k), 0.8 * k), 0.15 * k))
