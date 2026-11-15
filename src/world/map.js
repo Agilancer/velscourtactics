@@ -57,6 +57,20 @@ const BUILDINGS = [
   { id: 'cottage', name: 'Moss Cottage', slot: 5, row: 1, wall: 'wall_11', roof: 'roof_3', door: 'door_2', look: 'cottage' },
 ];
 
+// A land's own ground at a tile, before roads, knolls and the rest are laid over it. A pure function of the tile:
+// render.js asks it again to ragged the edges where one land gives way to the next.
+export function groundType(reg, x, z, seed) {
+  const n = vnoise(x * 0.07, z * 0.07, seed);
+  const m = vnoise(x * 0.11 + 40, z * 0.11, seed + 3);
+  switch (reg) {
+    case 1: return m > 0.74 ? T.ICE : T.SNOW;
+    case 2: return n > 0.56 ? T.CLAY : T.SAND;
+    case 3: return n > 0.55 ? T.MOSS : m > 0.7 ? T.GRASS3 : T.FEN;
+    case 4: return n > 0.6 ? T.BASALT : T.ASH;
+    default: return m > 0.8 ? T.MOSS : n > 0.6 ? T.PINE : n > 0.47 ? T.GRASS3 : n > 0.3 ? T.GRASS2 : T.GRASS1;
+  }
+}
+
 export function buildWorld(seed = 4013) {
   const r = rng32(seed);
   const type = new Uint8Array(N * N);
@@ -81,21 +95,7 @@ export function buildWorld(seed = 4013) {
   }
 
   // --- ground ---
-  for (let z = 0; z < N; z++) for (let x = 0; x < N; x++) {
-    const n = vnoise(x * 0.07, z * 0.07, seed);
-    const m = vnoise(x * 0.11 + 40, z * 0.11, seed + 3);
-    let t;
-    switch (region[I(x, z)]) {
-      case 1: t = m > 0.74 ? T.ICE : T.SNOW; break;
-      case 2: t = n > 0.56 ? T.CLAY : T.SAND; break;
-      case 3: t = n > 0.55 ? T.MOSS : m > 0.7 ? T.GRASS3 : T.FEN; break;
-      case 4: t = n > 0.6 ? T.BASALT : T.ASH; break;
-      default:
-        t = n > 0.6 ? T.PINE : n > 0.47 ? T.GRASS3 : n > 0.3 ? T.GRASS2 : T.GRASS1;
-        if (m > 0.8) t = T.MOSS;
-    }
-    type[I(x, z)] = t;
-  }
+  for (let z = 0; z < N; z++) for (let x = 0; x < N; x++) type[I(x, z)] = groundType(region[I(x, z)], x, z, seed);
 
   // --- roads ---
   const paint = (x, z) => {
