@@ -120,6 +120,53 @@ function rawClip(b, name) {
   return r;
 }
 
+// A figure's own Mixamo bank (assets/models/clips/mx/<key>.json + .bin, "mx": "<key>" in the manifest), written by
+// tools/blender/mixamo.py (Target.mx_bank) from the clips in docs/MODELS.md section 13. It is kept apart from the figure's
+// .glb so the file never has to be exported again. Each bone's turn is stored as Blender keys it, against the bone's
+// rest, and the .glb's bones stand in that same rest when loaded: so a bone's turn is rest * key, and the hips' place
+// rest + rest * key. Every clip also drives "GripW" (x: the right hand, y: the left), how far the hands have gone over to
+// the Mixamo fist (gfx/gear.js holds the weapons by it), and carries the moments its blows land (userData.hits, seconds).
+// A bank made for bm's hero bodies (hero_<class>, bones by bm's names) was made on one of them and says how big that one
+// was (motionScale): the pelvis's travel is scaled to each body's own, as the heroes bank's is.
+const mxBanks = new Map();
+export async function mxClips(key, gltf) {
+  if (!mxBanks.has(key)) mxBanks.set(key, Promise.all([
+    fetch(`assets/models/clips/mx/${key}.json`).then((r) => r.json()),
+    fetch(`assets/models/clips/mx/${key}.bin`).then((r) => r.arrayBuffer()),
+  ]).then(([meta, bin]) => ({ meta, rot: new Int16Array(bin, 0, meta.rotBytes >> 1), loc: new Float32Array(bin, meta.rotBytes) })));
+  const b = await mxBanks.get(key), m = b.meta, bones = {};
+  gltf.scene.traverse((o) => { if (o.isBone) bones[o.name] = o; });
+  const size = m.motionScale ? (gltf.scene.userData?.motionScale || 1) / m.motionScale : 1;
+  const out = [], q = new THREE.Quaternion(), v = new THREE.Vector3();
+  for (const [name, c] of Object.entries(m.clips)) {
+    const n = c.frames, times = Float32Array.from({ length: n }, (_, i) => i / m.fps), tracks = [];
+    m.bones.forEach((bn, j) => {
+      const bone = bones[clean(bn)];
+      if (!bone) return;
+      const raw = quats(b.rot, (c.rot + j * n) * 4, n), vals = new Float32Array(n * 4);
+      for (let i = 0; i < n; i++) { q.fromArray(raw, i * 4).premultiply(bone.quaternion); q.toArray(vals, i * 4); }
+      tracks.push(new THREE.QuaternionKeyframeTrack(bone.name + '.quaternion', times, vals));
+      if (bn !== m.hips) return;
+      const pos = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        v.fromArray(b.loc, (c.loc + i) * 3).multiplyScalar(size).applyQuaternion(bone.quaternion).add(bone.position);
+        v.toArray(pos, i * 3);
+      }
+      tracks.push(new THREE.VectorKeyframeTrack(bone.name + '.position', times, pos));
+    });
+    if (c.ease?.length === 3) {                          // the hands' grip: in, held, out again with the body, eased
+      const [a, h, e] = c.ease, R = !c.sides || c.sides.includes('R') ? 1 : 0, L = !c.sides || c.sides.includes('L') ? 1 : 0;
+      const sm = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));   // as the bake turned the hands by (moves.py _env)
+      const w = (t) => sm(a > 0 ? t / a : 1) * (1 - sm(e > h ? (t - h) / (e - h) : t > h ? 1 : 0));
+      tracks.push(new THREE.VectorKeyframeTrack('GripW.position', times, Array.from(times).flatMap((t) => [R * w(t), L * w(t), 0])));
+    }
+    const clip = new THREE.AnimationClip(name, c.dur, tracks);
+    clip.userData = { hits: c.hits || [], travel: !!c.travel, mx: true };
+    out.push(clip);
+  }
+  return { clips: out, grip: m.grip || null };
+}
+
 // The clips a body asks for (names: the bank's), fitted to that body. gltf: the body's loaded file.
 export async function bankClips(bankName, gltf, names) {
   const b = await bank(bankName);

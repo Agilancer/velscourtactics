@@ -96,9 +96,12 @@ export function addToBag(st, it, isNew = true) {
 }
 
 // The plain attack, shaped like a skill so combat treats it the same.
+// The plain blow grows with the hero: a figure with Mixamo takes has three of them for each class (<anim>_1, _2, _3),
+// from level 1, 5 and 10.
+export const basicTier = (h) => (h.lvl >= 10 ? 3 : h.lvl >= 5 ? 2 : 1);
 export function basicAttack(h) {
   const w = h.equip.weapon, W = w ? WEAPONS[w.kind] : { stat: 'atk', r: [1, 1] };
-  return { id: 'attack', name: 'Attack', cost: 0, r: W.r, aoe: 0, at: 'enemy', kind: W.stat === 'mag' ? 'magic' : 'phys', pow: 1, basic: true, rage: 25, anim: CLASSES[h.cls].basicAnim, desc: 'A plain blow with what you are holding.' };
+  return { id: 'attack', name: 'Attack', cost: 0, r: W.r, aoe: 0, at: 'enemy', kind: W.stat === 'mag' ? 'magic' : 'phys', pow: 1, basic: true, rage: 25, anim: CLASSES[h.cls].basicAnim, move: `${CLASSES[h.cls].basicAnim}_${basicTier(h)}`, desc: 'A plain blow with what you are holding.' };
 }
 export function heroSkills(h) {
   return [...CLASSES[h.cls].skills.filter((s) => h.lvl >= s.lvl), ...h.spells.map((id) => SPELLS[id]).filter(Boolean)];

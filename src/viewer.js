@@ -1,6 +1,7 @@
 // The model viewer (viewer.html): every model in assets/models/manifest.json, loaded the way the game loads it
 // (withOverride: height, outline, lift, bone scales, glow), under the game's light, with a button per state.
-// ?m=key1,key2 opens those side by side. In a pane where requestAnimationFrame does not fire,
+// ?m=key1,key2 opens those side by side; a bm hero body plays its class's Mixamo takes (the class from a
+// <class>_<g>_t<n> key, or ?cls=). In a pane where requestAnimationFrame does not fire,
 // step it by hand: viewer.step(seconds), then viewer.shot('name') posts a PNG to tools/serve.py.
 import * as THREE from 'three';
 import { loadManifest, withOverride, setAnim, animate, shadowDisc } from './gfx/models.js';
@@ -121,9 +122,9 @@ function buildList() {
 function show(keys) {
   for (const s of shown) row.remove(s.root);
   shown = keys.filter((k) => manifest[k]).map((key) => {
-    const model = withOverride(key);
     // a class body carries its class's weapon and shield at its armour tier (<class>_<g>_t<n>; the class's own model, tier 1)
     const cm = /^(.+)_[mf](?:_t(\d))?$/.exec(key), C = cm && CLASSES[cm[1]];
+    const model = withOverride(key, null, { cls: new URLSearchParams(location.search).get('cls') || (C ? cm[1] : null) });
     if (C && !C.hidden) {
       const tier = cm[2] ? +cm[2] - 1 : 0;
       setGear(model, { main: lookFor({ kind: C.weapon[0], tier }, cm[1]), off: shieldFor(cm[1], tier) });
@@ -143,6 +144,8 @@ function show(keys) {
 function buildClips() {
   const names = {};
   for (const s of shown) for (const [st, clip] of Object.entries(manifest[s.key].anims || {})) (names[st] ||= new Set()).add(clip);
+  // and the Mixamo takes a loaded figure plays (gfx/models.js clipsFor: MX_<state>, over what the manifest names)
+  for (const s of shown) for (const [st, clip] of Object.entries(s.model.userData.clips || {})) if (clip.userData?.mx) (names[st] ||= new Set()).add('MX_' + st);
   const states = Object.keys(names).sort((a, b) => {
     const ia = ORDER.indexOf(a), ib = ORDER.indexOf(b);
     return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
@@ -209,7 +212,7 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   update(dt); render();
   const n = shown.filter((s) => s.model.userData.mixer).length;
-  if (n !== loaded) { loaded = n; info(); if (state !== 'idle') play(state); }
+  if (n !== loaded) { loaded = n; info(); buildClips(); if (state !== 'idle') play(state); }
   requestAnimationFrame(frame);
 }
 
