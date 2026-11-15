@@ -10,6 +10,7 @@ import { CLASSES } from '../data/classes.js';
 import { fitGear } from './gear.js';
 import { bankClips, dress } from './clipbank.js';
 import { dyeBody } from './dye.js';
+import { makeCloth } from './cloth.js';
 
 const mats = new Map();
 export function mat(color, opts = {}) {
@@ -208,7 +209,7 @@ export function setRest(model, state) {
 export function animate(model, dt) {
   const a = (model.userData.anim ||= { state: 'idle', t: Math.random() * 6, hold: 0 });
   a.t += dt;
-  if (model.userData.mixer) { model.userData.mixer.update(dt); model.userData.post?.(a.state); return; }
+  if (model.userData.mixer) { model.userData.mixer.update(dt); model.userData.post?.(a.state, dt); return; }
   const p = model.userData.parts;
   if (!p) return;
   const lean = model.userData.lean || 0, zomb = model.userData.zombie;
@@ -402,8 +403,10 @@ export function withOverride(key, standIn, { asleep = false } = {}) {
       glow.userData = { home: find(g.bone || 'Hips')[0], at: new THREE.Vector3(...(g.at || [0, 0, 0])), held: Object.fromEntries(Object.entries(g.held || {}).map(([st, b]) => [st, find(b)[0]])), size: g.size || 0.5, opacity: g.opacity ?? 0.55, lamp, light: g.light || 0 };
     }
     const v = new THREE.Vector3(), lit = glow;
-    u.post = (state) => {
+    const cloth = makeCloth(obj, def.cloth);             // skirts, robes, coat tails and capes swing on their own (gfx/cloth.js)
+    u.post = (state, dt) => {
       for (const [b, k] of scaled) { if (k.length) b.scale.set(k[0], k[1], k[2]); else b.scale.setScalar(k); }
+      if (cloth) cloth.update(dt || 0);
       if (!lit) return;
       const gu = lit.userData, hand = gu.held[state], b = hand || gu.home;
       if (!b) return;
