@@ -314,6 +314,16 @@ Wolf: `idle`, `run`, `bite`, `hit`, `dead`. Slime: `idle`, `hop`, `lunge`, `dead
 | `hold` | where a class's gear sits in the hand at the idle, for a body the default grip doesn't suit: `haft` the way a mace or hammer head points (`[x, y, z]`, the body facing +Z, its right hand on -X), `at` the fist's middle in the right hand bone's own frame and units (as a prop's `at`), `pommel` how far the haft's end stands out of the fist, in metres. The slime lords hang the mace head down, ahead and out, clear of the belly, through fingers `tools/blender/handcurl.py` closed |
 | `props` | held models, each `{file, bone, at, rot, scale}`: a weapon's own file hung on the bone whose name ends with `bone`, placed at `at` and turned by the quaternion `rot` in that bone's frame. Don't work these out by hand: `Target.props()` in `retarget.py` prints them after `build`, and the clips are made to suit them (the lancers' entries are the example) |
 
+| `feet` | `false` leaves the feet as the takes have them. Otherwise each frame a leg whose toes turn out past 18 degrees (or in past 8) from the way the body faces is rolled about its hip-to-ankle line until they don't: the foot stays planted and the knee comes round with it (`plantFeet` in `models.js`). The shared idles stood duck-footed, the batch-9 one with both feet out over 50 degrees |
+
+Out of a fight the party and the recruits waiting to be asked carry their gear put away (`stowGear` in `src/gfx/gear.js`;
+`heroModel(h, true)` in `explore.js`): shields, polearms, bows, lutes and anything longer than a belt takes across the
+back, swords, axes, maces, knives, wands, boomerangs and pistols at the hip, a blade hilt up and cross-drawn. Where is
+measured off the body's own skinned mesh in the first frame of its idle, and what is on the back follows the torso as a
+whole (hips to neck, shoulder to shoulder), not one spine bone. A lance (any pole over 2.6 m) is too long for a back and
+stays upright in the hand. A manifest's `props` go too, by their file (`shield` in the name: the back). In a fight, on
+the party screen and in character creation the gear is in hand. The viewer's Stowed button shows it.
+
 A key with no entry keeps its stand-in, so they can arrive one at a time. Once a key has its entry its stand-in is
 never built, so take its case out of `makeZombie` (or `makePerson`'s `KIT`) then.
 

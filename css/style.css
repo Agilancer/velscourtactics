@@ -455,7 +455,8 @@ i.role.big { width: 44px; height: 44px; padding: 10px; background: var(--k-medal
   .panel header h2 { font-size: 1rem; }
   .panel .x { width: 32px; height: 32px; }
   .panel .body { padding: 4px 6px 10px; }
-  .cr-m { display: none; }
+  .cr-m { display: flex; justify-content: center; }
+  #c-prev { width: auto; height: 30vh; min-height: 160px; aspect-ratio: 300 / 380; }
   .btn.big { min-width: 200px; }
   .row { gap: 7px; padding: 4px 2px; flex-wrap: wrap; }
   .row .info { flex: 1 1 160px; }
@@ -492,7 +493,8 @@ i.role.big { width: 44px; height: 44px; padding: 10px; background: var(--k-medal
 }
 /* on its side: the menu down the right from under the top row, the log no wider than half the screen */
 @media (max-height: 520px) and (orientation: landscape) {
-  .cr { grid-template-columns: 1fr 1fr; }
+  .cr { grid-template-columns: 1fr auto 1fr; }
+  #c-prev { height: 56vh; }
   .bt-menu { width: 176px; top: calc(var(--st) + 46px); transform: none; max-height: calc(100% - var(--st) - var(--sb) - 46px); }
   .bt-log { right: auto; width: min(420px, 50vw); }
   .bt-info { max-width: min(340px, calc(100% - 200px)); }

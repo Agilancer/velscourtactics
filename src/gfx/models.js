@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { CLASSES } from '../data/classes.js';
-import { fitGear, holdGear } from './gear.js';
+import { fitGear, holdGear, stowProps, carryStowed } from './gear.js';
 import { bankClips, mxClips, dress } from './clipbank.js';
 import { dyeBody } from './dye.js';
 import { makeCloth } from './cloth.js';
@@ -350,6 +350,53 @@ function clipsFor(key, def, g, mx) {
   })() });
   return sets.get(id).p;
 }
+// Feet that point ahead. Many of the shared takes stand and walk duck-footed (the batch-9 idle has both feet out by
+// over 50 degrees), and a foot turned that far reads as a figure facing somewhere else. Each frame, a leg whose toes
+// point out past OUT (or in past IN) from the way the body faces is rolled about the line from its hip to its ankle:
+// the ankle stays where it was, so the foot stays planted, and the knee comes round with it. A foot pointing at the
+// ground or the sky (a kick, a fall) counts for less, by how upright it is; the dead are left as they lie.
+const OUT = 18 * Math.PI / 180, IN = 8 * Math.PI / 180;
+const LEGS = [['L', /(LeftUpLeg|thigh_l)$/, /(LeftFoot|foot_l)$/, /(LeftToeBase|ball_l)$/], ['R', /(RightUpLeg|thigh_r)$/, /(RightFoot|foot_r)$/, /(RightToeBase|ball_r)$/]];
+function feetOf(obj) {
+  const legs = [];
+  for (const [side, ...res] of LEGS) {
+    const b = res.map((re) => { let f = null; obj.traverse((o) => { if (!f && o.isBone && re.test(o.name)) f = o; }); return f; });
+    if (b.every(Boolean)) legs.push({ out: side === 'L' ? 1 : -1, up: b[0], foot: b[1], toe: b[2] });
+  }
+  return legs.length === 2 ? legs : null;
+}
+const FA = new THREE.Vector3(), FB = new THREE.Vector3(), FC = new THREE.Vector3(), FN = new THREE.Vector3(), FU = new THREE.Vector3(), FF = new THREE.Vector3(), FX = new THREE.Vector3();
+const FQ = new THREE.Quaternion(), FP = new THREE.Quaternion(), FR = new THREE.Quaternion();
+function plantFeet(holder, legs) {
+  holder.updateMatrixWorld(true);
+  const e = holder.matrixWorld.elements;
+  FX.set(e[0], e[1], e[2]).normalize(); FU.set(e[4], e[5], e[6]).normalize(); FF.set(e[8], e[9], e[10]).normalize();
+  for (const L of legs) for (let pass = 0; pass < 2; pass++) {    // (a second pass takes up what a bent leg left)
+    L.up.getWorldPosition(FA); L.foot.getWorldPosition(FB); L.toe.getWorldPosition(FC);
+    FC.sub(FB);
+    const len = FC.length(), y = FC.dot(FU);
+    if (len < 1e-5) continue;
+    FC.addScaledVector(FU, -y);                                   // the foot on the ground
+    const flat = FC.length() / len;
+    if (flat < 0.3) continue;
+    const h = Math.atan2(FC.dot(FX) * L.out, FC.dot(FF));         // + = toes out (the body faces +Z, its left is +X)
+    const over = h > OUT ? h - OUT : h < -IN ? h + IN : 0;
+    if (!over) continue;
+    FN.copy(FB).sub(FA);
+    const leg = FN.length();
+    if (leg < 1e-5) continue;
+    FN.divideScalar(leg);
+    const tilt = Math.max(0.5, -FN.dot(FU));                       // a leg out at an angle turns the foot less
+    // a turn by +a about the leg (hip to ankle, pointing down) swings the toes from +X towards -X: back in for the left
+    const a = over * L.out * Math.min(1, (flat - 0.3) / 0.4) / tilt;
+    FQ.setFromAxisAngle(FN, a);
+    L.up.parent.getWorldQuaternion(FP);
+    // a turn in the world on the bone: local = parent^-1 * q * parent * local
+    FR.copy(FP).invert().multiply(FQ).multiply(FP);
+    L.up.quaternion.premultiply(FR);
+    L.up.updateMatrixWorld(true);
+  }
+}
 // The figure for a key. Where the manifest names a .glb it is that model and nothing else: the holder comes back empty
 // and the body is put in it once loaded. Only a key the manifest lacks gets `standIn()` (the boxes above).
 // asleep: don't load yet; wake(model) loads the body, sleep(model) frees it (game/explore.js does both by distance).
@@ -394,6 +441,8 @@ export function withOverride(key, standIn, { asleep = false, cls = null } = {}) 
         const m = g.scene.clone(true);
         m.position.fromArray(pr.at); m.quaternion.fromArray(pr.rot); m.scale.setScalar(pr.scale || 1);
         paint(m); b.add(m);
+        (u.props ||= []).push({ obj: m, bone: b, home: [pr.at, pr.rot, pr.scale || 1], file: pr.file });
+        if (u.stowed) stowProps(holder);                 // out of a fight it goes on the back (gfx/gear.js)
       }).catch((e) => console.warn('model', key, 'could not load', pr.file, e));
     }
     // proportions: scale some bones every frame (the clips don't key scale), and put the feet back on the ground
@@ -427,10 +476,13 @@ export function withOverride(key, standIn, { asleep = false, cls = null } = {}) 
     }
     const v = new THREE.Vector3(), lit = glow;
     const cloth = makeCloth(obj, def.cloth);             // skirts, robes, coat tails and capes swing on their own (gfx/cloth.js)
+    const legs = def.feet === false ? null : feetOf(obj);   // feet: false in the manifest leaves them as the takes have them
     u.post = (state, dt) => {
       for (const [b, k] of scaled) { if (k.length) b.scale.set(k[0], k[1], k[2]); else b.scale.setScalar(k); }
+      if (legs && state !== 'dead') plantFeet(holder, legs);
       if (cloth) cloth.update(dt || 0);
-      if (clips.$grip) holdGear(holder, gw.position);
+      if (clips.$grip && !u.stowed) holdGear(holder, gw.position);
+      if (u.stowed) carryStowed(holder);
       if (!lit) return;
       const gu = lit.userData, hand = gu.held[state], b = hand || gu.home;
       if (!b) return;
@@ -487,7 +539,7 @@ export function withOverride(key, standIn, { asleep = false, cls = null } = {}) 
     holder.remove(body);
     body.traverse((o) => { if (o.isMesh) { o.material.dispose(); if (o.isSkinnedMesh) o.skeleton.dispose(); } });
     if (glow) { holder.remove(glow); glow.material.map.dispose(); glow.material.dispose(); glow = null; }
-    body = u.mixer = u.clips = u.post = u.rig = u.dyeMats = u.playing = null;
+    body = u.mixer = u.clips = u.post = u.rig = u.dyeMats = u.playing = u.props = null;
   };
   if (!asleep) u.wake();
   return holder;

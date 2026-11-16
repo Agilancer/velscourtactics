@@ -100,23 +100,26 @@ export class UI {
     const grid = $('#c-classes');
     for (const id of CLASS_IDS) { const b = el('button', 'cls', `<span>${esc(CLASSES[id].name)}</span><span class="roles">${roleIcons(CLASSES[id])}</span>`); b.style.setProperty('--c', CLASSES[id].color); b.dataset.cls = id; b.onclick = () => { pickd.cls = id; draw(); }; grid.append(b); }
     for (const b of s.querySelectorAll('#c-g button')) b.onclick = () => { pickd.g = b.dataset.g; draw(); };
-    // a little turntable for whoever is picked: the class's own body, its plainest weapon in hand
-    // (a narrow screen has no room for it and hides it: there, nothing is drawn or loaded for it)
-    const seen = $('#c-prev').offsetParent !== null;
-    const gl = seen ? new THREE.WebGLRenderer({ canvas: $('#c-prev'), antialias: true, alpha: true }) : null;
+    // a little turntable for whoever is picked: the class's own body, its plainest weapon in hand (a phone shows it
+    // smaller, between the classes and what the class does)
+    const gl = new THREE.WebGLRenderer({ canvas: $('#c-prev'), antialias: true, alpha: true });
+    gl.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); gl.setSize(300, 380, false);
     const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 300 / 380, 0.1, 50);
-    cam.position.set(0, 1.5, 5.2); cam.lookAt(0, 0.85, 0);
-    scene.add(new THREE.HemisphereLight(0xaab8e0, 0x2a2018, 2.4)); const sun = new THREE.DirectionalLight(0xffe0b0, 2.6); sun.position.set(3, 5, 4); scene.add(sun);
+    // framed on the body: its whole height and a little over, whatever its size
+    const frame = (h) => { const d = (h * 0.62) / Math.tan(15 * Math.PI / 180); cam.position.set(0, h * 0.62, d); cam.lookAt(0, h * 0.5, 0); };
+    frame(1.8);
+    scene.add(new THREE.HemisphereLight(0xc4cce8, 0x3a2c20, 3)); const sun = new THREE.DirectionalLight(0xffe0b0, 3); sun.position.set(3, 5, 4); scene.add(sun);
+    const rim = new THREE.DirectionalLight(0x9fb4ff, 1.6); rim.position.set(-4, 3, -4); scene.add(rim);
     let model = null, alive = true;
-    const spin = () => { if (!alive || !gl) return; if (model) { model.rotation.y += 0.012; animate(model, 1 / 60); } gl.render(scene, cam); requestAnimationFrame(spin); };
+    const spin = () => { if (!alive) return; if (model) { model.rotation.y += 0.012; animate(model, 1 / 60); } gl.render(scene, cam); requestAnimationFrame(spin); };
     const draw = () => {
       sfx.ui();
       for (const b of grid.children) b.classList.toggle('on', b.dataset.cls === pickd.cls);
       for (const b of s.querySelectorAll('#c-g button')) b.classList.toggle('on', b.dataset.g === pickd.g);
       const C = CLASSES[pickd.cls];
       if (model) { sleep(model); scene.remove(model); }
-      if (gl) model = heroModel({ ...pickd, name: '', equip: { weapon: { kind: C.weapon[0], tier: 0 }, armor: { kind: C.armor, tier: 0 } } });
-      if (model) { model.rotation.y = 0.5; scene.add(model); }
+      model = heroModel({ ...pickd, name: '', equip: { weapon: { kind: C.weapon[0], tier: 0 }, armor: { kind: C.armor, tier: 0 } } });
+      model.rotation.y = 0.5; scene.add(model); frame(model.userData.height || 1.6);
       $('#c-info').innerHTML = `<h3 style="color:${C.color}">${esc(C.name)}</h3><p>${esc(C.desc)}</p>
         <div class="rolebox">${roleIcons(C, true)}<p class="role"><b>${rolesOf(C).map((r) => ROLE_NAMES[r]).join(' · ')}</b><br>${esc(C.role)}</p></div>
         <div class="stats"><span>Life ${C.life[0]}</span><span>${C.resource === 'rage' ? 'Rage 100' : 'Mana ' + C.mana[0]}</span><span>Move ${C.move}</span><span>Jump ${C.jump}</span><span>${C.weapon.join(' / ')}</span><span>${C.armor}</span></div>
@@ -126,7 +129,7 @@ export class UI {
     $('#c-go').onclick = () => {
       const name = $('#c-name').value.trim() || 'Stranger';
       alive = false;
-      if (gl) { sleep(model); scene.remove(model); gl.dispose(); gl.forceContextLoss(); }   // give the context back now, not whenever
+      sleep(model); scene.remove(model); gl.dispose(); gl.forceContextLoss();   // give the context back now, not whenever
       s.className = 'hide'; s.innerHTML = '';
       this.g.newGame({ name, ...pickd });
     };

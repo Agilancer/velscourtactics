@@ -59,8 +59,10 @@ export function outfit(h) {
 // a new body, or new gear in the hands, or new colours on the body (armour and helm: gfx/dye.js), when any of these change
 const outfitSig = (h) => `${bodyKey(h)}|${h.equip?.weapon?.uid}|${h.equip?.armor?.uid}|${h.equip?.helm?.uid}`;
 export const paletteOf = (h) => (h.heroId && HEROES[h.heroId]?.palette) || null;
-export function heroModel(h) {
+// stowed: out of a fight, the weapon and shield put away on the back or at the hip (gfx/gear.js)
+export function heroModel(h, stowed = false) {
   const m = withOverride(bodyKey(h), () => makePerson({ cls: h.cls, g: h.g }), { cls: h.cls });
+  m.userData.stowed = stowed;
   setGear(m, outfit(h));
   setDye(m, h, paletteOf(h));
   m.userData.outfit = outfitSig(h);
@@ -103,6 +105,7 @@ export class Explore {
         : withOverride(bodyKey({ heroId: f.hero, cls: hero.cls, g: hero.g }), () => makePerson(look), { asleep: true, cls: hero.cls });
       // a recruit waiting to be asked has the plainest of their class's weapons on them, and their own colours
       if (f.hero && !gone) {
+        model.userData.stowed = true;
         setGear(model, outfit({ cls: hero.cls, name, equip: { weapon: { kind: CLASSES[hero.cls].weapon[0], tier: 0 } } }));
         setDye(model, null, hero.palette || null);
       }
@@ -174,7 +177,7 @@ export class Explore {
     this.actors = []; this.moves = []; this.step = null;
     const p = st.pos || world.start;
     st.party.forEach((id, i) => {
-      const hero = st.heroes[id], model = heroModel(hero);
+      const hero = st.heroes[id], model = heroModel(hero, true);
       model.add(shadowDisc());
       model.position.set(p.x, world.y(p.x, p.z), p.z);
       model.visible = i === 0;
@@ -185,7 +188,7 @@ export class Explore {
   }
   // A hero who has changed weapon or armour is dressed again: a new body for a new armour tier, new gear in the hands.
   redress(a) {
-    const r = this.g.r, old = a.model, m = heroModel(a.hero);
+    const r = this.g.r, old = a.model, m = heroModel(a.hero, true);
     m.add(shadowDisc());
     m.position.copy(old.position); m.rotation.copy(old.rotation); m.visible = old.visible;
     sleep(old); r.units.remove(old); r.units.add(m); a.model = m;
