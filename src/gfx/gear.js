@@ -36,10 +36,38 @@ function flintlock() {
   return g;
 }
 
+// Some of bm's swords (iron, copper, falchion, bluesteel, sawback) were baked the wrong way up: the point at the origin
+// and the hilt at the far end, so a hand held them by the tip. A sword's crossguard is its widest part: one whose
+// guard is in its upper half is turned end for end, its grip put back on the origin (as far from the guard as the
+// grips of the swords baked the right way are, about 0.15 of bm's metres).
+function hiltDown(scene) {
+  scene.updateMatrixWorld(true);
+  const V = new THREE.Vector3(), pts = [];
+  scene.traverse((o) => {
+    if (!o.isMesh) return;
+    const p = o.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) { V.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); pts.push(V.x, V.y, V.z); }
+  });
+  if (!pts.length) return;
+  let y0 = Infinity, y1 = -Infinity;
+  for (let i = 1; i < pts.length; i += 3) { y0 = Math.min(y0, pts[i]); y1 = Math.max(y1, pts[i]); }
+  const N = 20, w = new Array(N).fill(0);
+  for (let i = 0; i < pts.length; i += 3) { const b = Math.min(N - 1, Math.floor((pts[i + 1] - y0) / (y1 - y0) * N)); w[b] = Math.max(w[b], Math.abs(pts[i]), Math.abs(pts[i + 2])); }
+  let g = 1;
+  for (let b = 1; b < N - 1; b++) if (w[b] > w[g]) g = b;
+  if (g < N / 2) return;
+  const guard = y0 + (g + 0.5) / N * (y1 - y0), grip = guard + 0.15;
+  const turn = new THREE.Group();                        // the pieces under a turned and lifted group: x, -y, -z, grip to 0
+  turn.rotation.x = Math.PI; turn.position.y = grip;
+  for (const c of [...scene.children]) turn.add(c);
+  scene.add(turn);
+}
+
 const cache = new Map();
-function load(id) {
+function load(id, kind) {
   if (id === 'flintlock' && !cache.has(id)) cache.set(id, Promise.resolve(flintlock()));
   if (!cache.has(id)) cache.set(id, new Promise((res, rej) => new GLTFLoader().load(`assets/gear/${id}.glb`, (g) => {
+    if (kind === 'sword') hiltDown(g.scene);
     g.scene.traverse((o) => {
       if (!o.isMesh) return;
       // read as matte paint like the bodies, with a little of its own colour lit back so steel doesn't go black
@@ -51,7 +79,8 @@ function load(id) {
   return cache.get(id);
 }
 
-const BONES = { handR: /(RightHand|hand_r)$/, armR: /(RightForeArm|lowerarm_r)$/, handL: /(LeftHand|hand_l)$/, armL: /(LeftForeArm|lowerarm_l)$/, chest: /(Spine2|spine_03)$/ };
+const BONES = { handR: /(RightHand|hand_r)$/, armR: /(RightForeArm|lowerarm_r)$/, handL: /(LeftHand|hand_l)$/, armL: /(LeftForeArm|lowerarm_l)$/, chest: /(Spine2|spine_03)$/, hips: /(Hips|pelvis)$/,
+  neck: /(Neck|neck_01)$/, upL: /(LeftArm|upperarm_l)$/, upR: /(RightArm|upperarm_r)$/ };
 const UP = new THREE.Vector3(0, 1, 0), FWD = new THREE.Vector3(0, 0, 1);
 
 // The rig of a real model. def: its manifest entry; idle: its idle clip, whose first frame it is posed in to measure.
@@ -82,10 +111,62 @@ export function fitGear(holder, obj, def = {}, idle = null, grip = null) {
     R: side(b.handR, b.armR, -1), L: side(b.handL, b.armL, 1),
     chest: b.chest ? { bone: b.chest, at: at(b.chest), to: toLocal(b.chest) } : null,
     grip, hold: def.hold || null,
+    stow: b.chest && b.hips ? measure(holder, obj, inv, at(b.chest), at(b.hips), u.height || 1.6) : null,
   };
+  if (u.rig.stow) {
+    Object.assign(u.rig.stow, { holder, chestBone: b.chest, hipsBone: b.hips, toChest: toLocal(b.chest), toHips: toLocal(b.hips) });
+    // what's on the back rides the torso as a whole (hips to neck, shoulder to shoulder), not one spine bone: a take
+    // can bend Spine2 a long way from the idle's while the torso it skins stands as it did (the lancer's walk)
+    if (b.neck && b.upL && b.upR) u.rig.torso = { bones: [b.chest, b.hips, b.neck, b.upL, b.upR], F0inv: torsoFrame([b.chest, b.hips, b.neck, b.upL, b.upR], inv, new THREE.Matrix4()).invert() };
+  }
   for (const [bone, prop, v] of saved) bone[prop].copy(v);
   holder.updateMatrixWorld(true);
   if (u.gear) setGear(holder, u.gear);
+  stowProps(holder);
+}
+
+// The torso's frame in the holder's: at the chest, up from the hips to the neck, across from the right shoulder to the left.
+const TA = new THREE.Vector3(), TB = new THREE.Vector3(), TC = new THREE.Vector3(), TX = new THREE.Vector3(), TY = new THREE.Vector3(), TZ = new THREE.Vector3();
+function torsoFrame([chest, hips, neck, upL, upR], inv, out) {
+  const p = (b, v) => b.getWorldPosition(v).applyMatrix4(inv);
+  p(neck, TY); p(hips, TA); TY.sub(TA).normalize();
+  p(upL, TX); p(upR, TB); TX.sub(TB);
+  TX.addScaledVector(TY, -TX.dot(TY)).normalize();
+  TZ.crossVectors(TX, TY);
+  return out.makeBasis(TX, TY, TZ).setPosition(p(chest, TC));
+}
+const TF = new THREE.Matrix4(), TK = new THREE.Matrix4(), TM = new THREE.Matrix4(), TI = new THREE.Matrix4();
+// Each frame, on a figure with its gear stowed: what is on its back follows the torso (see fitGear).
+export function carryStowed(holder) {
+  const u = holder.userData, t = u.rig?.torso;
+  if (!t) return;
+  holder.updateWorldMatrix(true, false);
+  TI.copy(holder.matrixWorld).invert();
+  TK.multiplyMatrices(torsoFrame(t.bones, TI, TF), t.F0inv);
+  for (const o of u.gearObjs || []) if (o.userData.carry) TM.multiplyMatrices(TK, o.userData.carry).decompose(o.position, o.quaternion, o.scale);
+  for (const p of u.props || []) if (p.carry) TM.multiplyMatrices(TK, p.carry).decompose(p.obj.position, p.obj.quaternion, p.obj.scale);
+}
+
+// Where a body's back and hips are, off its skinned mesh as it stands (the holder's frame: it faces +Z, its left +X):
+// back, the middle of its back a little below the chest bone; hip.L / hip.R, how far out each side of the hips is.
+function measure(holder, obj, inv, chest, hips, H) {
+  const V = new THREE.Vector3(), M = new THREE.Matrix4();
+  let back = Infinity, hipL = -Infinity, hipR = Infinity;
+  const by = chest.y - 0.04 * H;
+  obj.traverse((o) => {
+    if (!o.isSkinnedMesh || o.userData.hull || !o.geometry.attributes.position) return;
+    M.multiplyMatrices(inv, o.matrixWorld);
+    const n = o.geometry.attributes.position.count, step = Math.max(1, Math.floor(n / 6000));
+    for (let i = 0; i < n; i += step) {
+      o.getVertexPosition(i, V); V.applyMatrix4(M);
+      if (Math.abs(V.y - by) < 0.05 * H && Math.abs(V.x - chest.x) < 0.08 * H && V.z < back) back = V.z;
+      // (not as far out as the hands, which hang at the same height)
+      if (Math.abs(V.y - hips.y) < 0.05 * H && Math.abs(V.z - hips.z) < 0.08 * H && Math.abs(V.x - hips.x) < 0.14 * H) { if (V.x > hipL) hipL = V.x; if (V.x < hipR) hipR = V.x; }
+    }
+  });
+  if (!isFinite(back)) back = chest.z - 0.12 * H;
+  if (!isFinite(hipL)) { hipL = hips.x + 0.11 * H; hipR = hips.x - 0.11 * H; }
+  return { H, back: new THREE.Vector3(chest.x, by, back), hips, hip: { L: hipL, R: hipR } };
 }
 
 // A stand-in's rig: its arm groups hang straight down with the hand at the end.
@@ -168,6 +249,100 @@ export function holdGear(model, w) {
   }
 }
 
+// ---- stowed: out of a fight the gear is put away ----
+// A shield, a polearm, a bow, a lute and anything too long for a belt go across the back; a sword, an axe, a mace, a
+// knife, a wand, a boomerang or a pistol hangs at the hip. Where is measured on the body itself, in the first frame of
+// its idle (fitGear: the back of the chest and the sides of the hips, off the skinned mesh), so plate and cloth both
+// carry it on their own surface. A blade hangs hilt up (cross-drawn: the right hand's on the left hip); a haft, head up.
+const STOW_BACK = new Set(['pole', 'bow', 'lute', 'kite', 'tower']);
+const BELT = 1.15;                                  // a blade or haft longer than this (bm's metres) goes on the back
+const LANCE = 2.6;                                  // a pole longer than this stays in the hand
+const boxes = new Map();
+function boxOf(id, scene) {
+  if (!boxes.has(id)) { scene.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(scene); boxes.set(id, { c: b.getCenter(v3(0, 0, 0)), s: b.getSize(v3(0, 0, 0)) }); }
+  return boxes.get(id);
+}
+// The stowed place of a piece of the gear's frame (long +Y, flat ±X, face -Z), in the frame of the bone it rides.
+// slot: 'back' | 'L' | 'R' (the hips); tip: where its +Y goes; flat: where its -Z goes; over: on top of a stowed shield.
+function stowAt(rig, box, s, slot, tip, flat, over) {
+  const st = rig.stow, H = st.H;
+  tip = tip.clone().normalize(); flat = flat.clone().addScaledVector(tip, -flat.dot(tip)).normalize();
+  // the piece's -Z to `flat`, +Y to `tip`
+  const Y = tip, Z = flat.clone().negate(), X = new THREE.Vector3().crossVectors(Y, Z);
+  const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, Y, Z));
+  const c = box.c.clone().multiplyScalar(s).applyQuaternion(q);           // from its grip to its middle, turned
+  let mid;
+  if (slot === 'back') {
+    const thick = Math.min(box.s.x, box.s.z) * s, half = box.s.y * s / 2;
+    // a shield's top at the shoulders; anything long with its foot well off the ground
+    const y = flat.z < -0.9 && tip.y > 0.99 ? st.back.y + 0.12 * H - half : Math.max(st.back.y, 0.27 * H + half * Math.abs(tip.y));
+    mid = v3(st.back.x, y, st.back.z - thick / 2 - 0.02 * H - (over ? 0.07 * H : 0));
+  } else {
+    mid = v3(st.hip[slot], st.hips.y - 0.02 * H, st.hips.z - 0.02 * H).addScaledVector(v3(slot === 'L' ? 1 : -1, 0, 0), Math.min(box.s.x, box.s.z) * s / 2 + 0.01 * H);
+    if (tip.y < 0) mid.addScaledVector(tip, box.s.y * s * 0.32);          // a blade hangs from its hilt at the belt
+  }
+  const pos = mid.sub(c), m = new THREE.Matrix4().compose(pos, q, v3(s, s, s));
+  if (slot === 'back' && rig.torso) return { side: slot, bone: st.holder, matrix: m, carry: m };   // carried by carryStowed
+  const b = slot === 'back' ? st.chestBone : st.hipsBone, to = slot === 'back' ? st.toChest : st.toHips;
+  return { side: slot, bone: b, matrix: to.clone().multiply(m) };
+}
+function stowed(rig, look, scene, over) {
+  if (!rig.stow) return null;
+  const box = boxOf(look.id, scene), s = rig.k * (look.scale || 1), H = rig.stow.H;
+  const long = box.s.y > BELT;
+  const flip = FLIP.has(look.id) ? -1 : 1;
+  switch (look.hold) {
+    case 'kite': case 'tower': return stowAt(rig, box, s, 'back', v3(0, 1, 0), v3(0, 0, -1), false);
+    case 'pole':
+      if ((look.scale || 1) < 0.6) return stowAt(rig, box, s, 'L', v3(0.08, 1, 0.25), v3(0, 0, -1));   // a wand
+      if (box.s.y > LANCE) return null;              // a lance is too long for any back: carried upright, as at the idle
+    // falls through: a staff, a spear or a lance across the back, head up over the right shoulder
+    case 'bow': return stowAt(rig, box, s, 'back', v3(-0.42, 1, 0), v3(0, 0, -1), over);
+    case 'lute': return stowAt(rig, box, s, 'back', v3(0.5, 1, 0), v3(0, 0, -1), over);
+    case 'haft':
+      if (long) return stowAt(rig, box, s, 'back', v3(-0.42, 1, 0), v3(0, 0, flip), over);
+      return stowAt(rig, box, s, 'L', v3(0.06, 1, 0.12), v3(0, 0, flip));       // head up at the left hip, bit back
+    case 'rang': return stowAt(rig, box, s, 'R', v3(0, 1, 0.2), v3(-1, 0, 0));
+    default: {
+      if (look.kind === 'pistol') return stowAt(rig, box, s, 'R', v3(-0.05, -1, 0.35), v3(0, 0, 1));   // holstered, butt back
+      if (long) return stowAt(rig, box, s, 'back', v3(0.42, -1, 0), v3(0, 0, -1), over);   // hilt over the right shoulder
+      const slot = look.left ? 'R' : 'L';
+      return stowAt(rig, box, s, slot, v3(slot === 'L' ? 0.1 : -0.1, -1, -0.5), v3(0, 0, -1));
+    }
+  }
+}
+// A manifest's own held props (a lancer's lance and tower shield) go away the same way: models.js lists them in
+// userData.props as { obj, bone, home: [at, rot, scale], file }.
+const propBoxes = new Map();
+function stowProps(holder) {
+  const u = holder.userData, rig = u.rig;
+  if (!rig) return;
+  const shield = (u.props || []).some((p) => /shield/i.test(p.file));
+  for (const p of u.props || []) {
+    let at = null;
+    if (u.stowed && rig.stow) {
+      if (!propBoxes.has(p.file)) { const o = p.obj.clone(); o.position.set(0, 0, 0); o.quaternion.identity(); o.scale.set(1, 1, 1); o.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(o); propBoxes.set(p.file, { c: b.getCenter(v3(0, 0, 0)), s: b.getSize(v3(0, 0, 0)) }); }
+      // its size in the holder's frame: its scale on the hand times the hand's own
+      const box = propBoxes.get(p.file), s = p.home[2] * (p.bone.getWorldScale(v3(0, 0, 0)).x / (holder.getWorldScale(v3(0, 0, 0)).x || 1));
+      at = /shield/i.test(p.file) ? stowAt(rig, box, s, 'back', v3(0, 1, 0), v3(0, 0, -1), false)
+        : box.s.y > LANCE ? null : stowAt(rig, box, s, 'back', v3(-0.42, 1, 0), v3(0, 0, -1), shield);
+    }
+    p.carry = at?.carry || null;
+    if (at) { at.bone.add(p.obj); at.matrix.decompose(p.obj.position, p.obj.quaternion, p.obj.scale); }
+    else { p.bone.add(p.obj); p.obj.position.fromArray(p.home[0]); p.obj.quaternion.fromArray(p.home[1]); p.obj.scale.setScalar(p.home[2]); }
+  }
+}
+// Out of a fight (on) or into one: puts the gear and props away or back in the hands.
+export function stowGear(model, on) {
+  const u = model.userData;
+  on = !!on;
+  if (u.stowed === on) return;
+  u.stowed = on;
+  if (u.gear !== undefined) setGear(model, u.gear);
+  stowProps(model);
+}
+export { stowProps };
+
 // Puts gear on a model, replacing what it had. gear: { main, off } looks from data/gear.js (lookFor, shieldFor), or null.
 // On a model still waiting for its .glb it goes on the stand-in, and again on the real thing when that arrives.
 export function setGear(model, gear) {
@@ -182,15 +357,18 @@ export function setGear(model, gear) {
     const hide = (arm, name, on) => arm.children.forEach((c) => { if (c.name === name) c.visible = !on; });
     hide(u.parts.armR, 'held', !!gear?.main); hide(u.parts.armL, 'shield', !!gear?.off);
   }
+  const backed = !!gear?.off && STOW_BACK.has(gear.off.hold);     // a shield on the back: a long piece goes over it
   for (const look of [gear?.main, gear?.off]) {
     if (!look) continue;
-    const p = place(rig, look);
-    if (!p || rig.busy[p.side]) continue;
-    load(look.id).then((scene) => {
+    const p0 = place(rig, look);
+    if (!p0 || rig.busy[p0.side]) continue;
+    load(look.id, look.kind).then((scene) => {
       if (u.gearToken !== token) return;
+      const p = (u.stowed && stowed(rig, look, scene, backed && look !== gear.off)) || p0;
       const o = scene.clone();
       p.matrix.decompose(o.position, o.quaternion, o.scale);
-      o.userData.held = { side: p.side, matrix: p.matrix, fist: p.fist, k: 0 };
+      o.userData.held = { side: p.side, matrix: p.matrix, fist: p.fist || null, k: 0 };
+      o.userData.carry = p.carry || null;
       o.traverse((c) => { if (c.isMesh) c.frustumCulled = false; });
       p.bone.add(o);
       u.gearObjs.push(o);

@@ -5,7 +5,7 @@
 // step it by hand: viewer.step(seconds), then viewer.shot('name') posts a PNG to tools/serve.py.
 import * as THREE from 'three';
 import { loadManifest, withOverride, setAnim, animate, shadowDisc } from './gfx/models.js';
-import { setGear } from './gfx/gear.js';
+import { setGear, stowGear } from './gfx/gear.js';
 import { lookFor, shieldFor, foeGear } from './data/gear.js';
 import { CLASSES } from './data/classes.js';
 
@@ -44,7 +44,7 @@ const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
 const view = { yaw: 0.35, pitch: 0.12, dist: 6, aim: new THREE.Vector3(0, 0.9, 0), game: false };
 
 // ---- state ----
-let manifest = {}, shown = [], state = 'idle', paused = false, speed = 1, repeat = true, spin = false, again = -1;
+let manifest = {}, shown = [], state = 'idle', paused = false, speed = 1, repeat = true, spin = false, again = -1, stowed = false;
 
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
@@ -125,6 +125,7 @@ function show(keys) {
     // a class body carries its class's weapon and shield at its armour tier (<class>_<g>_t<n>; the class's own model, tier 1)
     const cm = /^(.+)_[mf](?:_t(\d))?$/.exec(key), C = cm && CLASSES[cm[1]];
     const model = withOverride(key, null, { cls: new URLSearchParams(location.search).get('cls') || (C ? cm[1] : null) });
+    model.userData.stowed = stowed;
     if (C && !C.hidden) {
       const tier = cm[2] ? +cm[2] - 1 : 0;
       setGear(model, { main: lookFor({ kind: C.weapon[0], tier }, cm[1]), off: shieldFor(cm[1], tier) });
@@ -243,6 +244,7 @@ toggle('#spin', (on) => { spin = on; if (!on) for (const s of shown) s.root.rota
 toggle('#game', (on) => { view.game = on; });
 toggle('#bright', (on) => { if (on) scene.add(studio); else scene.remove(studio); });
 toggle('#grid', (on) => { tiles.visible = on; });
+toggle('#stow', (on) => { stowed = on; for (const s of shown) stowGear(s.model, on); });
 $('#find').addEventListener('input', buildList);
 window.addEventListener('resize', resize);
 
