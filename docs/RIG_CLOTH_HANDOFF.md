@@ -130,6 +130,15 @@ critics yet.
   (13 cm) the most.
 - **Mixamo banks:** each body's bank was baked against its refit rest. Rebake a figure's bank (`moves.make`) after any
   refit that moves its joints.
+- **The four class bodies have had their own critics' rounds** (PR #27, `docs/MODELS.md` "The critics' rounds"):
+  - `lancer_m`, `lancer_f`, `slime_lord_m` and `slime_lord_f` were recoloured (`tools/blender/retint.py`);
+  - the slime lords' fingers were bent into fists in the rest mesh (`tools/blender/handcurl.py`). The manifest's
+    `hold.at` for the mace is the middle of those fists.
+
+  These changes are saved only in the copy `v2 ornate - rigfix b9crit.blend`, next to the working file, which
+  predates them. A refit and export of the four from the working file would undo them. Either take the four from
+  the copy, or before the export run `retint_image(img, key)` on each body's base-colour image and
+  `curl(key, 'Right')` and `curl(key, 'Left')` on each slime lord. Then rebake their banks.
 
 ## How to drive Blender
 
