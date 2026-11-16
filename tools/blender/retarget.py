@@ -298,6 +298,24 @@ class Target:
         """The whole figure turned about the up axis (a spin), on its tile."""
         return self.spin(p, H, Quaternion(self.Z, math.radians(deg)))
 
+    def nod(self, p, n):
+        """How far bone n points forward of its parent's up in pose p, in degrees (negative: back)."""
+        Q, X = self.fk(p); b = self.arm.data.bones[n]
+        d = Q[n] @ Vector((0, b.length, 0))                  # a bone's own axis: its child joint may sit off to one side
+        U, Lf, F = self.frame(p, b.parent.name)
+        return math.degrees(math.atan2(d.dot(F), d.dot(U)))
+
+    def upright(self, p, lean):
+        """The neck and head carried over the chest as this figure's rest carries them, give or take `lean` degrees
+        forward in all. A walk or run made on another body bows a head that sits back on its own shoulders (a slime
+        lord's, behind its belly), and the critics read that as a stoop."""
+        if not hasattr(self, 'nod0'):
+            r = {n: (Quaternion(), Vector((0, 0, 0))) for n in self.order}; self.nod0 = {n: self.nod(r, n) for n in self.NECK}
+        for n in self.NECK:
+            over = self.nod(p, n) - self.nod0[n] - lean / len(self.NECK)
+            if over > 0: p = self.tilt(p, [n], 'fwd', -over)
+        return p
+
     # ---- held things ----
     # A weapon is a model of its own (MODELS.md section 4: upright along +Z, grip at the origin) which the game hangs on a
     # hand bone, at a place and turn in that bone's frame (the manifest's "props"). The place is fixed once, on the idle
@@ -456,20 +474,28 @@ class Target:
             face = lambda p, ph: self.dirn(fr(p), 'Left', 90, ph)              # the shield's face: 0 out to the left, 90 to the front
             Q0, X0 = self.fk(B0); hand = lambda s: X0['mixamorig:%sHand' % s]
             palm = lambda s: hand(s) + (hand(s) - X0['mixamorig:%sForeArm' % s]).normalized() * 0.045 * self.tall
-            self.calibrate(B0, 'Right', 'w_lance', aim(B0, 174, 75), self.knuckles(B0, 'Right', aim(B0, 174, 75)), palm('Right'))
-            # the shield gripped above its middle, so at the idle its foot is 7 cm off the floor, whatever the figure's height
-            at = palm('Left') + face(B0, 30) * 0.03 * self.tall
-            foot = -min(v.co.z for v in bpy.data.objects['w_shield_tower'].data.vertices) + 0.07   # metres, grip to floor
-            at += self.Z * (self.floor + foot / self.arm.matrix_world.to_scale()[0] - at.dot(self.Z))
-            self.calibrate(B0, 'Left', 'w_shield_tower', fr(B0)[0], -face(B0, 30), at)
+            # The lance is held 25 cm up its shaft from its grip, so its bell rides at the chest, not over the helm, and
+            # 4 cm out from the hip so the shaft clears the visor and the shield.
+            sc = self.arm.matrix_world.to_scale()[0]; up = aim(B0, 174, 75)
+            self.calibrate(B0, 'Right', 'w_lance', up, self.knuckles(B0, 'Right', up), palm('Right') - up * 0.25 / sc - fr(B0)[1] * 0.04 / sc)
+            # The shield hangs at the side with its face out to the left, turned SH degrees forward. At 30 it stood square
+            # to the game's camera and hid the whole body behind it. Gripped above its middle, its foot 3 cm off the floor
+            # at the idle, whatever the figure's height, and 5 cm further out from the arm.
+            SH = 5
+            at = palm('Left') + face(B0, SH) * 0.03 * self.tall + fr(B0)[1] * 0.05 / sc
+            foot = -min(v.co.z for v in bpy.data.objects['w_shield_tower'].data.vertices) + 0.03   # metres, grip to floor
+            at += self.Z * (self.floor + foot / sc - at.dot(self.Z))
+            self.calibrate(B0, 'Left', 'w_shield_tower', fr(B0)[0], -face(B0, SH), at)
             STEADY = {'Walk', 'Run', 'Hop', 'Hit', 'Stunned', 'Wounded', 'Talk', 'Shield_Bash'}    # the lance arm kept still
+            WHIP = {1: 10, 2: 9, 3: -2.5, 4: 1}       # Hit, by key: the lance rocked back with the chest, then past and home
 
             def held(name, i, n, p):
                 mid = 0 < i < n - 1                                            # the first and last keys are the idle
                 if name in STEADY: p = carry(p)
-                d = aim(p, *((93, 90) if name in ('Thrust', 'Charge') and mid else (130, 90) if name == 'Point' and mid else (174, 75)))
+                d = aim(p, *((93, 90) if name in ('Thrust', 'Charge') and mid else (130, 90) if name == 'Point' and mid
+                             else (174 + WHIP.get(i, 0), 75) if name == 'Hit' and n == 6 else (174, 75)))
                 p = self.hold(p, 'Right', d, self.knuckles(p, 'Right', d))
-                return self.hold(p, 'Left', fr(p)[0], -face(p, 90 if name in ('Guard_Up', 'Shield_Bash') and mid else 30))
+                return self.hold(p, 'Left', fr(p)[0], -face(p, 90 if name in ('Guard_Up', 'Shield_Bash') and mid else SH))
             self.held = held
 
         if cls.startswith('zombie_'):
@@ -532,8 +558,17 @@ class Target:
         W('Idle', [(f, BI(f)) for f in (0, 9, 18, 27, 36, 45)])
         if bpy.data.objects.get('MX:bm:Walk_Loop') and hasattr(self, 'mx_sample'):
             # bm's heroes' walk and jog (bmclips.py): upright, a long easy stride, the back foot peeling off the floor
-            W('Walk', [(i * 2, L(self.mx_sample('bm:Walk_Loop', i * 2 / 24))) for i in range(17)])            # 1.33 s
-            W('Run', [(i * 2, L(self.mx_sample('bm:Jog_Fwd_Loop', i * (28 / 30) / 11))) for i in range(12)])  # 0.93 s in 22 frames
+            # The head is held up over the chest (upright): bm's heroes carry it well forward, which on a body in plate
+            # reads as a knight looking at his feet.
+            W('Walk', [(i * 2, L(self.upright(self.mx_sample('bm:Walk_Loop', i * 2 / 24), 6))) for i in range(17)])            # 1.33 s
+            # The plate and the slime run heavy: a stride a fifth shorter, toward the stance, and a foot always on the
+            # floor (no float with both feet up), so the hips ride the legs.
+            heavy = self.key.startswith(('slime_lord', 'lancer'))
+
+            def jog(t):
+                p = self.upright(self.mx_sample('bm:Jog_Fwd_Loop', t), 10)
+                return L(self.ground(mix(p, B0, 0.2, LEGS)) if heavy else p)
+            W('Run', [(i * 2, jog(i * (28 / 30) / 11)) for i in range(12)])  # 0.93 s in 22 frames
         else:
             W('Walk', [(i * 2, L(g('M_Walking', i * 24.8 / 12))) for i in range(13)])  # the library's walk, aligned (align)
             W('Run', [(i, L(g('M_Running', i * 15.2 / 15))) for i in range(16)])
@@ -546,11 +581,19 @@ class Target:
         W('Cast', [(0, B0)] + [(4 + i * 3, L(mix(BI(4 + i * 3), g('M_Charged_Spell_Cast', 34 + i * 24 / 8), 0.7, ARMS))) for i in range(9)] + [(34, BI(34))])
         alH = self.aligner('M_Hit_Reaction', 0)
 
-        def hit(s, k):                                                         # thrown back: chest, head and arms
+        def hit(s, k, push=0.0):
+            # thrown back: the chest about 16 degrees (measured in the game: the spine's three bones share it), the head
+            # whipped back about 40 in all, the shoulders twisted, the arms flung, the knees giving and the body shoved
+            # back push of its height. k below 0 is the rebound.
             p = mix(B0, alH(g('M_Hit_Reaction', s)), 1.0, SPINE + HEAD)
-            p = tilt(tilt(p, SPINE, 'fwd', -6 * k), NECK, 'fwd', -6 * k)
-            return L(crouch(both(p, (AR + 18 * k, -10), 25 * k), 0.3 * k))
-        W('Hit', [(0, B0), (2, hit(8, 1)), (5, hit(11, 0.85)), (9, hit(16, 0.4)), (15, BI(15))])
+            p = tilt(tilt(tilt(p, SPINE, 'fwd', -11 * k), NECK, 'fwd', -5 * k), SPINE, 'yaw', 3 * k)
+            a = max(0.0, k)
+            p = L(crouch(both(p, (AR + 22 * a, -12), 30 * a), 0.4 * abs(k)))
+            if push:
+                q, l = p[H]; p = dict(p); p[H] = (q, l + self.restQ[H].inverted() @ (-self.F * push * self.tall))
+            return p
+        # the blow lands at once (frame 2), the body rocks forward past the idle and settles: about 0.45 s in the game
+        W('Hit', [(0, B0), (2, hit(8, 1, 0.03)), (4, hit(10, 0.9, 0.035)), (7, hit(13, -0.25, 0.02)), (10, hit(15, 0.12, 0.01)), (14, BI(14))])
 
         def daze(lean, fwd):                                                   # arms limp, the head lolling, a slow circle
             p = tilt(tilt(B0, SPINE, 'left', lean), SPINE, 'fwd', fwd)

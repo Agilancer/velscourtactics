@@ -213,16 +213,35 @@ def _mx_floor(self, p, sp, c):
     q, l = p[MXH]; p = dict(p); p[MXH] = (q, l + self.restQ[MXH].inverted() @ (self.Z * up)); return p
 
 
+def _mx_headrest(self, p, c):
+    """The neck and head moved from this figure's own rest by as much as the source moves from its rest. The calibration
+    lines every bone up with the source's rest, which tips forward a head that sits back on its shoulders (a slime
+    lord's, behind its belly) in every take."""
+    if not hasattr(c, 'nod'):
+        r = {n: (Quaternion(), Vector((0, 0, 0))) for n in self.order}
+        c.nod = {n: self.nod(r, n) - self.nod(c.tpose, n) for n in self.NECK}
+    for n in self.NECK:
+        if abs(c.nod[n]) > 0.5: p = self.tilt(p, [n], 'fwd', c.nod[n])
+    return p
+
+
 def _mx_sample(self, clip, t, mirror=False):
     c = self.mx_calibrate(clip); sp = src_pose(clip, t, mirror)
-    return self.mx_floor(self.mx_convert(sp, c), sp, c)
+    p = self.mx_convert(sp, c)
+    if hasattr(self, 'nod'): p = _mx_headrest(self, p, c)
+    return self.mx_floor(p, sp, c)
 
 
-def _travel(self, p, ref, k):
-    """The hips' sideways and forward travel since ref kept at k of itself (0: on the tile)."""
-    q, l = p[MXH]; R = self.restQ[MXH]; d = R @ (l - ref)
-    flat = d - self.Z * d.dot(self.Z)
-    p = dict(p); p[MXH] = (q, ref + R.inverted() @ (self.Z * d.dot(self.Z) + flat * k) + (self.home - ref) * 0); return p
+def _travel(self, p, ref, k, rise=1.0):
+    """The hips' sideways and forward travel since ref kept at k of itself, measured from the tile (0: on the tile). A
+    stretch cut from after a run-up (the run jump starts a body height ahead of where its clip began) starts on the
+    tile all the same, and the take never pops forward on its first frames or back on its last. rise: how much of any
+    lift above the idle's hip height to keep (a leap made a bound; crouches below it are kept whole)."""
+    q, l = p[MXH]; R = self.restQ[MXH]; d = R @ (l - ref); h = R @ (self.home - ref)
+    flat = d - self.Z * d.dot(self.Z); hflat = h - self.Z * h.dot(self.Z)
+    up = d.dot(self.Z); hz = h.dot(self.Z)
+    if rise != 1.0 and up > hz: up = hz + (up - hz) * rise
+    p = dict(p); p[MXH] = (q, ref + R.inverted() @ (self.Z * up + flat * k + hflat)); return p
 
 
 def _face(self, p, q0, k):
@@ -238,12 +257,12 @@ def _face(self, p, q0, k):
 
 def _take(self, name, clip, t0, t1, contact=None, at=7, post=1.0, blend_in=3, blend_out=8, travel=0.0, end=None,
           keep=None, hold=0, write=True, base=None, after=None, sides='RL', mirror=False, face=0, then=None, skip=None,
-          first=None):
+          first=None, rise=1.0):
     """A stretch of a source clip, t0 to t1 real seconds, as a clip of this figure. Its first `blend_in` frames ease in
     from the idle, its blow (contact) lands at frame `at`, then it plays at `post` times its speed and eases back into the
     idle over `blend_out` frames. travel: how much of the hips' travel to keep (0 pins it to the tile; anything kept is
-    eased off again by the end). keep: bones left as the idle has them (the hand with the shield, say). hold: frames to
-    hold the last sampled pose before easing out. after(f, p): a last word on each pose. face: how much of the hips'
+    eased off again by the end). rise: how much of a leap's lift above the idle's hips to keep. keep: bones left as the
+    idle has them (the hand with the shield, say). hold: frames to hold the last sampled pose before easing out. after(f, p): a last word on each pose. face: how much of the hips'
     turn about the up to take off (1: the figure faces the foe all through). skip: (from, to) a still stretch of the
     source cut out (a long hold at full draw). first: (clip, from, to, speed, mirror) a stretch played before, at its own
     pace, crossfaded into the main one (a charge, then the throw); the blow still lands at `at`. then: (clip, from, to,
@@ -275,7 +294,7 @@ def _take(self, name, clip, t0, t1, contact=None, at=7, post=1.0, blend_in=3, bl
     def fix(p):
         nonlocal ref, q0
         if ref is None: ref = p[MXH][1].copy(); q0 = p[MXH][0].copy()
-        p = self.travel(p, ref, travel)
+        p = self.travel(p, ref, travel, rise)
         if face: p = self.face(p, q0, face)
         if keep: p = self.mix(p, B0, keep[1], keep[0]) if isinstance(keep, tuple) else self.mix(p, B0, 1.0, keep)
         return p

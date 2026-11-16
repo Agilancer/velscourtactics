@@ -9,15 +9,16 @@ Then `python tools/mx_manifest.py` puts each bank's states into assets/models/ma
 
 A move is a stretch of one source clip: (clip, from, to, blow, options) in real seconds, the blow being when it lands
 (a list for a combo: every blow after the first is a hit of its own). Options go to Target.take (at: the frame the
-first blow lands on; post: how fast what follows the blow plays; travel: how much of the lunge to keep; mirror: the
-clip done left for right; keep: bones left as the idle has them, 'R' or 'L' for an arm; sides: the hands that hold their
-gear in the Mixamo fist) or are read here, each turning a hand so what it holds points somewhere of its own:
+first blow lands on; post: how fast what follows the blow plays; travel: how much of the lunge to keep; rise: how much
+of a leap's lift; mirror: the clip done left for right; keep: bones left as the idle has them, 'R' or 'L' for an arm;
+sides: the hands that hold their gear in the Mixamo fist) or are read here, each turning a hand so what it holds points somewhere of its own:
     up      'R', 'L' or 'RL': held up out of the fist. A staff, a bow or a pistol stands (the pistol's barrel is along the
             knuckles, so it points level at the foe); a blade or an axe stands when the forearm is raised and points
             ahead and down when the arm hangs, so it never lies across the body.
     level   the spear held out level at the foe through the whole take.
     down    the spear driven point down as the blow lands (a leap's landing).
     shield  (the lancer) the shield's face turned to the front as the blow lands.
+    lift    (the lancer) degrees the level lance is raised, its point at a foe's chest from a low landing.
     tilt    (forward, sweep) degrees: the spine pitched forward (back, if less than 0: a shot sent up in an arc) through the
             take, and swung from right to left across the blow (a fan of arrows).
 The lancer's lance and shield are the manifest's own props, not gear: every take holds the lance up (level at the foe
@@ -60,6 +61,8 @@ MOVES = {
     'combo3':     ('axe:standing melee combo attack ver. 2', 0.6, 4.0, [1.17, 2.03, 3.3], {'at': 10}),
     'axecombo':   ('axe:standing melee combo attack ver. 1', 1.7, 4.4, [2.5, 3.67], {'at': 10, 'travel': 0.3}),
     'runjump':    ('axe:standing melee run jump attack', 0.9, 3.3, 2.13, {'at': 14, 'travel': 0.3}),
+    # the same run jump as a bound in plate: a third of the lift, cut just after it lands, before the squat
+    'bound':      ('axe:standing melee run jump attack', 0.9, 2.3, 2.13, {'at': 14, 'travel': 0.3, 'rise': 0.33}),
     'kick':       ('axe:standing melee attack kick ver. 1', 0.2, 1.8, 0.78, {'at': 9}),
     'greatcombo': ('Great Sword Slash', 0.5, 3.9, [0.97, 2.1, 3.2], {'at': 10, 'travel': 0.25}),
     'greatone':   ('Great Sword Slash', 0.3, 1.7, 1.15, {'at': 14, 'travel': 0.2, 'face': 0.7}),     # overhead and down, before it turns
@@ -125,6 +128,9 @@ UP_R, UP_L = {'up': 'R'}, {'up': 'L'}
 LV = {'level': 'R'}
 DN = {'down': 'R'}
 LK = {**LV, 'keep': 'L'}                 # the lancer's: the lance level, the shield arm left as the idle has it
+# the lancer's body (its lance a prop held up at the idle): the lance comes down to level over a third of a second and
+# goes back up as slowly, never swung through the helm in three frames; the blow lands 5 frames later for it
+LKS = {**LK, 'blend_in': 8, 'at': 12, 'blend_out': 10}
 RB = {'up': 'L'}                         # the ranger's bow, upright in the left fist
 NU = {'up': 'RL'}                        # the ninja's two knives
 CLASSES = {
@@ -138,8 +144,9 @@ CLASSES = {
                       'sk_fire_breath': ('battlecry', {'tilt': (15, 0), 'keep': 'L', 'up': 'R'}),
                       'sk_dragon_leap': 'jumpslam', 'sk_dragon_scales': 'block', 'sk_primal_roar': ('yell', {'keep': 'L'}),
                       'sk_summon_whelp': 'snscast', 'sk_dragon_form': 'chestthump', 'cheer': 'powerup', 'taunt': 'sheath1'},
-    'slime_lord': {'swing_1': 'slash5', 'swing_2': ('cleave', {'keep': 'L'}), 'swing_3': ('combo3', {'keep': 'L', 'face': 0.5}),
-                   'attack': 'slash5', 'sk_slime_ball': ('fireball', {'keep': 'L', 'face': 0.7}), 'sk_engulf': 'twohand_b',
+    # the slime lord's plain blow is the mace over the crown and down: a smash reads from above
+    'slime_lord': {'swing_1': ('chop', {'keep': 'L'}), 'swing_2': ('cleave', {'keep': 'L'}), 'swing_3': ('combo3', {'keep': 'L', 'face': 0.5}),
+                   'attack': ('chop', {'keep': 'L'}), 'sk_slime_ball': ('fireball', {'keep': 'L', 'face': 0.7}), 'sk_engulf': 'twohand_b',
                    'sk_slimeling': 'snscast', 'sk_slime_armor': ('powerup', UP_R), 'sk_body_slam': 'runjump', 'sk_bounce': 'jumpslam',
                    'sk_acid_splash': ('backhand', {'face': 0.7, 'keep': 'L'}), 'sk_devour': ('bite', {'keep': 'RL'}),
                    'cheer': 'sitting', 'taunt': ('excited', {'post': 1.2})},
@@ -158,9 +165,10 @@ CLASSES = {
                 'sk_skewer': ('lunge3', LV), 'sk_jump': ('jumpslam', DN), 'sk_dragon_dive': ('runjump', DN),
                 'sk_comet_dive': ('vault', {**DN, 'travel': 0.3}), 'sk_dragon_breath': 'battlecry',
                 'sk_frost_breath': ('yell', {'keep': 'R'}), 'cheer': ('jump', UP_R), 'taunt': ('spinhigh', LV)},
-    'lancer': {'thrust_1': ('stab', LK), 'thrust_2': ('thrust2h', LK), 'thrust_3': ('leapcut', LK), 'attack': ('stab', LK),
-               'sk_lance_thrust': ('lunge', LK), 'sk_shield_slam': ('lunge', {'mirror': True, 'shield': 1, 'travel': 0.35}),
-               'sk_lance_charge': ('lunge3', LK), 'sk_lance_of_light': ('snscast', {'keep': 'L'}),
+    'lancer': {'thrust_1': ('stab', {**LKS, 'post': 1.4}), 'thrust_2': ('thrust2h', {**LKS, 'at': 17}),
+               'thrust_3': ('leapcut', {**LKS, 'at': 16}), 'attack': ('stab', {**LKS, 'post': 1.4}),
+               'sk_lance_thrust': ('lunge', {**LKS, 'post': 1.2}), 'sk_shield_slam': ('lunge', {'mirror': True, 'shield': 1, 'travel': 0.35}),
+               'sk_lance_charge': ('bound', {**LKS, 'at': 19, 'blend_out': 12, 'lift': 12}), 'sk_lance_of_light': ('snscast', {'keep': 'L'}),
                'sk_squire_knight': 'yell', 'sk_hold_the_line': ('battlecry', {'shield': 1}),
                'sk_tower_shield': ('block', {'shield': 1}), 'sk_bastion_of_ten': ('powerup', {'shield': 1}),
                'cheer': 'pose_m', 'taunt': ('thankful', {'keep': 'L'})},
@@ -370,15 +378,16 @@ def _tilt(T, fwd, sweep, env):
     return hook
 
 
-def _lancer(T, level, shield, env):
+def _lancer(T, level, shield, env, lift=0):
     """The lancer's hook: the lance up (174 degrees from straight down, a touch out ahead), or as far over to level at
-    the foe as env says; the shield's face out to the left, or to the front."""
+    the foe as env says (lift: degrees above level, a point at the chest from a low stance); the shield's face out to
+    the left, or to the front."""
     fr = (T.U, T.Lf, T.F)
 
     def hook(f, p):
         w = env(f) if env else 0.0
         lw, sw = (w if level else 0.0), (w if shield else 0.0)
-        d = T.dirn(fr, 'Right', 174 + (93 - 174) * lw, 75 + (90 - 75) * lw)
+        d = T.dirn(fr, 'Right', 174 + (93 + lift - 174) * lw, 75 + (90 - 75) * lw)
         p = T.hold(p, 'Right', d, T.knuckles(p, 'Right', d))
         return T.hold(p, 'Left', fr[0], -T.dirn(fr, 'Left', 90, 30 + 60 * sw))
     return hook
@@ -431,7 +440,7 @@ def bake(T, key, cls, render_to=None, gear=None, only=None, hero=False):
         clip, t0, t1, blow, opts = MOVES[name]
         o = {**opts, **extra}
         up, lv, dn, sh = o.pop('up', None), o.pop('level', None), o.pop('down', None), o.pop('shield', 0)
-        tl, aim = o.pop('tilt', None), o.pop('aim', None)
+        tl, aim, lift = o.pop('tilt', None), o.pop('aim', None), o.pop('lift', 0)
         th = o.get('then')                                     # a move's name: its stretch, at its own pace
         if isinstance(th, str): th = (th,)
         if isinstance(th, tuple) and th[0] in MOVES:           # (move, hold frames, its blow too)
@@ -458,7 +467,7 @@ def bake(T, key, cls, render_to=None, gear=None, only=None, hero=False):
         hooks = []
         if tl: hooks.append((tl[2] if len(tl) > 2 else 'take', 'tilt', tl, None))   # first, so the hands turn on the leaning body
         if props:
-            hooks.append(lambda f, p, lv=lv, sh=sh: _lancer(T, lv, sh, _env(T, 'take' if lv else 'blow') if (lv or sh) else None)(f, p))
+            hooks.append(lambda f, p, lv=lv, sh=sh, lift=lift: _lancer(T, lv, sh, _env(T, 'take' if lv else 'blow') if (lv or sh) else None, lift)(f, p))
         else:
             for s in (up or ''):
                 side = 'Right' if s == 'R' else 'Left'
