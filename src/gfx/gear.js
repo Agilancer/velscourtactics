@@ -81,7 +81,7 @@ export function fitGear(holder, obj, def = {}, idle = null, grip = null) {
     k: (u.height || 1.6) / BM_HEIGHT, busy,
     R: side(b.handR, b.armR, -1), L: side(b.handL, b.armL, 1),
     chest: b.chest ? { bone: b.chest, at: at(b.chest), to: toLocal(b.chest) } : null,
-    grip,
+    grip, hold: def.hold || null,
   };
   for (const [bone, prop, v] of saved) bone[prop].copy(v);
   holder.updateMatrixWorld(true);
@@ -122,7 +122,17 @@ function place(rig, look) {
       const m = new THREE.Matrix4().compose(pos, basis(v3(0.75, 0.65, 0), FWD), v3(s, s, s));   // neck up to the left shoulder
       return { side: 'chest', bone: c.bone, matrix: c.to.clone().multiply(m) };
     }
-    case 'haft': pos = grip(rig.R); q = basis(v3(0, 0.55, 1), edge); break;            // head up ahead, bit down
+    case 'haft': {                                                                     // head up ahead, bit down
+      // a body's manifest can say where the head points at its idle instead (hold.haft: [x, y, z], the body facing +Z,
+      // its right hand on -X), where the fist is (hold.at: in the right hand bone's own frame and units, as a prop's
+      // "at") and how far the pommel stands out of it (hold.pommel, metres): the slime lords hang the mace head down,
+      // ahead and out, clear of the belly, through the middle of the fingers tools/blender/handcurl.py closed
+      const h = rig.hold?.haft, at = rig.hold?.at, d = h ? v3(h[0], h[1], h[2]) : v3(0, 0.55, 1);
+      q = basis(d, edge);
+      pos = at ? v3(at[0], at[1], at[2]).applyMatrix4(rig.R.toHand.clone().invert()).addScaledVector(d.normalize(), -(rig.hold.pommel || 0) * k)
+        : grip(rig.R);
+      break;
+    }
     default:                                                                              // point ahead and a little down
       if (look.left) side = 'L';                                                          // a second knife, in the other hand
       pos = grip(rig[side]); q = basis(v3(0, -0.36, 1), edge);

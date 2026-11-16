@@ -311,6 +311,7 @@ Wolf: `idle`, `run`, `bite`, `hit`, `dead`. Slime: `idle`, `hop`, `lunge`, `dead
 | `matte` | `false` keeps the file's metalness (there is no environment to reflect, so the default reads metal as paint) |
 | `bank` | the clip bank the model plays instead of clips of its own (`heroes` or `folk`: `assets/models/clips/`, `src/gfx/clipbank.js`); `anims` then names the bank's clips |
 | `dye` | a palette from `src/gfx/dye.js` (`PALETTES`) the body wears until armour paints over it; only bm's bodies can be dyed (below) |
+| `hold` | where a class's gear sits in the hand at the idle, for a body the default grip doesn't suit: `haft` the way a mace or hammer head points (`[x, y, z]`, the body facing +Z, its right hand on -X), `at` the fist's middle in the right hand bone's own frame and units (as a prop's `at`), `pommel` how far the haft's end stands out of the fist, in metres. The slime lords hang the mace head down, ahead and out, clear of the belly, through fingers `tools/blender/handcurl.py` closed |
 | `props` | held models, each `{file, bone, at, rot, scale}`: a weapon's own file hung on the bone whose name ends with `bone`, placed at `at` and turned by the quaternion `rot` in that bone's frame. Don't work these out by hand: `Target.props()` in `retarget.py` prints them after `build`, and the clips are made to suit them (the lancers' entries are the example) |
 
 A key with no entry keeps its stand-in, so they can arrive one at a time. Once a key has its entry its stand-in is
@@ -757,6 +758,49 @@ are rebaked on the new bodies.
 |---|---|---|
 | `chest` | 0.75 x 0.52 x 0.52, box and lid as two materials (`chest_body`, `chest_lid`) | replaces bm's chest. `buildChests` hangs the lid on a hinge along its back foot and throws it open past where it rests (`LID_OPEN`, eased in `tick`). The old box and lid stay for a missing file |
 | `crypt_gate` | 1.2 x 1.15 x 2.79, the cap's top at 2.66 | the crypt's two gateposts. Skulls sit in the niche on the outside, and the gate's hinge pins run down the side the gate hangs from (the post right of the gate is mirrored). The candles stand on its own old wax at the front corner. They go see-through like the boxes did |
+
+**The critics' rounds** on the new lancers and slime lords (the two-critics review: a veteran and an up-and-comer, the
+shots in `tools/build/review/b9crit/r<n>`) asked for these, all free fixes in Blender and the game:
+- **Colour**: `tools/blender/retint.py` recolours a body's texture by hue, saturation and value (`RECIPES`; numpy, so
+  a recipe can be tried on an exported `.glb` without Blender). The lancers' plate is one midnight blue with a warm
+  gold. The slime lords' slime is a deep cobalt whose wet highlights glow from inside (the glow is the material's
+  emission, which the game keeps). Mind the soft hue edges: a pixel half picked turns the short way round the
+  colour wheel, so browns just under an olive pick went blue through magenta. A step can be held to one part of the
+  body by a texel mask (`tools/blender/masks/`). lancer_m's pauldron scrolls read as a face (or a plus at the
+  game's size) once the gold was lifted. Their middle, and the ridge down the top of each dome, are sunk into the
+  plate's blue. The mask was found in the viewer by drawing the body with its UVs as colour and reading back the
+  texels under an ellipse (glTF's v runs from the top, Blender's from the bottom). The other pauldron's texels were
+  found by mirroring the faces in Blender.
+- **Hands with no finger bones** (the slime lords): `tools/blender/handcurl.py` bends the fingers of the rest mesh
+  round the knuckle line into a fist, and the manifest's `hold` puts the mace through it, hanging head down.
+- **Heads**: the walk and run carry the neck and head as the rest pose does (`Target.upright`), and the motion-capture
+  takes the same (`_mx_headrest` in `mixamo.py`). A body whose head sits back on its shoulders had been bowed 20-60°.
+- **Hit**: the blow lands on frame 2, then the head whips back about 49° and the chest about 22°, the body is shoved
+  back, rebounds and settles in 0.45 s. The lancer's lance rocks back about 10° with the chest and swings past
+  (`WHIP`).
+- **Run**: the plate and the slime run a fifth shorter in the stride with a foot always down (`heavy` in `build`).
+- **The lancers' gear**: the lance is held 25 cm up its shaft, so the bell rides at the belt, and the tower shield
+  hangs at the side, so the body shows to the game camera. Their takes ease the lance from upright to level over a
+  third of a second (`LKS` in `moves.py`). The charge is its own take: a run-jump cut to a bound (`bound`: a third
+  of the lift, which is the take's `rise`), ended just after it lands, before the squat, with the lance raised 12°
+  (`lift`; it measures about 16° above the horizon in the game) so its point meets a foe's chest and not the floor.
+- **Takes that leave the tile** start and end on it: `_travel` measures the travel from the tile, not from where the
+  clip began, because the run-jump is cut from after a run-up.
+- **The slime lord's blow** is an overhead smash.
+- **lancer_f** stands 1.94.
+
+Scores, veteran / up-and-comer:
+- Slime lords (m, f):
+  - round 1: 5, 6 / 5, 6;
+  - round 2: 7, 8 / 7, 8, both approving.
+- Lancers (m, f):
+  - round 1: 6, 5 / 6, 5;
+  - round 2: 7, 6 / 7, 6;
+  - round 3: 8, 7, the veteran approving / 7, 6, the up-and-comer holding one MUST.
+
+The up-and-comer's MUST was that the charge's lance pointed at the floor. It was fixed after the last round, as was
+the pauldron T both critics flagged. The SHOULDs left open are listed in `tools/build/review/b9crit/r3/verdicts.md`
+and `r2/verdicts.md`.
 
 ### Looking at a model in the running game
 
