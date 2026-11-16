@@ -310,11 +310,11 @@ i.role.big { width: 44px; height: 44px; padding: 10px; background: var(--k-medal
 .ubar i { display: block; height: 4px; background: var(--k-life) 0 50% / auto 100% repeat-x; filter: hue-rotate(112deg) saturate(.9) brightness(1.15); }
 .ubar.foe i { background-image: var(--k-foe); filter: none; }
 .ubar b { display: block; height: 2px; background: var(--k-mana) 0 50% / auto 100% repeat-x; }
-.bt-result { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(520px, 92vw); padding: 14px 18px; text-align: center; display: none; pointer-events: auto !important; }
+.bt-result { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(360px, 90vw); max-height: calc(100% - 24px); overflow-y: auto; padding: 8px 14px 10px; text-align: left; font-size: .86rem; display: none; pointer-events: auto !important; }
 .bt-result.show { display: block; animation: rise .4s ease-out; }
-.bt-result h2 { color: var(--gold-lt); font-size: 1.6rem; } .bt-result .sub { font-style: italic; color: var(--dim); margin: 2px 0 12px; }
-.bt-result .sub::after { content: ''; display: block; height: 8px; width: 70%; margin: 6px auto 0; background: var(--k-rule) center / 100% 100% no-repeat; }
-.bt-result p { margin: 6px 0; } .bt-result .btn { margin-top: 12px; min-width: 160px; }
+.bt-result h3 { margin: 0 0 4px; font: 700 .8rem var(--font-head); letter-spacing: .08em; text-transform: uppercase; color: var(--gold-lt); }
+.bt-result p { margin: 4px 0; } .bt-result .btn { display: block; margin: 8px auto 0; min-width: 120px; font-size: .86rem; }
+.bt-result .mvp { justify-content: flex-start; margin: 6px 0 2px; } .bt-result .mvp span { font-size: .78rem; padding: 1px 7px; }
 
 /* ---- the fight's running account (src/ui/combatlog.js): a framed window, resized by its corner; the gear sets letter size and shade */
 .bt-log { position: absolute; left: 190px; bottom: 16px; width: 470px; z-index: 3; display: flex; flex-direction: column; pointer-events: auto !important;
@@ -380,16 +380,16 @@ i.role.big { width: 44px; height: 44px; padding: 10px; background: var(--k-medal
 .float2.dw.lvl .wd { --wc: #ffe27a; font-size: clamp(20px, 3.2vmin, 34px); letter-spacing: .12em; text-transform: uppercase; }
 
 /* ---- the skill's name along the top, Final Fantasy Tactics fashion ---- */
-.sk-ban { position: absolute; left: 50%; top: 128px; z-index: 5; min-width: min(300px, 80vw); padding: 7px 44px 9px; text-align: center; translate: -50% 0;
-          background: linear-gradient(90deg, transparent, rgba(8, 5, 3, .92) 16%, rgba(8, 5, 3, .92) 84%, transparent); animation: ban-in .34s cubic-bezier(.2, 1.4, .4, 1) both; }
-.sk-ban::before, .sk-ban::after { content: ''; position: absolute; left: 6%; right: 6%; height: 2px; background: linear-gradient(90deg, transparent, var(--el), #fff, var(--el), transparent); box-shadow: 0 0 10px var(--el); }
+.sk-ban { position: absolute; left: 50%; top: 128px; z-index: 9; padding: 3px 18px 4px; text-align: center; white-space: nowrap; translate: -50% calc(-100% - 10px); pointer-events: none;
+          background: linear-gradient(90deg, transparent, rgba(8, 5, 3, .88) 18%, rgba(8, 5, 3, .88) 82%, transparent); animation: ban-in .3s cubic-bezier(.2, 1.4, .4, 1) both; }
+.sk-ban::before, .sk-ban::after { content: ''; position: absolute; left: 8%; right: 8%; height: 1px; background: linear-gradient(90deg, transparent, var(--el), #fff, var(--el), transparent); box-shadow: 0 0 6px var(--el); }
 .sk-ban::before { top: 0; } .sk-ban::after { bottom: 0; }
-.sk-ban small { display: block; font: 700 11px var(--font-head); letter-spacing: .24em; text-transform: uppercase; text-shadow: 0 1px 2px #000; }
-.sk-ban b { display: block; font: 900 clamp(20px, 3.3vmin, 34px) var(--font-head); letter-spacing: .07em; color: #fff; text-shadow: 0 0 14px var(--el), 0 0 4px var(--el), 0 2px 0 #000; }
-.sk-ban.foe b { color: #ffe0d6; } .sk-ban.ult b { font-size: clamp(24px, 4.2vmin, 44px); }
+.sk-ban small { display: block; font: 700 8px var(--font-head); letter-spacing: .2em; text-transform: uppercase; text-shadow: 0 1px 2px #000; }
+.sk-ban b { display: block; font: 900 clamp(13px, 1.9vmin, 18px) var(--font-head); letter-spacing: .06em; color: #fff; text-shadow: 0 0 10px var(--el), 0 0 3px var(--el), 0 2px 0 #000; }
+.sk-ban.foe b { color: #ffe0d6; } .sk-ban.ult b { font-size: clamp(15px, 2.3vmin, 22px); }
 .sk-ban.out { animation: ban-out .5s ease-in forwards; }
-@keyframes ban-in { 0% { opacity: 0; scale: .2 1; letter-spacing: .5em; } 100% { opacity: 1; scale: 1; } }
-@keyframes ban-out { to { opacity: 0; translate: -50% -12px; } }
+@keyframes ban-in { 0% { opacity: 0; scale: .2 1; letter-spacing: .4em; } 100% { opacity: 1; scale: 1; } }
+@keyframes ban-out { to { opacity: 0; translate: -50% calc(-100% - 24px); } }
 
 /* ---- a class's last skills: a band across the screen with the name on it ---- */
 .cutin { position: absolute; inset: 0; z-index: 6; overflow: hidden; pointer-events: none; }
@@ -478,8 +478,6 @@ i.role.big { width: 44px; height: 44px; padding: 10px; background: var(--k-medal
   .bt-btn.go { font-size: .9rem; }
   .bt-hint { font-size: .76rem; line-height: 1.25; padding: 3px 8px; }
   .bt-info { left: var(--sl); top: auto; bottom: var(--sb); z-index: 4; font-size: .74rem; line-height: 1.3; padding: 3px 8px; }
-  .bt-result { max-height: calc(100% - 16px); overflow-y: auto; padding: 8px 12px; }
-  .bt-result h2 { font-size: 1.3rem; }
   .ci-text { right: 8%; }
 }
 /* upright: the menu at the foot on the right, what was tapped at the foot on the left */
@@ -488,7 +486,6 @@ i.role.big { width: 44px; height: 44px; padding: 10px; background: var(--k-medal
   #toasts { left: auto; right: var(--sr); transform: none; width: calc(100% - var(--sl) - 104px); top: calc(var(--st) + 50px); }
   .bt-menu { width: 158px; top: auto; bottom: var(--sb); transform: none; max-height: 54vh; }
   .bt-info { max-width: calc(100% - 180px); }
-  .sk-ban { top: 30%; }
 }
 /* on its side: the menu down the right from under the top row, the log no wider than half the screen */
 @media (max-height: 520px) and (orientation: landscape) {
@@ -496,6 +493,5 @@ i.role.big { width: 44px; height: 44px; padding: 10px; background: var(--k-medal
   .bt-menu { width: 176px; top: calc(var(--st) + 46px); transform: none; max-height: calc(100% - var(--st) - var(--sb) - 46px); }
   .bt-log { right: auto; width: min(420px, 50vw); }
   .bt-info { max-width: min(340px, calc(100% - 200px)); }
-  .sk-ban { top: 18%; }
   #prompt { bottom: calc(var(--sb) + 8px); max-width: calc(100% - 300px); }
 }

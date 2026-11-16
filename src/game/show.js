@@ -200,7 +200,7 @@ export class Show {
   // after: let the world have its light back
   end() { this.fx.dim(0); this.fx.zoom(1, 4); this.b.camAt = null; }
 
-  // The skill's name, Final Fantasy Tactics fashion, along the top.
+  // The skill's name, Final Fantasy Tactics fashion, over the head of whoever is using it.
   banner(u, sk, L) {
     const hud = this.b.hud;
     hud.querySelector('.sk-ban')?.remove();
@@ -208,6 +208,7 @@ export class Show {
     const b = el('div', 'sk-ban ' + (u.side === 'foe' ? 'foe' : 'ally') + (L.big >= 2 ? ' ult' : ''), `<small style="color:${u.color}">${esc(u.name)}</small><b>${esc(sk.name)}</b>`);
     b.style.setProperty('--el', hex);
     hud.append(b);
+    this.ban = { b, u }; // battle.js keeps it over their head
     this.b.later(() => b.classList.add('out'), 1500);
     this.b.later(() => b.remove(), 2100);
   }

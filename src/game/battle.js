@@ -1001,16 +1001,16 @@ export class Battle {
     st.stats.fights++;
     this.report = { how, kind: this.goal.kind, lords: this.slain.filter((u) => u.lord).map((u) => u.zdef.id), rivals: this.slain.filter((u) => u.rival).map((u) => u.id), where };
     for (const u of heroes) { u.hero.hp = u.alive ? u.hp : 0; if (!u.rage) u.hero.mp = u.mp; }
-    let title, sub, hold = 0;
+    let sub, hold = 0;
     if (how === 'win' || how === 'apart') {
       if (how === 'win') {
-        sfx.win(); music.stinger('triumph'); title = 'The dead lie still'; sub = `${this.slain.length} put down`;
+        sfx.win(); music.stinger('triumph'); sub = `Won · ${this.slain.length} put down`;
         this.r.fx.stop(0.18); this.r.fx.flash('#fff3d0', 0.45); this.show.end();
-        this.show.splash('Victory', sub, 'win'); hold = 1300;
+        this.show.splash('Victory', `${this.slain.length} put down`, 'win'); hold = 1300;
         for (const u of heroes) if (u.alive) { setRest(u.model, 'idle'); setAnim(u.model, 'cheer'); this.show.cheer(u); }
       } else {
         // a stalemate (see stalemate): what was put down still counts, and nobody is stood back up for free
-        sfx.sheath(); this.show.end(); title = 'No way across'; sub = 'The dead will keep';
+        sfx.sheath(); this.show.end(); sub = 'No way across';
         lines.push('Neither side could get at the other. You leave them standing where they are. They were not going anywhere.');
       }
       let gold = 0; const got = [];
@@ -1043,7 +1043,7 @@ export class Battle {
       if (who) { const w = HEROES[who.hero.heroId].win; lines.push(`<i>“${esc(w[Math.floor(Math.random() * w.length)])}”</i> — ${esc(who.name)}`); }
       this.say(how === 'win' ? `<b>The dead lie still.</b> ${this.xp} experience, ${gold} gold.` : '<b>Nobody can get at anybody.</b> You leave them to it.', 'sys');
     } else if (how === 'lose') {
-      sfx.lose(); music.stinger('fell'); title = 'The pines keep what they take'; sub = 'You wake at The Last Toll';
+      sfx.lose(); music.stinger('fell'); sub = 'Lost · you wake at The Last Toll';
       this.show.end();
       const lost = Math.round(st.gold * 0.2); st.gold -= lost; st.stats.lost++;
       // whichever of them did the most of it has a score with the party now (main.js makes it a rival)
@@ -1051,8 +1051,9 @@ export class Battle {
       if (killer) this.report.killer = { id: killer.id, kind: killer.zdef.id, lvl: killer.lvl, x: killer.foe.hx ?? killer.x, z: killer.foe.hz ?? killer.z, rival: killer.rival, lord: !!killer.lord };
       note(st, 'loss', `Lost to ${names(this.units.filter((u) => u.side === 'foe' && u.alive)) || 'the dead'} ${where}. Carried back to The Last Toll, ${lost} gold the lighter.`);
       lines.push(`Somebody carried you back to the Hollow. It cost you <b>${lost}</b> gold and most of your pride.`);
-    } else { sfx.sheath(); this.show.end(); note(st, 'fight', `Ran from a fight ${where}.`); title = 'You run'; sub = 'The dead do not hurry'; lines.push('You get clear. They are still standing where you left them.'); }
-    this.resultEl.innerHTML = `<h2>${title}</h2><p class="sub">${sub}</p>${lines.map((l) => `<p>${l}</p>`).join('')}`;
+    } else { sfx.sheath(); this.show.end(); note(st, 'fight', `Ran from a fight ${where}.`); sub = 'You run'; lines.push('You get clear. They are still standing where you left them.'); }
+    // a small window with what happened, not a title card
+    this.resultEl.innerHTML = `<h3>${esc(sub)}</h3>${lines.map((l) => `<p>${l}</p>`).join('')}`;
     const b = el('button', 'btn', 'Continue');
     const done = () => { if (this.closed) return; this.closed = true; this.close(how); };
     b.onclick = done; this.resultEl.append(b);
@@ -1060,6 +1061,7 @@ export class Battle {
     if (st.auto) setTimeout(done, 2200 + hold);
   }
   close(how) {
+    this.r.shift = 0;
     this.show.clear();
     for (const u of this.units) if (u.model.userData.wyrmBase) u.model.scale.setScalar(u.model.userData.wyrmBase);
     for (const u of this.units) if (u.side === 'party') { sleep(u.model); this.r.units.remove(u.model); }
@@ -1141,6 +1143,11 @@ export class Battle {
     const a = this.active, mode = this.sel.mode;
     const focus = this.camAt ? this.camAt : (mode === 'target' || mode === 'move' || mode === 'place' || mode === 'menu') && this.cursor ? { x: this.cursor.x, y: this.w.y(this.cursor.x, this.cursor.z), z: this.cursor.z } : a ? a.model.position : this.origin;
     this.r.follow(focus.x, focus.y || 0, focus.z, cam * (this.camAt ? 1.4 : 0.6));
+    // whoever is moving or swinging sits a quarter of the screen down, under their skill's name
+    const low = !this.camAt && focus === a?.model.position && mode !== 'over' ? 0.25 : 0;
+    this.r.shift += (low - this.r.shift) * (1 - Math.exp(-cam * 4));
+    const ban = this.show.ban;
+    if (ban?.b.isConnected) { const m = ban.u.model, p = this.r.project(m.position.x, m.position.y + (m.userData.height || 1.5) + 0.12, m.position.z); ban.b.style.left = p.x + 'px'; ban.b.style.top = p.y + 'px'; }
     if (this.cursor && mode !== 'wait' && mode !== 'over') this.r.setCursor(this.cursor.x, this.cursor.z); else this.r.setCursor(null);
     if (a && a.alive && mode !== 'place' && mode !== 'over') this.r.setTurnRing(Math.round(a.model.position.x), Math.round(a.model.position.z));
     this.r.updateFade(this.units.filter((u) => u.alive).map((u) => ({ x: u.model.position.x, z: u.model.position.z, y: u.model.position.y })), this.b);

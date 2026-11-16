@@ -10,7 +10,7 @@ import { Edges } from '../gfx/outline.js';
 import { buildGround, settleRepeats, noiseTexture } from './ground.js';
 import { buildScatter, buildShadows, treeKind } from './scatter.js';
 
-const CAM = new THREE.Vector3(20, 16.5, 20);  // the camera's offset from what it looks at
+const CAM = new THREE.Vector3(20, 16.5, 20), UP = new THREE.Vector3();  // the camera's offset from what it looks at
 const RISE = CAM.y / CAM.x;                    // how fast a ray toward the camera climbs per tile of x and z
 
 // The crypt's stone and bone (bm's catacomb textures, assets/tex/crypt), and how many tiles one repeat covers.
@@ -249,6 +249,7 @@ export class Renderer {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x07060a);
     this.zoom = 11; // world units of height on screen
+    this.shift = 0; // a fight puts whoever is acting a quarter of the screen below the middle
     this.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
     this.target = new THREE.Vector3(world.start.x, 0, world.start.z);
     this.loader = new THREE.TextureLoader();
@@ -1006,6 +1007,8 @@ export class Renderer {
   render() {
     this.cam.position.copy(this.target).add(CAM);
     this.cam.lookAt(this.target);
+    // shift: slide the view so what it looks at sits that fraction of the screen below the middle
+    if (this.shift) { this.cam.updateMatrixWorld(); this.cam.position.addScaledVector(UP.setFromMatrixColumn(this.cam.matrixWorld, 1), this.shift * (this.cam.top - this.cam.bottom)); }
     this.cam.updateMatrixWorld();
     this.edges.update();
     this.placeHoles();
