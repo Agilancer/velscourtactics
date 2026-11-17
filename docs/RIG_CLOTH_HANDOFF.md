@@ -51,45 +51,88 @@ The brief they get is [docs/rig/critic_brief.md](rig/critic_brief.md). Round 1's
   it is a hollow gown), `leg_free2`, `cloth_plan`, `cloth_build`, `cloth_def` and `cloth(key)`. They are written but
   **not yet run on any figure**.
 
-## Running now: round 2, all 67 figures
+## Round 2 (2026-11-17): done, reviewed
 
-Started in Blender on a timer: `refit()` plus shots for every figure.
+All 67 refit cleanly (`tools/build/rig/refit2/notes.json`, saved; no errors). The 63 originals (the old lancers and
+slime lords left out: batch 9 replaced them) and the 28 batch-9 recruits went to both critics in seven groups:
 
-- Notes: `tools/build/rig/refit2/notes.json`. Shots: `tools/build/rig/r2/{rest,motion}`.
-- About 40 s a figure, so roughly 50 minutes in all. At handoff time it was 5 figures in.
-- When it finishes, a watcher saves the .blend and writes `tools/build/rig/refit2/SAVED.txt`. **Until that file exists,
-  leave Blender alone**: a Blender MCP call is refused while the timer runs (it times out).
-- Check it: every key in notes.json, with no `error` field. Scan `moved_cm` for anything over about 15 cm. One to look
-  at already: arcane_sorcerer_f's LeftLeg moved 25.5 cm, put "in its leg (r 2.5 cm)", which is likely a fold of the
-  skirt taken for a leg.
-- If Blender was closed before SAVED.txt appeared, run the queue again (below) on what notes.json lacks.
+- A-E: the originals, cards in `tools/build/rig/r2/cards`.
+- F-G: the recruits, cards in `tools/build/rig/r9/cards`.
+
+The reviews, the round-2 brief and `tally.txt` are in [docs/rig/r2/](rig/r2/).
+
+**Both critics passed 21 of 91:**
+- 18 of the originals: barbarian_f, barbarian_m, bard_m, carrion_witch_f, death_knight_f, death_knight_m,
+  dragon_knight_f, dragoon_m, gunner_f, gunner_m, ismene, jamie, lily, maudlin, zombie_dryking, zombie_leechmother,
+  zombie_rimewalker, zombie_warden;
+- 3 recruits: nell, perkin, prudence.
+
+The joints themselves mostly landed. The floats, spines, mirroring and round 1's head pivots are fixed. Most of the
+failures are in the motion, and nearly all of them come from a few shared causes.
+
+## Round 3: the fixes, written, not yet run (branch `feat/rig-r3`)
+
+**Motion (tools/blender/retarget.py):**
+- **The right foot rides high in every attack (all 91).** `crouch()` bends the knees toward the library's
+  spell-cast stance, which has one foot forward. The lance `jab()` takes a lunge. Grounding the lowest foot leaves the
+  other in the air, up to 40 cm in Thrust. New `plant()` is a two-bone solve that sets each lifted or sunk foot flat on
+  the floor and keeps the stance. It runs in `crouch()`, `jab()` and `blow()`, but not in the dead's stride.
+- **Heads drop 15-55° in the Walk and Run, and the ghoul's goes 35° back.** Main's `upright()` (from the batch-9
+  critics) came after round 2's shots. It now works both ways, and runs on `blow()` too.
+- **Shoulders shrug to the ears in the Walk and Run.** The collarbones are kept near the idle's (`calm`).
+- **The Run bounds 20-33 cm.** `fly(p, 0.4)` keeps 40% of the flight. The arms' back-swing is taken down 30%.
+- **Heels and toes go through the floor (the dead's walk, push-offs).** `lowest()` and `ground()` now count each
+  sole's heel and toe tip (`SOLE`), not only the joints.
+- **Toe blades.** The toes bend at most `TOE` = 35° in every written clip.
+- **Lisandra floats 6-13 cm.** Her own clips (`retarget(src, name=...)`) now get the same `lift` as `grab()`.
+
+**Joints and weights (tools/blender/rigfix.py):**
+- **Knees on robe panels** (necromancer_m 18 cm forward, both arcane sorcerers, carrion_witch_m 5 cm in): every knee
+  is kept 1.5-3.5% of stature forward of its hip-ankle line and within 2% to either side.
+- **Shoulders too far in or out** (gunnar, bertram, totem_master_m, zombie brute, slagback, warden, leechmother):
+  - each is put on the upper arm's own centreline, from two cuts across the arm, at the shoulder's height;
+  - default shoulder height is 0.79 (bm's), which lengthens the short upper arms;
+  - mirroring now also scores the shoulder's height (the abbess kept the low side).
+- **Elbows in a cloak, or moved out of the arm** (brakka, driftling): each elbow is centred in its arm before the
+  sides are mirrored, and again after being moved down the arm.
+- **The neck in front of the head pivot** (dragon_knight_m, homunculus): the neck is never more than 0.5% forward of
+  the head.
+- **Toe spikes and boots stretching** (skeleton, slinger, slagback, stoker, lurker, shambler, drowner, cinder,
+  bonesack, ghoul, boomerang_knight_m, flint, dragoon_f), **and Soraya's welded boots**:
+  - everything in a foot's zone (below the ankle, near the sole) is weighted to that foot alone, nothing else;
+  - the toe blend is 3 cm;
+  - these weights are left out of the smoothing.
+- **Per figure (`OVER`):**
+  - slagback: no longer pulled in;
+  - head pivots back: gunnar 7 cm, hakon 3.5, carrion_witch_m 7.5;
+  - arcane_sorcerer_m: wrists out 9 cm;
+  - skeleton: feet 4 cm out to the bones.
+- **The slinger's bony ankles** count as a foot that shows (a thinner shaft is accepted).
+- **`review()` shoots no Run for the dead.** They never run in the game: their Run is dropped from what they export.
+
+**To run it (needs Blender with the MCP server started):**
+1. Open the b9crit copy, `v2 ornate - rigfix b9crit.blend`. It is the working file plus the four class bodies'
+   critic fixes.
+2. Copy the .blend aside first.
+3. Load the tools from this branch's checkout: set `NS['ROOT']` to it, then exec `tools/blender/queue.py`.
+4. Queue every figure except lancer_m/f and slime_lord_m/f (they passed their own rounds):
+   `NS['q3_start'](keys, 'r3', 'refit3')`.
+5. Then `python tools/rigsheet.py r3 --cards`, and run critic round 3 on all seven groups with a round-3 brief.
+6. **Rebake the recruits' Mixamo banks (`moves.make`) after the refit, then export.**
+
+**Left for the remake list unless round 3 says otherwise:**
+- zombie_bonesack's head, modelled tipped back 30°;
+- dragon_knight_m's tail;
+- zombie_lurker's moss strands;
+- Strum playing a lute that stays slung on the back (bertram, halvard): gear, not rig;
+- the rangers' dead bow draw (sigrun, sorrel, ximena): the elbow stays straight at full draw, a fix for `bow()` in
+  retarget.py;
+- marigold's quiver skinned to the right thigh.
 
 ## What is left, in order
 
-1. **Round 2 cards and critics.** `python tools/rigsheet.py r2 --cards` makes one card per figure in
-   tools/build/rig/r2/cards. Split the figures into the same five groups as round 1:
-   - A: arcane_sorcerer … dragon_knight
-   - B: dragoon … lily
-   - C: lisandra … stevie
-   - D: totem_master … zombie_gnawer
-   - E: the rest of the dead
-
-   Give each group to both critics with the brief, plus the round-1 review of that group, so they can say what got
-   better. Save the reviews to docs/rig/r2/.
-2. **Fix and do round 3.**
-   - Head pivots and arms go in `OVER`; systematic faults go in `polish()`.
-   - Requeue only the figures that failed: `NS['q3_start'](failed, 'r3', 'refit3')`.
-   - Then cards and critics as in step 1.
-   - **The round-1 faults not yet handled:**
-     - Toes and forefeet stretching into spikes (zombie slagback, stoker, slinger, lurker, shambler). Give the foot
-       rigid weights, with a 2-3 cm blend at the ball, in `reweight_legs`.
-     - zombie_bonesack's head is modelled tipped back 30°: re-pose the rest.
-     - In attack clips the right foot rides 1.5-2.5 cm above the left, toe up about 6°: the calibration.
-     - The Roar lifts the right foot.
-     - zombie_lurker: a left heel spike, and moss strands that ride the legs.
-     - dragon_knight_m's tail rides the legs (weight it to Hips and Spine only, or make it cloth).
-     - On bare feet the ball is 2-3 cm behind the toe crease.
-     - On the big booted dead the ankles are 2-4 cm high.
+1. **Round 3:** run the above, then cards and critics.
+2. **Fix what round 3 finds**, with another rig round if it needs one.
 3. **Cloth (only after the rigs pass).**
    1. Run `NS['cloth'](key)` for each figure. It writes `tools/build/rig/cloth/<key>.json`, or returns None where the
       legs are fully there. Likely cloth figures: the gowned and robed ones, e.g. maudlin, lisandra, lily, wizard_f/m,

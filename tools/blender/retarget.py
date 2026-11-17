@@ -50,6 +50,7 @@ def arm_pose(arm, action, f):
 
 
 class Target:
+    TOE = 35                                               # degrees the toes may bend on the foot (write)
     def __init__(self, key, glb):
         self.key = key
         before = set(bpy.data.objects); acts = set(bpy.data.actions)
@@ -158,6 +159,10 @@ class Target:
     def write(self, name, keys):
         held = getattr(self, 'held', None)                   # the hands turned to point what they hold (see hold)
         if held and not name.startswith('M_'): keys = [(f, held(name, i, len(keys), p)) for i, (f, p) in enumerate(keys)]
+        # the toes bend at most TOE degrees on the foot: past that a boot's front or a long bare foot, skinned across the
+        # ball, folds back into a blade (the critics' toe spikes, worst at a run's push-off)
+        toes = set() if name.startswith('M_') else {'mixamorig:LeftToeBase', 'mixamorig:RightToeBase'}
+        lim = math.radians(self.TOE)
         name = self.n(name)
         old = bpy.data.actions.get(name)
         if old: bpy.data.actions.remove(old)
@@ -168,6 +173,10 @@ class Target:
             for pb in self.arm.pose.bones:
                 if pb.name not in pose: continue
                 q, l = pose[pb.name]; q = q.copy()
+                if pb.name in toes:
+                    if q.w < 0: q.negate()
+                    ang = 2 * math.acos(min(1.0, q.w))
+                    if ang > lim: q = Quaternion().slerp(q, lim / ang)
                 if pb.name in prev and prev[pb.name].dot(q) < 0: q.negate()
                 prev[pb.name] = q
                 pb.rotation_quaternion = q; pb.keyframe_insert('rotation_quaternion', frame=f)
@@ -178,7 +187,11 @@ class Target:
     def retarget(self, src, step=2, name=None):
         """A library clip sent through whole: as M_<src> (a source to compose from), or under a name of its own."""
         a = bpy.data.actions[src]; f0, f1 = a.frame_range; k = max(1, round((f1 - f0) / step))
-        return self.write(name or 'M_' + src, [(round(i * (f1 - f0) / k, 2), self.convert(arm_pose(LIB, src, f0 + i * (f1 - f0) / k))) for i in range(k + 1)])
+        keys = [(round(i * (f1 - f0) / k, 2), self.convert(arm_pose(LIB, src, f0 + i * (f1 - f0) / k))) for i in range(k + 1)]
+        if name and getattr(self, 'lift', 0):              # a clip of the figure's own set down on its floor, as grab does
+            up = self.restQ[H].inverted() @ (self.Z * self.lift)
+            keys = [(f, {**p, H: (p[H][0], p[H][1] + up)}) for f, p in keys]
+        return self.write(name or 'M_' + src, keys)
 
     # ---- composing ----
     def grab(self, action, f):
@@ -226,6 +239,18 @@ class Target:
         # every clip made from it hovers. So every library pose is set down by the difference (grab), the idle again.
         self.rest_z = {n: bl[n].head_local.dot(self.Z) for n in self.FEET}
         self.floor = min(self.rest_z.values())
+        # The soles' heel and toe tip, carried by the Foot and the ToeBase: grounded by its joints alone, a heel strike or
+        # a toe-off goes through the floor (the boot reaches past them). Each at the floor's height at rest.
+        self.SOLE = []
+        for s in ('Left', 'Right'):
+            fn, tn = 'mixamorig:%sFoot' % s, 'mixamorig:%sToeBase' % s
+            a, b = bl[fn].head_local, bl[tn].head_local
+            f = (b - a) - self.Z * (b - a).dot(self.Z); ln = f.length
+            if ln < 1e-4: continue
+            f = f / ln
+            heel, tip = a - f * 0.3 * ln, b + f * 0.6 * ln
+            heel += self.Z * (self.floor - heel.dot(self.Z)); tip += self.Z * (self.floor - tip.dot(self.Z))
+            self.SOLE += [(fn, self.restQ[fn].inverted() @ (heel - a)), (tn, self.restQ[tn].inverted() @ (tip - b))]
         if not getattr(self, 'lift', 0) and hasattr(self, 'I0') and bpy.data.actions.get(self.n('M_Idle_02')):
             self.lift = self.floor - self.lowest(self.I0)
             if abs(self.lift) > 1e-4:
@@ -243,11 +268,49 @@ class Target:
         return Q, X
 
     def lowest(self, p):
-        return min(x.dot(self.Z) for n, x in self.fk(p)[1].items() if n in self.FEET)
+        """The lowest of the feet's joints and the soles' heels and toe tips (SOLE)."""
+        Q, X = self.fk(p)
+        z = [X[n].dot(self.Z) for n in self.FEET]
+        z += [(X[n] + Q[n] @ o).dot(self.Z) for n, o in getattr(self, 'SOLE', ())]
+        return min(z)
 
     def ground(self, p):
         """The root raised or lowered so the lowest foot is on the floor again (after bending the knees)."""
         q, l = p[H]; p = dict(p); p[H] = (q, l + self.restQ[H].inverted() @ (self.Z * (self.floor - self.lowest(p)))); return p
+
+    def fly(self, p, k):
+        """A run's flight cut to k of itself: the root lowered so the lowest foot is k as far off the floor as it was (a
+        foot on the floor stays on it; one through it comes up). bm's jog bounds 20-27 cm in the air on these bodies."""
+        lo = self.lowest(p) - self.floor; dz = -lo if lo < 0 else (k - 1) * lo
+        q, l = p[H]; p = dict(p); p[H] = (q, l + self.restQ[H].inverted() @ (self.Z * dz)); return p
+
+    def plant(self, p, tol=0.003, high=0.2):
+        """Each foot that hangs over the floor or dips into it set flat on it where it stands, the hip kept and the knee
+        bent to reach it (two bones solved in the plane of hip, knee and ankle, the knee forward). A stance taken from
+        another body, or a lunge, leaves the back foot in the air once the lowest is grounded: the critics' "right foot
+        rides high" in every attack. A foot raised more than `high` of the height (a kick, a leap) is left as it is."""
+        for s in ('Left', 'Right'):
+            hn, kn, an, tn = ('mixamorig:%s%s' % (s, b) for b in ('UpLeg', 'Leg', 'Foot', 'ToeBase'))
+            if an not in self.rest_z or hn not in p: continue
+            Q, X = self.fk(p)
+            h = X[an].dot(self.Z) - self.rest_z[an]
+            lu = self.restQ[an].inverted() @ self.Z                        # the foot's own up, as it is at rest
+            tip = (Q[an] @ lu).angle(self.Z)
+            if h > high * self.tall or (abs(h) < tol and tip < math.radians(3)): continue
+            if tn in p: p = dict(p); p[tn] = (Quaternion(), p[tn][1])       # the toes flat on the foot
+            Qf = (Q[an] @ lu).rotation_difference(self.Z) @ Q[an]           # the foot flat, its heading kept
+            T = X[an] + self.Z * (self.rest_z[an] - X[an].dot(self.Z))
+            H0, K0, A0 = X[hn], X[kn], X[an]; a, b = (K0 - H0).length, (A0 - K0).length
+            v = T - H0; d = min(max(v.length, abs(a - b) + 1e-4), a + b - 1e-4); u = v.normalized()
+            w = (K0 - H0) - u * (K0 - H0).dot(u)
+            if w.length < 1e-3 * self.tall:
+                F = self.frame(p, H)[2]; w = F - u * F.dot(u)
+            w.normalize()
+            x = (a * a - b * b + d * d) / (2 * d); K = H0 + u * x + w * math.sqrt(max(0.0, a * a - x * x))
+            p = self.aim(p, hn, kn, (K - H0).normalized())
+            p = self.aim(p, kn, an, (H0 + u * d - K).normalized())
+            Q, _ = self.fk(p); p = self.spin(p, an, Qf @ Q[an].inverted())
+        return p
 
     def spin(self, p, n, R):
         """Bone n turned by R in armature space; what hangs from it follows."""
@@ -305,15 +368,17 @@ class Target:
         U, Lf, F = self.frame(p, b.parent.name)
         return math.degrees(math.atan2(d.dot(F), d.dot(U)))
 
-    def upright(self, p, lean):
+    def upright(self, p, lean, back=8):
         """The neck and head carried over the chest as this figure's rest carries them, give or take `lean` degrees
-        forward in all. A walk or run made on another body bows a head that sits back on its own shoulders (a slime
-        lord's, behind its belly), and the critics read that as a stoop."""
+        forward or `back` degrees back in all. A walk or run made on another body bows a head that sits back on its own
+        shoulders (a slime lord's, behind its belly), and the critics read that as a stoop; one carried forward (the
+        ghoul's, in the hump) it throws back, and the hunch is lost."""
         if not hasattr(self, 'nod0'):
             r = {n: (Quaternion(), Vector((0, 0, 0))) for n in self.order}; self.nod0 = {n: self.nod(r, n) for n in self.NECK}
         for n in self.NECK:
-            over = self.nod(p, n) - self.nod0[n] - lean / len(self.NECK)
-            if over > 0: p = self.tilt(p, [n], 'fwd', -over)
+            over = self.nod(p, n) - self.nod0[n]
+            if over > lean / len(self.NECK): p = self.tilt(p, [n], 'fwd', lean / len(self.NECK) - over)
+            elif over < -back / len(self.NECK): p = self.tilt(p, [n], 'fwd', -back / len(self.NECK) - over)
         return p
 
     # ---- held things ----
@@ -457,7 +522,9 @@ class Target:
         HR = g('M_Hit_Reaction', 20)
         back = mix(B0, HR, 0.7, RARM)
         thrust = mix(mix(B0, CROUCH, 1.0, RARM), CROUCH, 0.5, SPINE + HEAD)
-        crouch = lambda p, w: G(mix(p, CROUCH, w, LEGS))                       # knees bent, the feet kept on the floor
+        # knees bent, the feet kept on the floor: the library's crouch is a stance, one foot forward, so the foot it
+        # leaves in the air once the lowest is grounded is set down too (plant)
+        crouch = lambda p, w: self.plant(G(mix(p, CROUCH, w, LEGS)))
 
         if cls == 'lancer':
             # The lance (w_lance, 3 m) stands upright in the right fist, the forearm level before the hip; the tower shield
@@ -529,13 +596,14 @@ class Target:
             for s in SIDES:
                 ft, toe = 'mixamorig:%sFoot' % s, 'mixamorig:%sToeBase' % s
                 SQ = self.aim(leg(SQ, s, (70, 80), 120), ft, toe, (X[toe] - X[ft]).normalized())
-            crouch = lambda p, w: G(mix(p, SQ, w, LEGS))
+            crouch0 = lambda p, w: G(mix(p, SQ, w, LEGS))                      # (the stride's: a foot in the air stays there)
+            crouch = lambda p, w: self.plant(crouch0(p, w))
 
             def slump(p, sway=0, yaw=0, swing=0, knees=KN):
                 p = tl(tl(tl(p, SPINE, 'fwd', SP), SPINE, 'left', sway), SPINE, 'yaw', yaw)
                 p = tl(tl(p, NECK, 'fwd', NK), NECK, 'left', DROOP + sway)
                 for s, (th, ph, el), k in zip(SIDES, ZA, (1, -1)): p = arm(p, s, (th + swing * k, ph), el)
-                return crouch(p, knees)
+                return crouch0(p, knees)
             BI = lambda f=0: L(slump(idle(f), 1.2 * math.sin(f * 2 * math.pi / 45))); B0 = BI(0)
 
             def fling(p, k, up=25, back=60, bend=18):                          # the arms thrown out and back from where they hang
@@ -551,7 +619,7 @@ class Target:
             # the upper body from the source, the legs partly, the hips never turning
             keys = [(0, B0)]
             for i in range(n):
-                p = g(src, s0 + (s1 - s0) * i / (n - 1)); keys.append((2 + i * df, L(mix(mix(B0, p, 1.0, UP), p, legs, LEGS))))
+                p = g(src, s0 + (s1 - s0) * i / (n - 1)); keys.append((2 + i * df, L(self.plant(G(self.upright(mix(mix(B0, p, 1.0, UP), p, legs, LEGS), 12, 12))))))
             keys.append((2 + (n - 1) * df + tail, BI(2 + (n - 1) * df + tail))); W(name, keys)
 
         # ---- what every figure has (24 frames a second; a blow or a cast lands about 0.3 s in, frame 7) ----
@@ -560,14 +628,19 @@ class Target:
             # bm's heroes' walk and jog (bmclips.py): upright, a long easy stride, the back foot peeling off the floor
             # The head is held up over the chest (upright): bm's heroes carry it well forward, which on a body in plate
             # reads as a knight looking at his feet.
-            W('Walk', [(i * 2, L(self.upright(self.mx_sample('bm:Walk_Loop', i * 2 / 24), 6))) for i in range(17)])            # 1.33 s
+            # The collarbones stay near the idle's: bm's shrug, carried onto collarbones set over these shoulders, lifts
+            # pauldrons and mantles to the ears.
+            CLAV = ['mixamorig:LeftShoulder', 'mixamorig:RightShoulder']
+            calm = lambda p, k: mix(p, B0, k, [n for n in CLAV if n in p])
+            W('Walk', [(i * 2, L(calm(self.upright(self.mx_sample('bm:Walk_Loop', i * 2 / 24), 6), 0.6))) for i in range(17)])            # 1.33 s
             # The plate and the slime run heavy: a stride a fifth shorter, toward the stance, and a foot always on the
             # floor (no float with both feet up), so the hips ride the legs.
             heavy = self.key.startswith(('slime_lord', 'lancer'))
 
             def jog(t):
                 p = self.upright(self.mx_sample('bm:Jog_Fwd_Loop', t), 10)
-                return L(self.ground(mix(p, B0, 0.2, LEGS)) if heavy else p)
+                p = mix(calm(p, 0.7), B0, 0.3, ARMS)                           # the shrug and the arms' back-swing taken down
+                return L(self.ground(mix(p, B0, 0.2, LEGS)) if heavy else self.fly(p, 0.4))   # a jog, not a bound
             W('Run', [(i * 2, jog(i * (28 / 30) / 11)) for i in range(12)])  # 0.93 s in 22 frames
         else:
             W('Walk', [(i * 2, L(g('M_Walking', i * 24.8 / 12))) for i in range(13)])  # the library's walk, aligned (align)
@@ -658,7 +731,7 @@ class Target:
         def jab(name='Thrust'):                                                # drawn back at the hip, out at shoulder height
             wind = L(crouch(arm(arm(B0, 'Right', (40, -90), (95, 90)), 'Left', (40, 60), 30), 0.3))
             out = mix(B0, g('M_Attack', 37), 0.6, LEGS)
-            out = L(G(tilt(arm(arm(out, 'Right', (85, 85), (87, 88)), 'Left', (70, 70), 20), SPINE, 'fwd', 4)))
+            out = L(self.plant(G(tilt(arm(arm(out, 'Right', (85, 85), (87, 88)), 'Left', (70, 70), 20), SPINE, 'fwd', 4))))   # a lunge, both feet down
             W(name, [(0, B0), (3, wind), (7, out), (10, out), (20, BI(20))])
 
         def charge(name='Charge'):                                             # running into it, the point leading

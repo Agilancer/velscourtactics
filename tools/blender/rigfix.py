@@ -361,7 +361,7 @@ def reweight_legs(key, P, Hs=None):
     floor = P['_Left']['floor']
     def seg_d(p, a, b):
         ab = b - a; t = np.clip(((p - a) @ ab) / (ab @ ab), 0, 1); return np.linalg.norm(p - (a + np.outer(t, ab)), axis=1)
-    D = {}; NEW = {}
+    D = {}; NEW = {}; FOOT = {}
     for s in S:
         hip, kn, an, ba = (np.array(P[s + n]) for n in ('UpLeg', 'Leg', 'Foot', 'ToeBase'))
         info = P['_' + s]; fwd = np.array([*info['fwd'], 0.0]); tip = ba + fwd * 0.35 * info['len']; tip[2] = floor + 0.012 * Hs
@@ -373,20 +373,25 @@ def reweight_legs(key, P, Hs=None):
         a = smoothstep(an[2] + 0.018 * Hs, an[2] - 0.018 * Hs, z)            # 1 in the foot
         sh = smoothstep(kn[2] + 0.03 * Hs, kn[2] - 0.03 * Hs, z)             # 1 below the knee
         t = (co[:, :2] - ba[:2]) @ fwd[:2]
-        toe = smoothstep(-0.012 * Hs, 0.018 * Hs, t)                         # 1 past the ball
+        toe = smoothstep(-0.008 * Hs, 0.008 * Hs, t)                         # 1 past the ball (a 3 cm blend)
         NEW[s] = np.stack([(1 - a) * (1 - sh), (1 - a) * sh, a * (1 - toe), a * toe], 1)
+        # the foot's own zone: below the ankle (and a little over it), near the sole from heel to tip
+        FOOT[s] = (z < an[2] + 0.025 * Hs) & (np.minimum(seg_d(co, heel, ba), seg_d(co, ba, tip + fwd * 0.15 * info['len'])) < 0.07 * Hs)
     W2 = W.copy(); changed = []
     hipz = np.array(P['LeftUpLeg'])[2]
+    footz = FOOT['Left'] | FOOT['Right']
     fade = 1 - smoothstep(hipz - 0.07 * Hs, hipz, co[:, 2])              # near the hip joint the old weights stay
     for i in range(len(co)):
         tot = {s: W[i, legs[s]].sum() for s in S}
         dmin = min(D['Left'][i], D['Right'][i])
-        if tot['Left'] + tot['Right'] < 1e-3 and (dmin > 0 or fade[i] == 0): continue
+        if tot['Left'] + tot['Right'] < 1e-3 and (dmin > 0 or fade[i] == 0) and not footz[i]: continue
         row = W2[i]
         for s in S:                                                       # what it had of each leg, split anew
             if tot[s] > 0: row[legs[s]] = NEW[s][i] * tot[s]
-        if dmin < 0 and fade[i] > 0:                                      # in a leg: that leg's, the deeper the more
-            s = 'Left' if D['Left'][i] < D['Right'][i] else 'Right'
+        s = 'Left' if D['Left'][i] < D['Right'][i] else 'Right'
+        if FOOT[s][i] and fade[i] > 0:                                    # in or by a foot: that foot's alone (a boot, a claw
+            one = np.zeros_like(row); one[legs[s]] = NEW[s][i]; row[:] = one   # half on anything else stretches to a blade)
+        elif dmin < 0 and fade[i] > 0:                                    # in a leg: that leg's, the deeper the more
             k = float(smoothstep(0.0, -0.02 * Hs, D[s][i])) * fade[i]
             one = np.zeros_like(row); one[legs[s]] = NEW[s][i]
             row[:] = (1 - k) * row + k * one
@@ -400,7 +405,7 @@ def reweight_legs(key, P, Hs=None):
         W3 = W2.copy()
         for i in region:
             n = nb[i]
-            if not n: continue
+            if not n or footz[i]: continue                               # a foot's own weights stay as set
             W3[i] = 0.5 * W2[i] + 0.5 * W2[n].mean(0)
         W2 = W3
     set_weights(m, W2, region)
@@ -760,7 +765,7 @@ def polish(key, P, notes0=(), over=None):
             al = limb_loop(key, a.z + dz * Hs, np.array(a), Hs, 0.012, 0.055, side[s], mid, 0.06)
             if al is not None: break
         # lower down, a shoe that peeks out under a hem shows the foot is there (its middle is forward of the ankle)
-        found[s] = al is not None or any(limb_loop(key, floor + f * Hs, np.array(a), Hs, 0.012, 0.06, side[s], mid, 0.08) is not None for f in (0.03, 0.045))
+        found[s] = al is not None or any(limb_loop(key, floor + f * Hs, np.array(a), Hs, 0.008, 0.06, side[s], mid, 0.08) is not None for f in (0.03, 0.045, 0.06))
         if al is not None:
             d = Vector((al[0][0] - a.x, al[0][1] - a.y, 0))
             put(s + 'Foot', a + d, 'in the boot shaft (r %.1f cm)' % (al[1] * 100))
@@ -788,6 +793,16 @@ def polish(key, P, notes0=(), over=None):
         if kfound[s]: continue
         fw =Vector((*P.get('_' + s, {}).get('fwd', (0.0, -1.0)), 0.0))
         t = (h.z - k.z) / max(1e-6, h.z - a.z); put(s + 'Leg', h + (a - h) * t + fw * 0.02 * Hs, 'on the line, 2% forward (hidden)')
+    for s in S:                                                        # every knee near its leg's line: 1.5-3.5% forward, 2% aside
+        h, k, a = cur(s + 'UpLeg'), cur(s + 'Leg'), cur(s + 'Foot')
+        fw = Vector((*P.get('_' + s, {}).get('fwd', (0.0, -1.0)), 0.0)); fw.z = 0
+        if fw.length < 1e-6: continue
+        fw.normalize(); lat = Vector((-fw.y, fw.x, 0.0))
+        t = (h.z - k.z) / max(1e-6, h.z - a.z); line = h + (a - h) * t; off = k - line
+        f0, l0 = off.dot(fw), off.dot(lat)
+        f1, l1 = min(max(f0, 0.015 * Hs), 0.035 * Hs), min(max(l0, -0.02 * Hs), 0.02 * Hs)
+        if abs(f1 - f0) + abs(l1 - l0) > 0.003 * Hs:
+            put(s + 'Leg', line + fw * f1 + lat * l1 + Vector((0, 0, off.z)), 'near its leg line (%.1f cm ahead, %.1f aside)' % (f1 * 100, l1 * 100))
     # -- the hips between the hip joints
     hy = (cur('LeftUpLeg').y + cur('RightUpLeg').y) / 2; hz = (cur('LeftUpLeg').z + cur('RightUpLeg').z) / 2
     h = cur('Hips')
@@ -821,10 +836,19 @@ def polish(key, P, notes0=(), over=None):
         return (1 - t) ** 2 * y0 + 2 * (1 - t) * t * y0 + t * t * y2
     for n, z in zip(('Spine', 'Spine1', 'Spine2', 'Neck'), zs + [nk.z]):
         put(n, Vector((mid, y_at(z), z)), 'on the line from the hips to the head')
+    nk, hd = cur('Neck'), cur('Head')                                  # never in front of the head pivot (it bows the head)
+    if nk.y < hd.y - 0.005 * Hs: put('Neck', Vector((nk.x, hd.y - 0.005 * Hs, nk.z)), 'not in front of the head')
     # -- the arms
-    zt = over.get('shoulder_z', 0.778) * Hs
+    zt = over.get('shoulder_z', 0.79) * Hs                             # bm's shoulder joints: 0.787-0.796
     cy = cur('Spine2').y                                               # the chest's depth (a hunched body's shoulders are forward of its hips)
     plaus = lambda A: 0.075 * Hs <= abs(A.x - mid) <= 0.14 * Hs and abs(A.y - cy) < 0.08 * Hs
+
+    def centre_elbow(s):                                               # the elbow in the middle of its arm, at its height
+        E = cur(s + 'ForeArm'); el = limb_loop(key, E.z, np.array(E), Hs, 0.012, 0.05, side[s], mid, 0.05)
+        if el is None: return E
+        c = Vector((el[0][0], el[0][1], E.z))
+        if 0.01 * Hs < (c - E).length < 0.08 * Hs: put(s + 'ForeArm', c, 'in its arm (r %.1f cm)' % (el[1] * 100))
+        return cur(s + 'ForeArm')
     for s in S:
         A, E, W = cur(s + 'Arm'), cur(s + 'ForeArm'), cur(s + 'Hand')
         if not plaus(A):                                               # from the elbow, an upper arm's length in
@@ -834,6 +858,20 @@ def polish(key, P, notes0=(), over=None):
             put(s + 'Arm', Vector((x, E.y, min(zt, A.z))), 'from the elbow (was off the shoulder)')
         elif A.z > zt + 0.004 * Hs:                                    # down the arm's own line to the arm root
             u = (A - E).normalized(); na = A - u * ((A.z - zt) / max(0.3, u.z)); put(s + 'Arm', na, 'down to the arm root')
+        # the upper arm's own centreline, from two cuts across it between the elbow and the shoulder: where it meets the
+        # shoulder's height is the joint (under a pauldron's middle; not on its rim, nor in the chest of a broad body)
+        A, E = cur(s + 'Arm'), centre_elbow(s)
+        if A.z - E.z > 0.06 * Hs and not over.get('shoulder_keep'):
+            cs = []
+            for f in (0.3, 0.55):
+                z = E.z + (A.z - E.z) * f; q = E + (A - E) * f
+                L_ = limb_loop(key, z, np.array(q), Hs, 0.015, 0.065, side[s], mid, 0.05)
+                if L_ is None: break
+                cs.append(Vector((L_[0][0], L_[0][1], z)))
+            if len(cs) == 2 and cs[1].z - cs[0].z > 1e-4:
+                u = cs[1] - cs[0]; na = cs[1] + u * ((A.z - cs[1].z) / u.z)
+                if 0.075 * Hs <= abs(na.x - mid) <= 0.15 * Hs and 0.015 * Hs < (na - A).length < 0.12 * Hs:
+                    put(s + 'Arm', na, "on the upper arm's line")
         A, E = cur(s + 'Arm'), cur(s + 'ForeArm')
         if abs(A.y - E.y) > 0.012 * Hs:                                # an arm hangs to the side: the shoulder over the elbow
             put(s + 'Arm', Vector((A.x, E.y + math.copysign(0.012 * Hs, A.y - E.y), A.z)), 'over the elbow front to back')
@@ -845,7 +883,7 @@ def polish(key, P, notes0=(), over=None):
         if hidden or up < 0.78 * fo:                                   # the bend (nearly) halfway, as bm's arms
             ax = W - A; t0 = (E - A).dot(ax) / ax.dot(ax); perp = E - (A + ax * t0)
             put(s + 'ForeArm', A + ax * (0.5 if hidden else 0.474) + perp, 'down the arm (%s)' % ('in a sleeve' if hidden else 'upper arm short'))
-            E = cur(s + 'ForeArm')
+            E = centre_elbow(s)                                        # moved along the chord: back into the arm there
         fo = (W - E).length
         if fo < 0.75 * (E - A).length:                                  # a wrist up in a cuff: a hand's length from the tip
             co = mesh_cache(key)[0]; u = (W - E).normalized()
@@ -862,7 +900,8 @@ def polish(key, P, notes0=(), over=None):
             elif n != 'Hand':                                          # far apart: the better side, mirrored (a wrist
                 def bad(s):                                            # found in its cuff is left: a held thing may turn it)
                     A, E, W = cur(s + 'Arm'), cur(s + 'ForeArm'), cur(s + 'Hand')
-                    return abs(math.log(max(1e-4, (E - A).length) / max(1e-4, (W - E).length))) + 3 * abs(abs(A.x - mid) / Hs - 0.1) + 2 * abs(A.y - cy) / Hs
+                    return (abs(math.log(max(1e-4, (E - A).length) / max(1e-4, (W - E).length))) + 3 * abs(abs(A.x - mid) / Hs - 0.1)
+                            + 2 * abs(A.y - cy) / Hs + 3 * abs((A.z - floor) / Hs - 0.79))
                 b = 'Left' if bad('Left') <= bad('Right') else 'Right'; o = 'Right' if b == 'Left' else 'Left'
                 put(o + n, M(cur(b + n)), 'mirrors the %s (%.1f cm apart)' % (b, (l - M(r)).length * 100))
     for s in S:                                                        # the collarbone inside the shoulder, at its height
@@ -915,9 +954,17 @@ OVER = {
     'wizard_f_v2': {'polish': _H(0.03)},
     # the skeleton's bones show: the shoulders into the humeral heads, the collarbones to the top of the sternum
     'skeleton_v2': {'polish': dict(_H(0.0, 0.025), LeftArm=(-0.015, 0.0, 0.06), RightArm=(0.015, 0.0, 0.06),
-                                   LeftShoulder=(0.0, 0.0, 0.07), RightShoulder=(0.0, 0.0, 0.07))},
-    # the slagback: its skull hangs 20 cm before the head joint (up in the hump); its shoulders at the pauldrons' lower edge
-    'zombie_slagback_v2': {'polish': dict(_H(-0.20), LeftArm=(-0.05, 0.0, 0.06), RightArm=(0.05, 0.0, 0.06))},
+                                   LeftShoulder=(0.0, 0.0, 0.07), RightShoulder=(0.0, 0.0, 0.07),
+                                   # round 2: the ankles and balls 4 cm in from the bones of its feet
+                                   LeftFoot=(0.04, 0.0, 0.0), LeftToeBase=(0.04, 0.0, 0.0), RightFoot=(-0.04, 0.0, 0.0), RightToeBase=(-0.04, 0.0, 0.0))},
+    # the slagback: its skull hangs 20 cm before the head joint (up in the hump); its shoulders at the pauldrons' lower
+    # edge (round 2: no longer pulled in, the arm's own line finds them)
+    'zombie_slagback_v2': {'polish': dict(_H(-0.20), LeftArm=(0.0, 0.0, 0.06), RightArm=(0.0, 0.0, 0.06))},
+    # round 2: head pivots forward in a beard or at the mouth, back under the skull; wrists up in the bracers
+    'gunnar_v2': {'polish': _H(0.07)},
+    'hakon_v2': {'polish': _H(0.035)},
+    'carrion_witch_m_v2': {'polish': _H(0.075)},
+    'arcane_sorcerer_m_v2': {'polish': {'wrist_out': 0.09}},
     'zombie_slinger_v2': {'polish': {'LeftArm': (0.0, 0.0, 0.05), 'RightArm': (0.0, 0.0, 0.05)}},
     # Maudlin: her hips and knees high under the gown, her wrists up in the cuffs
     'maudlin_v2': {'polish': {'LeftUpLeg': (0.0, 0.0, -0.04), 'RightUpLeg': (0.0, 0.0, -0.04), 'LeftLeg': (0.0, 0.0, -0.055),
@@ -961,7 +1008,8 @@ def review(keys, batch):
     """Rest shots into <batch>/rest, motion into <batch>/motion."""
     for k in keys:
         shoot_rig([k], os.path.join(batch, 'rest'), views=('front', 'left'), w=600, h=980)
-        shoot_motion(k, os.path.join(batch, 'motion'), ['Walk', 'Run', blow(k)], views=('left', 'three_quarter'), n=6, w=260, h=380)
+        clips = ['Walk', blow(k)] if k.startswith('zombie_') else ['Walk', 'Run', blow(k)]   # the dead never run in the game
+        shoot_motion(k, os.path.join(batch, 'motion'), clips, views=('left', 'three_quarter'), n=6, w=260, h=380)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
