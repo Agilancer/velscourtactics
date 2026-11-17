@@ -7405,7 +7405,8 @@
       "dead": 1.3,
       "revive": 1.6,
       "shoot": 1.25
-    }
+    },
+    "mx": "flint"
   },
   "ninja_m": {
     "file": "ninja_m.glb",
