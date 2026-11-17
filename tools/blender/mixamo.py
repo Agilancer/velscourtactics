@@ -257,13 +257,14 @@ def _face(self, p, q0, k):
 
 def _take(self, name, clip, t0, t1, contact=None, at=7, post=1.0, blend_in=3, blend_out=8, travel=0.0, end=None,
           keep=None, hold=0, write=True, base=None, after=None, sides='RL', mirror=False, face=0, then=None, skip=None,
-          first=None, rise=1.0):
+          first=None, rise=1.0, face_from='first'):
     """A stretch of a source clip, t0 to t1 real seconds, as a clip of this figure. Its first `blend_in` frames ease in
     from the idle, its blow (contact) lands at frame `at`, then it plays at `post` times its speed and eases back into the
     idle over `blend_out` frames. travel: how much of the hips' travel to keep (0 pins it to the tile; anything kept is
     eased off again by the end). rise: how much of a leap's lift above the idle's hips to keep. keep: bones left as the
     idle has them (the hand with the shield, say). hold: frames to hold the last sampled pose before easing out. after(f, p): a last word on each pose. face: how much of the hips'
-    turn about the up to take off (1: the figure faces the foe all through). skip: (from, to) a still stretch of the
+    turn about the up to take off (1: the figure faces the foe all through), measured from the stretch's first pose, or
+    from the idle's (face_from='idle': for a stretch cut from a wind-up already turned away). skip: (from, to) a still stretch of the
     source cut out (a long hold at full draw). first: (clip, from, to, speed, mirror) a stretch played before, at its own
     pace, crossfaded into the main one (a charge, then the throw); the blow still lands at `at`. then: (clip, from, to,
     speed, mirror, hold, blow) a stretch played straight after, crossfaded into over 8 frames, its last pose held `hold`
@@ -293,7 +294,7 @@ def _take(self, name, clip, t0, t1, contact=None, at=7, post=1.0, blend_in=3, bl
     firstp = None
     def fix(p):
         nonlocal ref, q0
-        if ref is None: ref = p[MXH][1].copy(); q0 = p[MXH][0].copy()
+        if ref is None: ref = p[MXH][1].copy(); q0 = (B0 if face_from == 'idle' else p)[MXH][0].copy()
         p = self.travel(p, ref, travel, rise)
         if face: p = self.face(p, q0, face)
         if keep: p = self.mix(p, B0, keep[1], keep[0]) if isinstance(keep, tuple) else self.mix(p, B0, 1.0, keep)

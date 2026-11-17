@@ -851,7 +851,19 @@ A take can be more than one stretch of one clip:
   leans out, away from the head. A level spear points at the foe whichever way the chest has turned.
 
 Cheers and taunts ease in over 6 frames instead of 3 and hold the weapon up. The draw and sheathe moves leave it in
-the fist.
+the fist. A cheer or a taunt is a big, plain gesture, because a small one reads as the idle at a figure's size: the
+hop with the weapon flung up (`leap_up`), the Jump, Yelling leant back (`yell_big`), Entry's deep bow (`entrybow`),
+sitting down, often ending on a held pose (`then`). A fist pump, a chest thump, Excited and the power-up barely move
+there. It never plays a clip one of its own class's skills plays, so it can't be taken for an attack. What
+the hand holds goes with the gesture: `aim: 'down'` through a bow, so a mace or staff hangs by the leg instead of
+standing up out of the back; `aim: 'raise'` in a roar, so a staff or blade leans out from the face; the shield arm kept.
+
+A throw (the `fireball` clip) lands its blow on the release, not on the wind-up, with the hips held to the foe. A spin
+that would carry on round (`backhand_s`) is cut before the back comes to the foe. The bodies batch 9 refit (`lancer_*`,
+`slime_lord_*` and the 29 recruits) are baked from the `v2 ornate - rigfix b9crit.blend` copy, appended into the work
+.blend and sent through the library again (`Target.rebuild`): the game's own GLB has another bone rest and gives
+another bank. Their prop copies (the lancer's lance and shield, for the renders) are moved onto the appended body,
+or the render hides them.
 
 Baking, in the work .blend (headless is fine; nothing is saved):
 
